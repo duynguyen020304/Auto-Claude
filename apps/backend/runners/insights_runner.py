@@ -143,11 +143,12 @@ async def run_with_sdk(
     history: list,
     model: str = "sonnet",  # Shorthand - resolved via API Profile if configured
     thinking_level: str = "medium",
+    mentions: list = None,
 ) -> None:
     """Run the chat using Claude SDK with streaming."""
     if not SDK_AVAILABLE:
         print("Claude SDK not available, falling back to simple mode", file=sys.stderr)
-        run_simple(project_dir, message, history)
+        run_simple(project_dir, message, history, mentions)
         return
 
     if not get_auth_token():
@@ -155,7 +156,7 @@ async def run_with_sdk(
             "No authentication token found, falling back to simple mode",
             file=sys.stderr,
         )
-        run_simple(project_dir, message, history)
+        run_simple(project_dir, message, history, mentions)
         return
 
     # Ensure SDK can find the token
@@ -283,10 +284,10 @@ Current question: {message}"""
         import traceback
 
         traceback.print_exc(file=sys.stderr)
-        run_simple(project_dir, message, history)
+        run_simple(project_dir, message, history, mentions)
 
 
-def run_simple(project_dir: str, message: str, history: list) -> None:
+def run_simple(project_dir: str, message: str, history: list, mentions: list = None) -> None:
     """Simple fallback mode without SDK - uses subprocess to call claude CLI."""
     import subprocess
 
@@ -359,6 +360,11 @@ def main():
         choices=["none", "low", "medium", "high", "ultrathink"],
         help="Thinking level for extended reasoning (default: medium)",
     )
+    parser.add_argument(
+        "--mentions",
+        default="[]",
+        help='JSON array of file mentions to include in context (e.g., \'[{"filePath": "src/App.tsx", "lineStart": 10, "lineEnd": 20}]\')',
+    )
     args = parser.parse_args()
 
     debug_section("insights_runner", "Starting Insights Chat")
@@ -399,9 +405,19 @@ def main():
         debug_error("insights_runner", f"Failed to load history: {e}")
         history = []
 
+    # Parse file mentions from JSON
+    try:
+        mentions = json.loads(args.mentions)
+        debug_detailed(
+            "insights_runner", "Parsed file mentions", mentions_count=len(mentions)
+        )
+    except json.JSONDecodeError as e:
+        debug_error("insights_runner", f"Failed to parse mentions: {e}")
+        mentions = []
+
     # Run the async SDK function
     debug("insights_runner", "Running SDK query")
-    asyncio.run(run_with_sdk(project_dir, user_message, history, model, thinking_level))
+    asyncio.run(run_with_sdk(project_dir, user_message, history, model, thinking_level, mentions))
     debug_success("insights_runner", "Query completed")
 
 
