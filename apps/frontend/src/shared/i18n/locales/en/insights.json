@@ -2,5 +2,12 @@
   "fileMention": {
     "removeAriaLabel": "Remove file mention: {{fileName}}",
     "badgeTitle": "File: {{filePath}}"
+  },
+  "fileContext": {
+    "title": "Referenced Files",
+    "truncated": "Truncated",
+    "truncatedTooltip": "Showing {{lines}} of {{total}} lines",
+    "lines": "{{count}} lines",
+    "linesIncluded": "{{included}} included"
   }
 }
