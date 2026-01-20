@@ -1181,3 +1181,411 @@ def _list_credentials_linux() -> list[dict[str, str | None]]:
     ) as e:
         logger.warning(f"Failed to list Linux Secret Service credentials: {e}")
         return []
+
+
+def get_credential(cred_id: str) -> dict[str, str | None] | None:
+    """
+    Get a single credential profile by ID from platform-specific storage.
+
+    Retrieves the full credential profile including the actual credential value
+    from:
+    - macOS: Keychain (service: "auto-claude-{cred_id}")
+    - Windows: Credential Manager or .credentials-auto-claude-{cred_id}.json file
+    - Linux: Secret Service API (application: "auto-claude-{cred_id}")
+
+    Args:
+        cred_id: Unique credential identifier (e.g., "cred-001")
+
+    Returns:
+        Dictionary with credential data including:
+        - id: Credential ID
+        - type: Credential type ('oauth' or 'api_key')
+        - name: Credential name
+        - status: Credential status ('active', 'rate_limited', 'disabled')
+        - value: Actual credential value (token or API key)
+        - last_used: Last used timestamp (ISO format string or None)
+
+        Returns None if credential not found.
+
+    Example:
+        >>> cred = get_credential("cred-001")
+        >>> if cred:
+        ...     print(f"Found: {cred['name']}")
+        ...     token = cred['value']
+    """
+    if is_macos():
+        return _get_credential_macos(cred_id)
+    elif is_windows():
+        return _get_credential_windows(cred_id)
+    else:
+        # Linux: use secret-service API via DBus
+        return _get_credential_linux(cred_id)
+
+
+def _get_credential_macos(cred_id: str) -> dict[str, str | None] | None:
+    """
+    Get a credential profile from macOS Keychain.
+
+    Args:
+        cred_id: Unique credential identifier
+
+    Returns:
+        Credential dictionary with value, or None if not found
+    """
+    try:
+        # Construct service name for this credential
+        service_name = f"auto-claude-{cred_id}"
+
+        # Use 'security' command to find password
+        result = subprocess.run(
+            [
+                "/usr/bin/security",
+                "find-generic-password",
+                "-s",
+                service_name,
+                "-w",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+
+        if result.returncode != 0:
+            logger.debug(f"Credential '{cred_id}' not found in macOS Keychain")
+            return None
+
+        credential_json = result.stdout.strip()
+        if not credential_json:
+            return None
+
+        data = json.loads(credential_json)
+
+        # Extract credential data
+        return {
+            "id": cred_id,
+            "type": data.get("type", "oauth"),
+            "name": data.get("name", f"Credential {cred_id}"),
+            "status": data.get("status", "active"),
+            "value": data.get("value"),
+            "last_used": data.get("last_used"),
+        }
+
+    except (subprocess.TimeoutExpired, json.JSONDecodeError, KeyError, Exception) as e:
+        logger.warning(f"Failed to get credential '{cred_id}' from macOS Keychain: {e}")
+        return None
+
+
+def _get_credential_windows(cred_id: str) -> dict[str, str | None] | None:
+    """
+    Get a credential profile from Windows credential storage.
+
+    Checks for credential files in ~/.claude directory.
+
+    Args:
+        cred_id: Unique credential identifier
+
+    Returns:
+        Credential dictionary with value, or None if not found
+    """
+    try:
+        # Check for credential file in ~/.claude directory
+        claude_dir = os.path.expandvars(r"%USERPROFILE%\.claude")
+        cred_filename = f".credentials-auto-claude-{cred_id}.json"
+        cred_path = os.path.join(claude_dir, cred_filename)
+
+        if not os.path.exists(cred_path):
+            logger.debug(f"Credential '{cred_id}' not found in Windows credential files")
+            return None
+
+        with open(cred_path, encoding="utf-8") as f:
+            data = json.load(f)
+
+        return {
+            "id": cred_id,
+            "type": data.get("type", "oauth"),
+            "name": data.get("name", f"Credential {cred_id}"),
+            "status": data.get("status", "active"),
+            "value": data.get("value"),
+            "last_used": data.get("last_used"),
+        }
+
+    except (json.JSONDecodeError, KeyError, FileNotFoundError, Exception) as e:
+        logger.warning(f"Failed to get credential '{cred_id}' from Windows storage: {e}")
+        return None
+
+
+def _get_credential_linux(cred_id: str) -> dict[str, str | None] | None:
+    """
+    Get a credential profile from Linux Secret Service API.
+
+    Args:
+        cred_id: Unique credential identifier
+
+    Returns:
+        Credential dictionary with value, or None if not found
+    """
+    if secretstorage is None:
+        logger.debug("secretstorage not available for credential retrieval")
+        return None
+
+    try:
+        # Get the default collection
+        try:
+            collection = secretstorage.get_default_collection(None)
+        except (
+            AttributeError,
+            secretstorage.exceptions.SecretServiceNotAvailableException,
+        ):
+            logger.debug("Secret Service not available")
+            return None
+
+        if collection.is_locked():
+            # Try to unlock the collection
+            try:
+                collection.unlock()
+            except secretstorage.exceptions.SecretStorageException:
+                logger.debug("Failed to unlock Secret Service collection")
+                return None
+
+        # Search for items with our application attribute
+        items = collection.search_items({"application": f"auto-claude-{cred_id}"})
+
+        for item in items:
+            # Get the secret (stored as JSON string)
+            secret = item.get_secret()
+            if not secret:
+                continue
+
+            try:
+                # Decode bytes to string if needed
+                if isinstance(secret, bytes):
+                    secret = secret.decode("utf-8")
+                data = json.loads(secret)
+
+                return {
+                    "id": cred_id,
+                    "type": data.get("type", "oauth"),
+                    "name": data.get("name", f"Credential {cred_id}"),
+                    "status": data.get("status", "active"),
+                    "value": data.get("value"),
+                    "last_used": data.get("last_used"),
+                }
+            except json.JSONDecodeError:
+                continue
+
+        logger.debug(f"Credential '{cred_id}' not found in Linux Secret Service")
+        return None
+
+    except (
+        secretstorage.exceptions.SecretStorageException,
+        json.JSONDecodeError,
+        AttributeError,
+        TypeError,
+    ) as e:
+        logger.warning(f"Failed to get credential '{cred_id}' from Linux Secret Service: {e}")
+        return None
+
+
+def save_credential(credential: dict[str, str]) -> bool:
+    """
+    Save a credential profile to platform-specific storage.
+
+    Stores the credential profile with its value and metadata.
+    If a credential with the same ID already exists, it will be overwritten.
+
+    Args:
+        credential: Dictionary with credential data:
+            - id: Required - Unique credential identifier
+            - type: Required - Credential type ('oauth' or 'api_key')
+            - name: Optional - Credential name
+            - status: Optional - Credential status (default: 'active')
+            - value: Required - Actual credential value (token or API key)
+            - last_used: Optional - Last used timestamp
+
+    Returns:
+        True if save was successful, False otherwise
+
+    Example:
+        >>> success = save_credential({
+        ...     "id": "cred-001",
+        ...     "type": "oauth",
+        ...     "name": "Primary Account",
+        ...     "value": "sk-ant-oat01-...",
+        ...     "status": "active"
+        ... })
+    """
+    # Validate required fields
+    if "id" not in credential or "value" not in credential:
+        logger.error("Credential must have 'id' and 'value' fields")
+        return False
+
+    if is_macos():
+        return _save_credential_macos(credential)
+    elif is_windows():
+        return _save_credential_windows(credential)
+    else:
+        # Linux: use secret-service API via DBus
+        return _save_credential_linux(credential)
+
+
+def _save_credential_macos(credential: dict[str, str]) -> bool:
+    """
+    Save a credential profile to macOS Keychain.
+
+    Args:
+        credential: Credential dictionary with all required fields
+
+    Returns:
+        True if save was successful, False otherwise
+    """
+    try:
+        # Construct service name for this credential
+        service_name = f"auto-claude-{credential['id']}"
+
+        # Prepare credential data for storage
+        cred_data = {
+            "id": credential["id"],
+            "type": credential.get("type", "oauth"),
+            "name": credential.get("name", f"Credential {credential['id']}"),
+            "status": credential.get("status", "active"),
+            "value": credential["value"],
+            "last_used": credential.get("last_used"),
+        }
+
+        # Use 'security' command to add generic password
+        result = subprocess.run(
+            [
+                "/usr/bin/security",
+                "add-generic-password",
+                "-a", credential["id"],  # Account name
+                "-s", service_name,  # Service name
+                "-w", json.dumps(cred_data),  # Password (credential data as JSON)
+                "-U",  # Update if exists
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+
+        if result.returncode != 0:
+            logger.warning(f"Failed to save credential '{credential['id']}' to macOS Keychain: {result.stderr}")
+            return False
+
+        logger.info(f"Credential '{credential['id']}' saved to macOS Keychain")
+        return True
+
+    except (subprocess.TimeoutExpired, Exception) as e:
+        logger.warning(f"Failed to save credential '{credential['id']}' to macOS Keychain: {e}")
+        return False
+
+
+def _save_credential_windows(credential: dict[str, str]) -> bool:
+    """
+    Save a credential profile to Windows credential storage.
+
+    Stores credential in ~/.claude/.credentials-auto-claude-{id}.json file.
+
+    Args:
+        credential: Credential dictionary with all required fields
+
+    Returns:
+        True if save was successful, False otherwise
+    """
+    try:
+        # Create ~/.claude directory if it doesn't exist
+        claude_dir = os.path.expandvars(r"%USERPROFILE%\.claude")
+        os.makedirs(claude_dir, exist_ok=True)
+
+        # Prepare credential data for storage
+        cred_data = {
+            "id": credential["id"],
+            "type": credential.get("type", "oauth"),
+            "name": credential.get("name", f"Credential {credential['id']}"),
+            "status": credential.get("status", "active"),
+            "value": credential["value"],
+            "last_used": credential.get("last_used"),
+        }
+
+        # Save to credential file
+        cred_filename = f".credentials-auto-claude-{credential['id']}.json"
+        cred_path = os.path.join(claude_dir, cred_filename)
+
+        with open(cred_path, "w", encoding="utf-8") as f:
+            json.dump(cred_data, f, indent=2)
+
+        logger.info(f"Credential '{credential['id']}' saved to Windows credential files")
+        return True
+
+    except (IOError, Exception) as e:
+        logger.warning(f"Failed to save credential '{credential['id']}' to Windows storage: {e}")
+        return False
+
+
+def _save_credential_linux(credential: dict[str, str]) -> bool:
+    """
+    Save a credential profile to Linux Secret Service API.
+
+    Args:
+        credential: Credential dictionary with all required fields
+
+    Returns:
+        True if save was successful, False otherwise
+    """
+    if secretstorage is None:
+        logger.error("secretstorage not available for credential storage")
+        return False
+
+    try:
+        # Get the default collection
+        try:
+            collection = secretstorage.get_default_collection(None)
+        except (
+            AttributeError,
+            secretstorage.exceptions.SecretServiceNotAvailableException,
+        ):
+            logger.error("Secret Service not available")
+            return False
+
+        if collection.is_locked():
+            # Try to unlock the collection
+            try:
+                collection.unlock()
+            except secretstorage.exceptions.SecretStorageException:
+                logger.error("Failed to unlock Secret Service collection")
+                return False
+
+        # Prepare credential data for storage
+        cred_data = {
+            "id": credential["id"],
+            "type": credential.get("type", "oauth"),
+            "name": credential.get("name", f"Credential {credential['id']}"),
+            "status": credential.get("status", "active"),
+            "value": credential["value"],
+            "last_used": credential.get("last_used"),
+        }
+
+        # Check if item already exists
+        existing_items = collection.search_items({"application": f"auto-claude-{credential['id']}"})
+
+        # Delete existing item if found
+        for item in existing_items:
+            item.delete()
+
+        # Create new item
+        collection.create_item(
+            label=cred_data["name"],
+            attributes={"application": f"auto-claude-{credential['id']}"},
+            secret=json.dumps(cred_data),
+        )
+
+        logger.info(f"Credential '{credential['id']}' saved to Linux Secret Service")
+        return True
+
+    except (
+        secretstorage.exceptions.SecretStorageException,
+        json.JSONDecodeError,
+        AttributeError,
+        TypeError,
+    ) as e:
+        logger.warning(f"Failed to save credential '{credential['id']}' to Linux Secret Service: {e}")
+        return False
