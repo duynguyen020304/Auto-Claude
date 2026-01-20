@@ -321,11 +321,6 @@ export const useIdeationStore = create<IdeationState>((set) => ({
       const newTypeStates = { ...state.typeStates };
       newTypeStates[ideationType as IdeationType] = 'completed';
 
-      // Filter out dismissed and archived ideas from the incoming ideas
-      const filteredIdeas = ideas.filter(
-        (idea) => idea.status !== 'dismissed' && idea.status !== 'archived'
-      );
-
       if (!state.session) {
         const config = state.config;
         return {
@@ -334,7 +329,7 @@ export const useIdeationStore = create<IdeationState>((set) => ({
             id: `session-${Date.now()}`,
             projectId: '',
             config,
-            ideas: filteredIdeas,
+            ideas: ideas,
             projectContext: {
               existingFeatures: [],
               techStack: [],
@@ -348,14 +343,14 @@ export const useIdeationStore = create<IdeationState>((set) => ({
 
       // Replace ideas of this type (remove old ones including dismissed), keep other types
       const otherTypeIdeas = state.session.ideas.filter(
-        (idea) => idea.type !== ideationType
+        (idea) => idea.type !== ideationType && idea.status !== 'dismissed' && idea.status !== 'archived'
       );
 
       return {
         typeStates: newTypeStates,
         session: {
           ...state.session,
-          ideas: [...otherTypeIdeas, ...filteredIdeas],
+          ideas: [...otherTypeIdeas, ...ideas],
           updatedAt: new Date()
         }
       };
