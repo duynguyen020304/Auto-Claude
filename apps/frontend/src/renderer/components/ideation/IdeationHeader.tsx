@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Lightbulb, Eye, EyeOff, Settings2, Plus, Trash2, RefreshCw, CheckSquare, X } from 'lucide-react';
+import { Lightbulb, Eye, EyeOff, Settings2, Plus, Trash2, RefreshCw, Sparkles, CheckSquare, X } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
@@ -196,13 +196,26 @@ export function IdeationHeader({
               <Button
                 variant="outline"
                 size="icon"
-                onClick={handleOpenGenerateFreshDialog}
-                aria-label={t('accessibility.regenerateIdeasAriaLabel')}
+                onClick={onOpenAddMore}
+                aria-label={t('accessibility.refreshIdeasAriaLabel')}
               >
                 <RefreshCw className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>{t('accessibility.regenerateIdeasAriaLabel')}</TooltipContent>
+            <TooltipContent>{t('accessibility.refreshIdeasAriaLabel')}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleOpenGenerateFreshDialog}
+                aria-label={t('accessibility.replaceIdeasAriaLabel')}
+              >
+                <Sparkles className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{t('accessibility.replaceIdeasAriaLabel')}</TooltipContent>
           </Tooltip>
         </div>
       </div>

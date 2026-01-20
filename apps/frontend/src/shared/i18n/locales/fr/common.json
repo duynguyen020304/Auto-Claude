@@ -38,6 +38,8 @@
     "addMoreAriaLabel": "Ajouter plus",
     "dismissAllAriaLabel": "Rejeter toutes les idées",
     "regenerateIdeasAriaLabel": "Régénérer les idées",
+    "refreshIdeasAriaLabel": "Ajouter plus d'idées à l'ensemble existant",
+    "replaceIdeasAriaLabel": "Remplacer toutes les idées par un nouveau lot",
     "dismissAriaLabel": "Ignorer",
     "browseFilesAriaLabel": "Parcourir les fichiers",
     "renameAriaLabel": "Renommer",
