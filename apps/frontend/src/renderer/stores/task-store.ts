@@ -12,7 +12,7 @@ interface TaskState {
   taskOrder: TaskOrderState | null;  // Per-column task ordering for kanban board
 
   // Actions
-  setTasks: (tasks: Task[]) => void;
+  setTasks: (tasks: Task[] | ((prevTasks: Task[]) => Task[])) => void;
   addTask: (task: Task) => void;
   updateTask: (taskId: string, updates: Partial<Task>) => void;
   updateTaskStatus: (taskId: string, status: TaskStatus) => void;
@@ -657,7 +657,9 @@ export async function loadTasks(projectId: string): Promise<void> {
   try {
     const result = await window.electronAPI.getTasks(projectId);
     if (result.success && result.data) {
-      store.setTasks(result.data);
+      // Use functional update to explicitly merge refreshed tasks with existing state
+      // This preserves executionProgress for tasks that are actively running
+      store.setTasks(prevTasks => mergeTaskStates(result.data, prevTasks));
     } else {
       store.setError(result.error || 'Failed to load tasks');
     }
