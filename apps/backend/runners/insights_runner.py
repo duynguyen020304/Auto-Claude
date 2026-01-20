@@ -111,6 +111,30 @@ def load_project_context(project_dir: str) -> str:
     )
 
 
+def _is_binary_file(file_path: Path) -> bool:
+    """Check if a file is likely binary by reading a small sample."""
+    try:
+        with open(file_path, 'rb') as f:
+            chunk = f.read(8192)
+            if not chunk:
+                return False
+
+            # Check for null bytes (common in binary files)
+            if b'\x00' in chunk:
+                return True
+
+            # Check if the chunk has too many non-text characters
+            # Text files typically have mostly printable ASCII/UTF-8
+            text_characters = bytearray({7, 8, 9, 10, 12, 13, 27} | set(range(0x20, 0x100)) - {0x7f})
+            non_text = sum(1 for byte in chunk if byte not in text_characters)
+
+            # If more than 30% non-text characters, likely binary
+            return non_text / len(chunk) > 0.3
+    except Exception:
+        # If we can't read it at all, treat as binary
+        return True
+
+
 def load_mentioned_files(project_dir: str, mentions: list) -> str:
     """Load contents of mentioned files with smart truncation for large files."""
     if not mentions:
@@ -127,8 +151,24 @@ def load_mentioned_files(project_dir: str, mentions: list) -> str:
         # Resolve file path relative to project directory
         full_path = project_path / file_path
 
+        # Check if file exists
         if not full_path.exists():
             file_contexts.append(f"## {file_path}\n⚠️ File not found")
+            continue
+
+        # Check if it's a directory
+        if full_path.is_dir():
+            file_contexts.append(f"## {file_path}\n⚠️ Path is a directory, not a file")
+            continue
+
+        # Check if file is readable (permission check)
+        if not full_path.is_file():
+            file_contexts.append(f"## {file_path}\n⚠️ Path is not a valid file")
+            continue
+
+        # Check for binary file
+        if _is_binary_file(full_path):
+            file_contexts.append(f"## {file_path}\n⚠️ Binary file - cannot display content")
             continue
 
         try:
@@ -168,6 +208,12 @@ def load_mentioned_files(project_dir: str, mentions: list) -> str:
 
             file_contexts.append(f"{header}\n```\n{content}\n```")
 
+        except PermissionError:
+            file_contexts.append(f"## {file_path}\n⚠️ Permission denied - cannot read file")
+        except UnicodeDecodeError:
+            file_contexts.append(f"## {file_path}\n⚠️ File encoding error - cannot read as text")
+        except OSError as e:
+            file_contexts.append(f"## {file_path}\n⚠️ OS error reading file: {e}")
         except Exception as e:
             file_contexts.append(f"## {file_path}\n⚠️ Error reading file: {e}")
 
