@@ -363,6 +363,8 @@ from core.auth import (
     validate_token_not_encrypted,
 )
 from core.usage_tracker import TokenUsage
+from core.rotation import RotationManager, RotationMode
+from core.credentials import RotationConfig
 from linear_updater import is_linear_enabled
 from prompts_pkg.project_context import detect_project_capabilities, load_project_index
 from security import bash_security_hook
@@ -755,6 +757,129 @@ def extract_token_usage(response_message: Any) -> TokenUsage:
     return usage
 
 
+def _load_rotation_config(project_dir: Path, spec_dir: Path) -> RotationConfig | None:
+    """
+    Load credential rotation configuration from environment variables.
+
+    Reads rotation configuration from environment variables:
+    - AUTO_CLAUDE_CREDENTIAL_POOL: Comma-separated list of credential IDs
+    - AUTO_CLAUDE_ROTATION_MODE: Rotation mode (manual, round_robin, usage_based, rate_limit_aware)
+    - AUTO_CLAUDE_RATE_LIMIT_THRESHOLD: Threshold for rate_limit_aware mode (default: 0.8)
+    - AUTO_CLAUDE_MAX_RETRIES: Maximum retry attempts (default: 3)
+    - AUTO_CLAUDE_RETRY_DELAY_SECONDS: Delay between retries (default: 1)
+
+    Args:
+        project_dir: Project directory (for context)
+        spec_dir: Spec directory (for context)
+
+    Returns:
+        RotationConfig if rotation is enabled and configured, None otherwise
+    """
+    # Check if credential pool is configured
+    credential_pool_str = os.environ.get("AUTO_CLAUDE_CREDENTIAL_POOL", "").strip()
+    if not credential_pool_str:
+        logger.debug("Credential rotation not enabled: no credential pool configured")
+        return None
+
+    # Parse credential pool (comma-separated list)
+    credential_pool = [cred_id.strip() for cred_id in credential_pool_str.split(",") if cred_id.strip()]
+
+    if not credential_pool:
+        logger.warning("AUTO_CLAUDE_CREDENTIAL_POOL is set but empty after parsing")
+        return None
+
+    # Get rotation mode (default to manual for backward compatibility)
+    rotation_mode_str = os.environ.get("AUTO_CLAUDE_ROTATION_MODE", "manual").strip().lower()
+    rotation_mode_map = {
+        "manual": RotationMode.MANUAL,
+        "round_robin": RotationMode.ROUND_ROBIN,
+        "usage_based": RotationMode.USAGE_BASED,
+        "rate_limit_aware": RotationMode.RATE_LIMIT_AWARE,
+    }
+
+    if rotation_mode_str not in rotation_mode_map:
+        logger.warning(
+            f"Invalid rotation mode '{rotation_mode_str}', falling back to 'manual'"
+        )
+        rotation_mode = RotationMode.MANUAL
+    else:
+        rotation_mode = rotation_mode_map[rotation_mode_str]
+
+    # Get rate limit threshold (for rate_limit_aware mode)
+    try:
+        rate_limit_threshold = float(
+            os.environ.get("AUTO_CLAUDE_RATE_LIMIT_THRESHOLD", "0.8").strip()
+        )
+        # Clamp to valid range
+        rate_limit_threshold = max(0.0, min(1.0, rate_limit_threshold))
+    except ValueError:
+        logger.warning("Invalid AUTO_CLAUDE_RATE_LIMIT_THRESHOLD, using default 0.8")
+        rate_limit_threshold = 0.8
+
+    # Get retry configuration
+    try:
+        max_retries = int(os.environ.get("AUTO_CLAUDE_MAX_RETRIES", "3").strip())
+        max_retries = max(0, max_retries)  # Ensure non-negative
+    except ValueError:
+        logger.warning("Invalid AUTO_CLAUDE_MAX_RETRIES, using default 3")
+        max_retries = 3
+
+    try:
+        retry_delay_seconds = int(os.environ.get("AUTO_CLAUDE_RETRY_DELAY_SECONDS", "1").strip())
+        retry_delay_seconds = max(0, retry_delay_seconds)  # Ensure non-negative
+    except ValueError:
+        logger.warning("Invalid AUTO_CLAUDE_RETRY_DELAY_SECONDS, using default 1")
+        retry_delay_seconds = 1
+
+    # Create rotation configuration
+    config = RotationConfig(
+        mode=rotation_mode,
+        credential_pool=credential_pool,
+        rate_limit_threshold=rate_limit_threshold,
+        max_retries=max_retries,
+        retry_delay_seconds=retry_delay_seconds,
+    )
+
+    logger.info(
+        f"Credential rotation enabled: mode={rotation_mode.value}, "
+        f"pool_size={len(credential_pool)}, threshold={rate_limit_threshold}"
+    )
+
+    return config
+
+
+def _get_rotation_memory(project_dir: Path, spec_dir: Path):
+    """
+    Get Graphiti memory instance for usage-based rotation strategies.
+
+    Args:
+        project_dir: Project directory
+        spec_dir: Spec directory
+
+    Returns:
+        GraphitiMemory instance if available and enabled, None otherwise
+    """
+    try:
+        from integrations.graphiti.memory import get_graphiti_memory
+
+        # Check if Graphiti is enabled
+        if os.environ.get("GRAPHITI_ENABLED", "").lower() != "true":
+            logger.debug("Graphiti not enabled, usage-based rotation will use fallback")
+            return None
+
+        # Get memory instance
+        memory = get_graphiti_memory(spec_dir, project_dir)
+        logger.debug("Graphiti memory available for usage-based rotation")
+        return memory
+
+    except ImportError:
+        logger.warning("Graphiti memory not available, usage-based rotation will use fallback")
+        return None
+    except Exception as e:
+        logger.warning(f"Failed to initialize Graphiti memory: {e}")
+        return None
+
+
 def create_client(
     project_dir: Path,
     spec_dir: Path,
@@ -809,6 +934,44 @@ def create_client(
     # Encrypted tokens (enc:...) should have been decrypted by require_auth_token()
     # If we still have an encrypted token here, it means decryption failed or was skipped
     validate_token_not_encrypted(oauth_token)
+
+    # Check if credential rotation is enabled
+    rotation_config = _load_rotation_config(project_dir, spec_dir)
+
+    if rotation_config:
+        # Rotation is enabled - use rotation manager to select credential
+        try:
+            # Get Graphiti memory for usage-based strategies (optional)
+            memory = _get_rotation_memory(project_dir, spec_dir)
+
+            # Create rotation manager
+            rotation_manager = RotationManager(
+                config=rotation_config,
+                memory=memory,
+                task_id=spec_dir.name,  # Use spec directory name as task ID
+            )
+
+            # Select credential using configured rotation strategy
+            selected_credential = rotation_manager.select_credential()
+
+            if selected_credential and selected_credential.credential_value:
+                # Use selected credential instead of default OAuth token
+                oauth_token = selected_credential.credential_value
+                logger.info(
+                    f"Using credential {selected_credential.id} ({selected_credential.name}) "
+                    f"via {rotation_config.mode.value} rotation"
+                )
+            else:
+                logger.warning(
+                    "Credential rotation enabled but no credential selected, "
+                    "falling back to default OAuth token"
+                )
+
+        except Exception as e:
+            logger.error(
+                f"Credential rotation failed, falling back to default OAuth token: {e}",
+                exc_info=True
+            )
 
     # Ensure SDK can access it via its expected env var
     os.environ["CLAUDE_CODE_OAUTH_TOKEN"] = oauth_token
