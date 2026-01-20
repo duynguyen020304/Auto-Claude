@@ -415,6 +415,26 @@ function MessageBubble({
         <div className="text-sm font-medium text-foreground">
           {isUser ? 'You' : 'Assistant'}
         </div>
+
+        {/* File mention badges for user messages */}
+        {isUser && message.fileMentions && message.fileMentions.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {message.fileMentions.map((mention) => (
+              <Badge
+                key={mention.id}
+                variant="secondary"
+                className="text-xs flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 transition-colors"
+              >
+                <FileText className="h-3 w-3" />
+                <span className="font-mono">
+                  {mention.displayName || mention.filePath}
+                  {mention.lineRange && `:${mention.lineRange.start}-${mention.lineRange.end}`}
+                </span>
+              </Badge>
+            ))}
+          </div>
+        )}
+
         <div className="prose prose-sm dark:prose-invert max-w-none">
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
             {message.content}
