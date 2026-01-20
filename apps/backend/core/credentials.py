@@ -1,0 +1,259 @@
+"""
+Credential management data models for Auto Claude.
+
+Provides unified credential abstraction that normalizes API keys and OAuth tokens,
+with support for multiple credential profiles, rotation strategies, and usage tracking.
+"""
+
+import logging
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from typing import Literal
+
+logger = logging.getLogger(__name__)
+
+
+class CredentialType(str, Enum):
+    """Types of credentials supported by Auto Claude."""
+
+    API_KEY = "api_key"
+    OAUTH = "oauth"
+
+
+class CredentialStatus(str, Enum):
+    """Status of a credential profile."""
+
+    ACTIVE = "active"
+    RATE_LIMITED = "rate_limited"
+    DISABLED = "disabled"
+
+
+@dataclass
+class RateLimitInfo:
+    """
+    Rate limit information for a credential.
+
+    Attributes:
+        requests_per_minute: Maximum requests per minute allowed
+        tokens_per_minute: Maximum tokens per minute allowed
+        remaining_requests: Remaining requests in current window
+        remaining_tokens: Remaining tokens in current window
+        reset_at: Timestamp when rate limit window resets
+    """
+
+    requests_per_minute: int | None = None
+    tokens_per_minute: int | None = None
+    remaining_requests: int | None = None
+    remaining_tokens: int | None = None
+    reset_at: datetime | None = None
+
+
+@dataclass
+class UsageMetrics:
+    """
+    Usage metrics for a credential profile.
+
+    Attributes:
+        total_requests: Total number of API requests made
+        total_tokens: Total tokens consumed (input + output)
+        input_tokens: Total input tokens
+        output_tokens: Total output tokens
+        cache_read_tokens: Total cache read tokens
+        cache_creation_tokens: Total cache creation tokens
+        last_used: Timestamp of last usage
+    """
+
+    total_requests: int = 0
+    total_tokens: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cache_read_tokens: int = 0
+    cache_creation_tokens: int = 0
+    last_used: datetime | None = None
+
+
+@dataclass
+class CredentialProfile:
+    """
+    Unified credential profile that normalizes API keys and OAuth tokens.
+
+    This data model provides a single abstraction for different credential types,
+    supporting both API keys (ANTHROPIC_API_KEY) and OAuth tokens (CLAUDE_CODE_OAUTH_TOKEN).
+    Each profile includes metadata for rotation, usage tracking, and rate limit handling.
+
+    Attributes:
+        id: Unique identifier for this credential profile (e.g., "cred-001")
+        type: Type of credential ('api_key' or 'oauth')
+        name: Human-readable name for this credential
+        status: Current status ('active', 'rate_limited', 'disabled')
+        credential_value: The actual credential value (token or API key)
+        usage_metrics: Token usage tracking data
+        rate_limit_info: Rate limit information (if known)
+        last_validated: Timestamp of last validation check
+        created_at: Timestamp when profile was created
+        metadata: Additional metadata (optional)
+
+    Example:
+        >>> profile = CredentialProfile(
+        ...     id="cred-001",
+        ...     type=CredentialType.OAUTH,
+        ...     name="Primary Claude Account",
+        ...     status=CredentialStatus.ACTIVE,
+        ...     credential_value="sk-ant-oat01-..."
+        ... )
+    """
+
+    id: str
+    type: CredentialType
+    name: str
+    status: CredentialStatus
+    credential_value: str
+    usage_metrics: UsageMetrics = field(default_factory=UsageMetrics)
+    rate_limit_info: RateLimitInfo | None = None
+    last_validated: datetime | None = None
+    created_at: datetime = field(default_factory=datetime.utcnow)
+    metadata: dict[str, str] | None = None
+
+    def is_active(self) -> bool:
+        """
+        Check if this credential is currently active and available for use.
+
+        Returns:
+            True if status is 'active', False otherwise
+        """
+        return self.status == CredentialStatus.ACTIVE
+
+    def is_rate_limited(self) -> bool:
+        """
+        Check if this credential is currently rate-limited.
+
+        Returns:
+            True if status is 'rate_limited', False otherwise
+        """
+        return self.status == CredentialStatus.RATE_LIMITED
+
+    def is_disabled(self) -> bool:
+        """
+        Check if this credential is disabled.
+
+        Returns:
+            True if status is 'disabled', False otherwise
+        """
+        return self.status == CredentialStatus.DISABLED
+
+    def can_be_used(self) -> bool:
+        """
+        Check if this credential can be used for API requests.
+
+        A credential can be used if it is active and not rate-limited.
+
+        Returns:
+            True if credential is available for use, False otherwise
+        """
+        return self.is_active()
+
+    def mark_rate_limited(self) -> None:
+        """Mark this credential as rate-limited."""
+        self.status = CredentialStatus.RATE_LIMITED
+        logger.warning(f"Credential {self.id} ({self.name}) marked as rate-limited")
+
+    def mark_disabled(self, reason: str) -> None:
+        """
+        Mark this credential as disabled.
+
+        Args:
+            reason: Reason for disabling the credential
+        """
+        self.status = CredentialStatus.DISABLED
+        logger.warning(f"Credential {self.id} ({self.name}) disabled: {reason}")
+
+    def mark_active(self) -> None:
+        """Mark this credential as active and available for use."""
+        self.status = CredentialStatus.ACTIVE
+        logger.info(f"Credential {self.id} ({self.name}) marked as active")
+
+    def record_usage(
+        self,
+        input_tokens: int = 0,
+        output_tokens: int = 0,
+        cache_read_tokens: int = 0,
+        cache_creation_tokens: int = 0,
+    ) -> None:
+        """
+        Record API usage for this credential.
+
+        Args:
+            input_tokens: Number of input tokens consumed
+            output_tokens: Number of output tokens consumed
+            cache_read_tokens: Number of cache read tokens
+            cache_creation_tokens: Number of cache creation tokens
+        """
+        self.usage_metrics.total_requests += 1
+        self.usage_metrics.input_tokens += input_tokens
+        self.usage_metrics.output_tokens += output_tokens
+        self.usage_metrics.cache_read_tokens += cache_read_tokens
+        self.usage_metrics.cache_creation_tokens += cache_creation_tokens
+
+        # Update total tokens
+        total_tokens = input_tokens + output_tokens + cache_read_tokens
+        self.usage_metrics.total_tokens += total_tokens
+
+        # Update last used timestamp
+        self.usage_metrics.last_used = datetime.utcnow()
+
+        logger.debug(
+            f"Credential {self.id} usage: +{total_tokens} tokens "
+            f"(total: {self.usage_metrics.total_tokens})"
+        )
+
+    def get_usage_summary(self) -> dict[str, int | str | None]:
+        """
+        Get a summary of usage metrics for this credential.
+
+        Returns:
+            Dictionary containing usage metrics summary
+        """
+        return {
+            "credential_id": self.id,
+            "credential_name": self.name,
+            "total_requests": self.usage_metrics.total_requests,
+            "total_tokens": self.usage_metrics.total_tokens,
+            "input_tokens": self.usage_metrics.input_tokens,
+            "output_tokens": self.usage_metrics.output_tokens,
+            "cache_read_tokens": self.usage_metrics.cache_read_tokens,
+            "last_used": self.usage_metrics.last_used.isoformat()
+            if self.usage_metrics.last_used
+            else None,
+        }
+
+    def validate_credential_format(self) -> bool:
+        """
+        Validate the format of the credential value.
+
+        Checks if the credential value matches expected format:
+        - OAuth tokens: start with "sk-ant-oat01-"
+        - API keys: start with "sk-ant-api03-"
+
+        Returns:
+            True if format is valid, False otherwise
+        """
+        if not self.credential_value:
+            return False
+
+        if self.type == CredentialType.OAUTH:
+            # OAuth tokens start with sk-ant-oat01-
+            return self.credential_value.startswith("sk-ant-oat01-")
+        elif self.type == CredentialType.API_KEY:
+            # API keys start with sk-ant-api03-
+            return self.credential_value.startswith("sk-ant-api03-")
+
+        return False
+
+    def __repr__(self) -> str:
+        """Return string representation (with credential value redacted)."""
+        return (
+            f"CredentialProfile(id={self.id!r}, type={self.type.value!r}, "
+            f"name={self.name!r}, status={self.status.value!r}, "
+            f"usage_metrics={self.usage_metrics})"
+        )
