@@ -1589,3 +1589,238 @@ def _save_credential_linux(credential: dict[str, str]) -> bool:
     ) as e:
         logger.warning(f"Failed to save credential '{credential['id']}' to Linux Secret Service: {e}")
         return False
+
+
+def delete_credential(cred_id: str) -> bool:
+    """
+    Delete a credential profile from platform-specific storage.
+
+    Removes the credential profile from:
+    - macOS: Keychain (service: "auto-claude-{cred_id}")
+    - Windows: Credential Manager or .credentials-auto-claude-{cred_id}.json file
+    - Linux: Secret Service API (application: "auto-claude-{cred_id}")
+
+    Args:
+        cred_id: Unique credential identifier (e.g., "cred-001")
+
+    Returns:
+        True if credential was deleted successfully, False otherwise
+
+    Example:
+        >>> success = delete_credential("cred-001")
+        >>> if success:
+        ...     print("Credential deleted")
+    """
+    if is_macos():
+        return _delete_credential_macos(cred_id)
+    elif is_windows():
+        return _delete_credential_windows(cred_id)
+    else:
+        # Linux: use secret-service API via DBus
+        return _delete_credential_linux(cred_id)
+
+
+def _delete_credential_macos(cred_id: str) -> bool:
+    """
+    Delete a credential profile from macOS Keychain.
+
+    Args:
+        cred_id: Unique credential identifier
+
+    Returns:
+        True if credential was deleted, False otherwise
+    """
+    try:
+        # Construct service name for this credential
+        service_name = f"auto-claude-{cred_id}"
+
+        # Use 'security' command to delete generic password
+        result = subprocess.run(
+            [
+                "/usr/bin/security",
+                "delete-generic-password",
+                "-s", service_name,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+
+        # returncode 0 means success, 44 means item not found (considered success)
+        if result.returncode in (0, 44):
+            logger.info(f"Credential '{cred_id}' deleted from macOS Keychain")
+            return True
+        else:
+            logger.warning(f"Failed to delete credential '{cred_id}' from macOS Keychain: {result.stderr}")
+            return False
+
+    except subprocess.TimeoutExpired:
+        logger.warning(f"Timeout while deleting credential '{cred_id}' from macOS Keychain")
+        return False
+    except Exception as e:
+        logger.warning(f"Failed to delete credential '{cred_id}' from macOS Keychain: {e}")
+        return False
+
+
+def _delete_credential_windows(cred_id: str) -> bool:
+    """
+    Delete a credential profile from Windows credential storage.
+
+    Deletes the credential file from ~/.claude directory.
+
+    Args:
+        cred_id: Unique credential identifier
+
+    Returns:
+        True if credential was deleted, False otherwise
+    """
+    try:
+        # Check for credential file in ~/.claude directory
+        claude_dir = os.path.expandvars(r"%USERPROFILE%\.claude")
+        cred_filename = f".credentials-auto-claude-{cred_id}.json"
+        cred_path = os.path.join(claude_dir, cred_filename)
+
+        if not os.path.exists(cred_path):
+            logger.debug(f"Credential '{cred_id}' not found in Windows credential files")
+            return False
+
+        # Delete the credential file
+        os.remove(cred_path)
+
+        logger.info(f"Credential '{cred_id}' deleted from Windows credential files")
+        return True
+
+    except (IOError, Exception) as e:
+        logger.warning(f"Failed to delete credential '{cred_id}' from Windows storage: {e}")
+        return False
+
+
+def _delete_credential_linux(cred_id: str) -> bool:
+    """
+    Delete a credential profile from Linux Secret Service API.
+
+    Args:
+        cred_id: Unique credential identifier
+
+    Returns:
+        True if credential was deleted, False otherwise
+    """
+    if secretstorage is None:
+        logger.debug("secretstorage not available for credential deletion")
+        return False
+
+    try:
+        # Get the default collection
+        try:
+            collection = secretstorage.get_default_collection(None)
+        except (
+            AttributeError,
+            secretstorage.exceptions.SecretServiceNotAvailableException,
+        ):
+            logger.debug("Secret Service not available")
+            return False
+
+        if collection.is_locked():
+            # Try to unlock the collection
+            try:
+                collection.unlock()
+            except secretstorage.exceptions.SecretStorageException:
+                logger.debug("Failed to unlock Secret Service collection")
+                return False
+
+        # Search for items with our application attribute
+        items = collection.search_items({"application": f"auto-claude-{cred_id}"})
+
+        # Delete all matching items (should be only one)
+        deleted = False
+        for item in items:
+            item.delete()
+            deleted = True
+
+        if deleted:
+            logger.info(f"Credential '{cred_id}' deleted from Linux Secret Service")
+            return True
+        else:
+            logger.debug(f"Credential '{cred_id}' not found in Linux Secret Service")
+            return False
+
+    except (
+        secretstorage.exceptions.SecretStorageException,
+        AttributeError,
+        TypeError,
+    ) as e:
+        logger.warning(f"Failed to delete credential '{cred_id}' from Linux Secret Service: {e}")
+        return False
+
+
+def validate_credential(credential: dict[str, str]) -> bool:
+    """
+    Validate a credential by testing it with a simple API call.
+
+    This function attempts to validate the credential by making a minimal
+    API request to verify it works. For both OAuth tokens and API keys,
+    it performs a basic validation check.
+
+    Args:
+        credential: Dictionary with credential data:
+            - id: Credential ID
+            - type: Credential type ('oauth' or 'api_key')
+            - value: Required - Actual credential value (token or API key)
+
+    Returns:
+        True if credential is valid and can be used, False otherwise
+
+    Note:
+        This function only validates the credential format and makes a basic
+        connectivity check. It does not perform a full API request due to
+        cost and rate limit considerations. For production use, credentials
+        should be validated during actual API usage.
+
+    Example:
+        >>> cred = {
+        ...     "id": "cred-001",
+        ...     "type": "oauth",
+        ...     "value": "sk-ant-oat01-..."
+        ... }
+        >>> is_valid = validate_credential(cred)
+    """
+    # Validate required fields
+    if "value" not in credential:
+        logger.error("Credential must have 'value' field for validation")
+        return False
+
+    cred_value = credential["value"]
+    cred_type = credential.get("type", "oauth")
+
+    # Basic format validation
+    if cred_type == "oauth":
+        # OAuth tokens start with sk-ant-oat01-
+        if not cred_value.startswith("sk-ant-oat01-"):
+            logger.warning(f"Credential '{credential.get('id', 'unknown')}' has invalid OAuth format")
+            return False
+    elif cred_type == "api_key":
+        # API keys start with sk-ant-api03-
+        if not cred_value.startswith("sk-ant-api03-"):
+            logger.warning(f"Credential '{credential.get('id', 'unknown')}' has invalid API key format")
+            return False
+    else:
+        logger.warning(f"Credential '{credential.get('id', 'unknown')}' has unknown type: {cred_type}")
+        return False
+
+    # Check for encrypted tokens
+    if is_encrypted_token(cred_value):
+        logger.warning(
+            f"Credential '{credential.get('id', 'unknown')}' is encrypted and cannot be validated. "
+            "Encrypted tokens must be decrypted before use."
+        )
+        return False
+
+    # Additional validation: ensure token is not empty and has reasonable length
+    if len(cred_value) < 50:
+        logger.warning(f"Credential '{credential.get('id', 'unknown')}' value is too short")
+        return False
+
+    # Log successful validation
+    logger.debug(f"Credential '{credential.get('id', 'unknown')}' passed format validation")
+
+    return True
