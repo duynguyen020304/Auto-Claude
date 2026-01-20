@@ -111,6 +111,69 @@ def load_project_context(project_dir: str) -> str:
     )
 
 
+def load_mentioned_files(project_dir: str, mentions: list) -> str:
+    """Load contents of mentioned files with smart truncation for large files."""
+    if not mentions:
+        return ""
+
+    project_path = Path(project_dir).resolve()
+    file_contexts = []
+
+    for mention in mentions:
+        file_path = mention.get("filePath", "")
+        line_start = mention.get("lineStart")
+        line_end = mention.get("lineEnd")
+
+        # Resolve file path relative to project directory
+        full_path = project_path / file_path
+
+        if not full_path.exists():
+            file_contexts.append(f"## {file_path}\n⚠️ File not found")
+            continue
+
+        try:
+            with open(full_path, encoding="utf-8") as f:
+                lines = f.readlines()
+
+            total_lines = len(lines)
+
+            # Smart truncation logic
+            if line_start is not None and line_end is not None:
+                # Specific line range requested
+                start_idx = max(0, line_start - 1)
+                end_idx = min(total_lines, line_end)
+                selected_lines = lines[start_idx:end_idx]
+                header = f"## {file_path} (lines {line_start}-{line_end} of {total_lines})"
+            elif total_lines <= 500:
+                # Small file - include all
+                selected_lines = lines
+                header = f"## {file_path} ({total_lines} lines)"
+            elif total_lines <= 2000:
+                # Medium file - include first 1000 and last 500 lines
+                selected_lines = lines[:1000] + ["\n... (middle truncated) ...\n"] + lines[-500:]
+                header = f"## {file_path} (showing lines 1-1000 and {total_lines-499}-{total_lines} of {total_lines})"
+            else:
+                # Large file - include first 500, last 300 lines
+                selected_lines = lines[:500] + ["\n... (middle truncated) ...\n"] + lines[-300:]
+                header = f"## {file_path} (showing lines 1-500 and {total_lines-299}-{total_lines} of {total_lines})"
+
+            # Format line numbers
+            if line_start is not None and line_end is not None:
+                # Show line numbers for requested range
+                content = "".join(
+                    f"{line_start + i}: {line}" for i, line in enumerate(selected_lines)
+                )
+            else:
+                content = "".join(selected_lines)
+
+            file_contexts.append(f"{header}\n```\n{content}\n```")
+
+        except Exception as e:
+            file_contexts.append(f"## {file_path}\n⚠️ Error reading file: {e}")
+
+    return "\n\n".join(file_contexts) if file_contexts else ""
+
+
 def build_system_prompt(project_dir: str) -> str:
     """Build the system prompt for the insights agent."""
     context = load_project_context(project_dir)
@@ -171,11 +234,33 @@ async def run_with_sdk(
         role = "User" if msg.get("role") == "user" else "Assistant"
         conversation_context += f"\n{role}: {msg['content']}\n"
 
-    # Build the full prompt with conversation history
+    # Load mentioned files contents
+    if mentions:
+        debug(
+            "insights_runner",
+            "Loading mentioned files",
+            mentions_count=len(mentions),
+        )
+    files_context = load_mentioned_files(project_dir, mentions or [])
+    if files_context:
+        debug_detailed(
+            "insights_runner",
+            "Loaded file contents",
+            context_length=len(files_context),
+        )
+
+    # Build the full prompt with conversation history and file contents
     full_prompt = message
-    if conversation_context.strip():
-        full_prompt = f"""Previous conversation:
-{conversation_context}
+    if conversation_context.strip() or files_context:
+        prompt_parts = []
+        if conversation_context.strip():
+            prompt_parts.append(f"""Previous conversation:
+{conversation_context}""")
+        if files_context:
+            prompt_parts.append(f"""Referenced files:
+{files_context}""")
+
+        full_prompt = f"""{chr(10).join(prompt_parts)}
 
 Current question: {message}"""
 
@@ -299,14 +384,33 @@ def run_simple(project_dir: str, message: str, history: list, mentions: list = N
         role = "User" if msg.get("role") == "user" else "Assistant"
         conversation_context += f"\n{role}: {msg['content']}\n"
 
-    # Create the full prompt
-    full_prompt = f"""{system_prompt}
+    # Load mentioned files contents
+    if mentions:
+        debug(
+            "insights_runner",
+            "Loading mentioned files (simple mode)",
+            mentions_count=len(mentions),
+        )
+    files_context = load_mentioned_files(project_dir, mentions or [])
+    if files_context:
+        debug_detailed(
+            "insights_runner",
+            "Loaded file contents (simple mode)",
+            context_length=len(files_context),
+        )
 
-Previous conversation:
-{conversation_context}
+    # Create the full prompt with file contents
+    prompt_parts = [system_prompt]
+    if conversation_context.strip():
+        prompt_parts.append(f"""Previous conversation:
+{conversation_context}""")
+    if files_context:
+        prompt_parts.append(f"""Referenced files:
+{files_context}""")
 
-User: {message}
-Assistant:"""
+    prompt_parts.append(f"User: {message}\nAssistant:")
+
+    full_prompt = "\n\n".join(prompt_parts)
 
     try:
         # Try to use claude CLI with --print for simple output
