@@ -978,6 +978,386 @@ def _get_rotation_memory(project_dir: Path, spec_dir: Path):
         return None
 
 
+async def execute_session_with_auto_swap(
+    session_callback,
+    project_dir: Path,
+    spec_dir: Path,
+    model: str,
+    agent_type: str = "coder",
+    max_thinking_tokens: int | None = None,
+    output_format: dict | None = None,
+    agents: dict | None = None,
+) -> Any:
+    """
+    Execute an SDK agent session with automatic credential swapping on rate limit errors.
+
+    This is a convenience wrapper that creates a client with rotation support and
+    executes the session with automatic retry on 429 errors. Use this function
+    when you want automatic credential rotation without managing the retry logic manually.
+
+    The function handles:
+    1. Loading rotation configuration from environment variables
+    2. Creating a client with the appropriate credential
+    3. Executing the session callback
+    4. Detecting 429 rate limit errors
+    5. Automatically swapping to the next credential
+    6. Retrying the session up to max_retries times
+
+    If credential rotation is not configured, the session executes normally
+    without any retry logic.
+
+    Args:
+        session_callback: Async function that executes the SDK session
+                         Signature: async def callback(client) -> Any
+        project_dir: Project directory
+        spec_dir: Spec directory
+        model: Model name
+        agent_type: Agent type (e.g., 'coder', 'planner', 'qa_reviewer')
+        max_thinking_tokens: Extended thinking token budget
+        output_format: Structured output format
+        agents: Subagent definitions
+
+    Returns:
+        The result from the session callback
+
+    Raises:
+        Exception: If the session fails after all retries or with a non-rate-limit error
+
+    Example:
+        >>> from core.client import execute_session_with_auto_swap
+        >>>
+        >>> async def my_session(client):
+        ...     return await client.create_agent_session(
+        ...         name="my-session",
+        ...         starting_message="Hello, Claude!"
+        ...     )
+        >>>
+        >>> result = await execute_session_with_auto_swap(
+        ...     session_callback=my_session,
+        ...     project_dir=Path("/path/to/project"),
+        ...     spec_dir=Path("/path/to/spec"),
+        ...     model="claude-sonnet-4-5-20250929",
+        ...     agent_type="coder"
+        ... )
+    """
+    # Check if credential rotation is enabled
+    rotation_config = _load_rotation_config(project_dir, spec_dir)
+
+    if not rotation_config:
+        # No rotation configured, execute session normally
+        logger.debug("Credential rotation not enabled, executing session without auto-swap")
+        client = create_client(
+            project_dir=project_dir,
+            spec_dir=spec_dir,
+            model=model,
+            agent_type=agent_type,
+            max_thinking_tokens=max_thinking_tokens,
+            output_format=output_format,
+            agents=agents,
+        )
+
+        import asyncio
+        if asyncio.iscoroutinefunction(session_callback):
+            return await session_callback(client)
+        else:
+            return session_callback(client)
+
+    # Rotation is enabled, execute with auto-swap
+    logger.info("Credential rotation enabled, executing session with automatic 429 retry")
+
+    # Get Graphiti memory for usage-based strategies
+    memory = _get_rotation_memory(project_dir, spec_dir)
+
+    # Create rotation manager
+    from core.rotation import RotationManager
+    rotation_manager = RotationManager(
+        config=rotation_config,
+        memory=memory,
+        task_id=spec_dir.name,
+    )
+
+    # Create initial client
+    client = create_client(
+        project_dir=project_dir,
+        spec_dir=spec_dir,
+        model=model,
+        agent_type=agent_type,
+        max_thinking_tokens=max_thinking_tokens,
+        output_format=output_format,
+        agents=agents,
+    )
+
+    # Execute session with retry logic
+    return await _execute_session_with_retry(
+        client=client,
+        session_callback=session_callback,
+        rotation_config=rotation_config,
+        rotation_manager=rotation_manager,
+        project_dir=project_dir,
+        spec_dir=spec_dir,
+        model=model,
+        agent_type=agent_type,
+        max_thinking_tokens=max_thinking_tokens,
+        output_format=output_format,
+        agents=agents,
+    )
+
+
+async def _execute_session_with_retry(
+    client: ClaudeSDKClient,
+    session_callback,
+    rotation_config: RotationConfig,
+    rotation_manager: "RotationManager",
+    project_dir: Path,
+    spec_dir: Path,
+    model: str,
+    agent_type: str = "coder",
+    max_thinking_tokens: int | None = None,
+    output_format: dict | None = None,
+    agents: dict | None = None,
+) -> Any:
+    """
+    Execute an SDK agent session with automatic credential swapping on rate limit errors.
+
+    This function wraps SDK agent sessions with retry logic. When a 429 rate limit
+    error is detected during message iteration, it automatically selects the next
+    available credential from the pool, recreates the client, and retries the session.
+
+    The retry logic:
+    1. Executes the session callback (e.g., client.create_agent_session())
+    2. Iterates through messages in the response stream
+    3. Detects 429 rate limit errors using is_rate_limit_error()
+    4. On 429 error:
+       - Logs the rotation event with timestamp and reason
+       - Selects next credential using rotation manager
+       - Recreates client with new credential
+       - Retries the session up to max_retries times
+    5. Returns the final result or raises the last error
+
+    Args:
+        client: The ClaudeSDKClient instance
+        session_callback: Async function that executes the SDK session
+                         Signature: async def callback(client) -> Any
+        rotation_config: Rotation configuration (max_retries, retry_delay_seconds)
+        rotation_manager: RotationManager instance for selecting next credential
+        project_dir: Project directory for client recreation
+        spec_dir: Spec directory for client recreation
+        model: Model name for client recreation
+        agent_type: Agent type for client recreation
+        max_thinking_tokens: Extended thinking token budget for client recreation
+        output_format: Structured output format for client recreation
+        agents: Subagent definitions for client recreation
+
+    Returns:
+        The result from the session callback
+
+    Raises:
+        Exception: The last exception if all retries are exhausted
+
+    Example:
+        >>> # In agent code
+        >>> result = await _execute_session_with_retry(
+        ...     client=client,
+        ...     session_callback=lambda c: c.create_agent_session(...),
+        ...     rotation_config=config,
+        ...     rotation_manager=manager,
+        ...     project_dir=project_dir,
+        ...     spec_dir=spec_dir,
+        ...     model=model,
+        ...     agent_type="coder"
+        ... )
+    """
+    retry_count = 0
+    max_retries = rotation_config.max_retries
+    retry_delay = rotation_config.retry_delay_seconds
+    last_error = None
+
+    while retry_count <= max_retries:
+        try:
+            # Execute the session callback
+            logger.debug(f"Executing SDK session (attempt {retry_count + 1}/{max_retries + 1})")
+
+            # For async callbacks, await them
+            if hasattr(session_callback, "__await__"):
+                result = await session_callback(client)
+            else:
+                # It's already a coroutine or we need to call it
+                import asyncio
+                if asyncio.iscoroutinefunction(session_callback):
+                    result = await session_callback(client)
+                else:
+                    result = session_callback(client)
+
+            # If the result is an async generator (response stream), iterate through it
+            # and check for rate limit errors
+            if hasattr(result, "__aiter__"):
+                # This is an async generator (response stream)
+                # We need to collect all messages and check for errors
+                messages = []
+                async for message in result:
+                    # Check if this message is a rate limit error
+                    if is_rate_limit_error(message):
+                        error_msg = f"Rate limit error detected on attempt {retry_count + 1}"
+                        logger.warning(error_msg)
+
+                        # If we have retries left, select next credential and retry
+                        if retry_count < max_retries:
+                            retry_count += 1
+                            last_error = message
+
+                            # Log rotation event
+                            logger.info(
+                                f"Credential rotation triggered: {error_msg}, "
+                                f"retry {retry_count}/{max_retries}"
+                            )
+
+                            # Mark current credential as rate_limited and get next credential
+                            if rotation_manager.current_credential_id:
+                                rotation_manager.handle_rate_limit(rotation_manager.current_credential_id)
+
+                            # Select next available credential
+                            next_credential = rotation_manager.select_credential()
+
+                            if next_credential and next_credential.credential_value:
+                                logger.info(
+                                    f"Switched to credential {next_credential.id} "
+                                    f"({next_credential.name}) for retry {retry_count}"
+                                )
+
+                                # Wait before retrying (respect rate limit backoff)
+                                if retry_delay > 0:
+                                    logger.debug(f"Waiting {retry_delay}s before retry")
+                                    import asyncio
+                                    await asyncio.sleep(retry_delay)
+
+                                # Recreate client with new credential
+                                logger.debug("Recreating client with new credential")
+                                client = create_client(
+                                    project_dir=project_dir,
+                                    spec_dir=spec_dir,
+                                    model=model,
+                                    agent_type=agent_type,
+                                    max_thinking_tokens=max_thinking_tokens,
+                                    output_format=output_format,
+                                    agents=agents,
+                                )
+
+                                # Break out of message iteration and retry the session
+                                break
+                            else:
+                                logger.error(
+                                    f"No alternative credential available for retry {retry_count}. "
+                                    f"All credentials in pool may be rate limited."
+                                )
+                                # No more credentials, raise the error
+                                raise Exception(
+                                    f"All credentials exhausted after {retry_count} retries. "
+                                    f"Last error: Rate limit detected"
+                                )
+                        else:
+                            # Max retries exceeded
+                            logger.error(
+                                f"Max retries ({max_retries}) exceeded. "
+                                f"Rate limit error on final attempt."
+                            )
+                            raise Exception(
+                                f"Max retries ({max_retries}) exceeded. Rate limit error."
+                            )
+                    else:
+                        # Not an error, collect the message
+                        messages.append(message)
+
+                else:
+                    # Completed iteration without break - no rate limit errors
+                    # Return collected messages (or the original result if it's not a collection)
+                    logger.debug("Session completed successfully without rate limit errors")
+                    return messages if messages else result
+
+                # If we broke out of the loop due to rate limit, continue to next retry
+                continue
+
+            # Not an async generator, return result directly
+            logger.debug("Session completed successfully")
+            return result
+
+        except Exception as e:
+            # Check if this is a rate limit error exception
+            if is_rate_limit_error(e):
+                error_msg = f"Rate limit error exception on attempt {retry_count + 1}"
+                logger.warning(f"{error_msg}: {e}")
+
+                # If we have retries left, select next credential and retry
+                if retry_count < max_retries:
+                    retry_count += 1
+                    last_error = e
+
+                    # Log rotation event
+                    logger.info(
+                        f"Credential rotation triggered: {error_msg}, "
+                        f"retry {retry_count}/{max_retries}"
+                    )
+
+                    # Mark current credential as rate_limited and get next credential
+                    if rotation_manager.current_credential_id:
+                        rotation_manager.handle_rate_limit(rotation_manager.current_credential_id)
+
+                    # Select next available credential
+                    next_credential = rotation_manager.select_credential()
+
+                    if next_credential and next_credential.credential_value:
+                        logger.info(
+                            f"Switched to credential {next_credential.id} "
+                            f"({next_credential.name}) for retry {retry_count}"
+                        )
+
+                        # Wait before retrying (respect rate limit backoff)
+                        if retry_delay > 0:
+                            logger.debug(f"Waiting {retry_delay}s before retry")
+                            import asyncio
+                            await asyncio.sleep(retry_delay)
+
+                        # Recreate client with new credential
+                        logger.debug("Recreating client with new credential")
+                        client = create_client(
+                            project_dir=project_dir,
+                            spec_dir=spec_dir,
+                            model=model,
+                            agent_type=agent_type,
+                            max_thinking_tokens=max_thinking_tokens,
+                            output_format=output_format,
+                            agents=agents,
+                        )
+
+                        # Continue to next retry
+                        continue
+                    else:
+                        logger.error(
+                            f"No alternative credential available for retry {retry_count}. "
+                            f"All credentials in pool may be rate limited."
+                        )
+                        # No more credentials, raise the error
+                        raise Exception(
+                            f"All credentials exhausted after {retry_count} retries. "
+                            f"Last error: {e}"
+                        )
+                else:
+                    # Max retries exceeded
+                    logger.error(
+                        f"Max retries ({max_retries}) exceeded. "
+                        f"Rate limit error on final attempt."
+                    )
+                    raise e
+            else:
+                # Not a rate limit error, raise immediately
+                logger.error(f"Non-rate-limit error on attempt {retry_count + 1}: {e}")
+                raise e
+
+    # Should not reach here, but just in case
+    if last_error:
+        raise Exception(f"Session failed after {retry_count} retries") from last_error
+    raise Exception("Session failed with unknown error")
+
+
 def create_client(
     project_dir: Path,
     spec_dir: Path,
