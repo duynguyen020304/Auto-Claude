@@ -8,7 +8,8 @@ import type {
   InsightsToolUsage,
   InsightsModelConfig,
   TaskMetadata,
-  Task
+  Task,
+  FileMention
 } from '../../shared/types';
 
 interface ToolUsage {
@@ -26,6 +27,7 @@ interface InsightsState {
   currentTool: ToolUsage | null; // Currently executing tool
   toolsUsed: InsightsToolUsage[]; // Tools used during current response
   isLoadingSessions: boolean;
+  fileMentions: FileMention[]; // File mentions for current message
 
   // Actions
   setSession: (session: InsightsSession | null) => void;
@@ -39,6 +41,9 @@ interface InsightsState {
   setCurrentTool: (tool: ToolUsage | null) => void;
   addToolUsage: (tool: ToolUsage) => void;
   clearToolsUsed: () => void;
+  addFileMention: (mention: FileMention) => void;
+  removeFileMention: (id: string) => void;
+  clearFileMentions: () => void;
   finalizeStreamingMessage: (suggestedTask?: InsightsChatMessage['suggestedTask']) => void;
   clearSession: () => void;
   setLoadingSessions: (loading: boolean) => void;
@@ -59,6 +64,7 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
   currentTool: null,
   toolsUsed: [],
   isLoadingSessions: false,
+  fileMentions: [],
 
   // Actions
   setSession: (session) => set({ session }),
@@ -139,6 +145,24 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
 
   clearToolsUsed: () => set({ toolsUsed: [] }),
 
+  addFileMention: (mention) =>
+    set((state) => {
+      // Check if mention with same ID already exists
+      if (state.fileMentions.some((m) => m.id === mention.id)) {
+        return state;
+      }
+      return {
+        fileMentions: [...state.fileMentions, mention]
+      };
+    }),
+
+  removeFileMention: (id) =>
+    set((state) => ({
+      fileMentions: state.fileMentions.filter((m) => m.id !== id)
+    })),
+
+  clearFileMentions: () => set({ fileMentions: [] }),
+
   finalizeStreamingMessage: (suggestedTask) =>
     set((state) => {
       const content = state.streamingContent;
@@ -189,7 +213,8 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       pendingMessage: '',
       streamingContent: '',
       currentTool: null,
-      toolsUsed: []
+      toolsUsed: [],
+      fileMentions: []
     })
 }));
 
@@ -276,6 +301,7 @@ export async function switchSession(projectId: string, sessionId: string): Promi
     // Reset streaming state when switching sessions
     useInsightsStore.getState().clearStreamingContent();
     useInsightsStore.getState().clearToolsUsed();
+    useInsightsStore.getState().clearFileMentions();
     useInsightsStore.getState().setCurrentTool(null);
     useInsightsStore.getState().setStatus({ phase: 'idle', message: '' });
   }
