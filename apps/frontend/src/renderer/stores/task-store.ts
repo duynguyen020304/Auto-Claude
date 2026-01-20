@@ -3,6 +3,7 @@ import { arrayMove } from '@dnd-kit/sortable';
 import type { Task, TaskStatus, SubtaskStatus, ImplementationPlan, Subtask, TaskMetadata, ExecutionProgress, ExecutionPhase, ReviewReason, TaskDraft, ImageAttachment, TaskOrderState } from '../../shared/types';
 import { debugLog } from '../../shared/utils/debug-logger';
 import { isTerminalPhase } from '../../shared/constants/phase-protocol';
+import { getTaskOperationQueue } from '../lib/taskOperationQueue';
 
 interface TaskState {
   tasks: Task[];
@@ -12,7 +13,7 @@ interface TaskState {
   taskOrder: TaskOrderState | null;  // Per-column task ordering for kanban board
 
   // Actions
-  setTasks: (tasks: Task[]) => void;
+  setTasks: (tasks: Task[] | ((prevTasks: Task[]) => Task[])) => void;
   addTask: (task: Task) => void;
   updateTask: (taskId: string, updates: Partial<Task>) => void;
   updateTaskStatus: (taskId: string, status: TaskStatus) => void;
@@ -104,6 +105,67 @@ function validatePlanData(plan: ImplementationPlan): boolean {
   return true;
 }
 
+/**
+ * Active execution phases where task is actively running and progress should be preserved
+ */
+const ACTIVE_EXECUTION_PHASES: ExecutionPhase[] = ['planning', 'coding', 'qa_review', 'qa_fixing'];
+
+/**
+ * Check if a task is in an active execution phase
+ * Returns true if task is actively running and its progress should be preserved during refresh
+ */
+function isTaskInActivePhase(task: Task | undefined): boolean {
+  if (!task?.executionProgress?.phase) return false;
+  return ACTIVE_EXECUTION_PHASES.includes(task.executionProgress.phase);
+}
+
+/**
+ * Deep clone executionProgress to prevent reference sharing between tasks.
+ * This ensures state isolation between concurrent tasks.
+ */
+function cloneExecutionProgress(progress: ExecutionProgress | undefined): ExecutionProgress | undefined {
+  if (!progress) return undefined;
+  return {
+    phase: progress.phase,
+    phaseProgress: progress.phaseProgress,
+    overallProgress: progress.overallProgress,
+    sequenceNumber: progress.sequenceNumber
+  };
+}
+
+/**
+ * Merge refreshed tasks from backend with existing task state from frontend.
+ * Preserves executionProgress for tasks that are actively running to prevent progress loss during refresh.
+ *
+ * This solves the "progress loss bug" where clicking "Refresh Tasks" would reset all running tasks to 0%.
+ * The backend doesn't have executionProgress (it's transient runtime state), so we preserve it from local state.
+ *
+ * CRITICAL: Always creates new task objects to ensure state isolation and prevent reference sharing.
+ *
+ * @param refreshedTasks - Tasks loaded from backend (without executionProgress)
+ * @param existingTasks - Current tasks from frontend state (with executionProgress for running tasks)
+ * @returns Merged task array with executionProgress preserved for active tasks
+ */
+function mergeTaskStates(refreshedTasks: Task[], existingTasks: Task[]): Task[] {
+  return refreshedTasks.map((refreshedTask) => {
+    const existingTask = existingTasks.find((t) => t.id === refreshedTask.id || t.specId === refreshedTask.specId);
+
+    // Preserve executionProgress for tasks in active execution phases
+    if (existingTask && isTaskInActivePhase(existingTask)) {
+      // Task is actively running - preserve its execution progress from local state
+      // CRITICAL: Deep clone executionProgress to prevent reference sharing
+      return {
+        ...refreshedTask,
+        executionProgress: cloneExecutionProgress(existingTask.executionProgress)
+      };
+    }
+
+    // Task is not running or doesn't exist locally - create a copy to ensure isolation
+    // This prevents mutations to the input array from affecting store state
+    return { ...refreshedTask };
+  });
+}
+
 // localStorage key prefix for task order persistence
 const TASK_ORDER_KEY_PREFIX = 'task-order-state';
 
@@ -135,7 +197,19 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   error: null,
   taskOrder: null,
 
-  setTasks: (tasks) => set({ tasks }),
+  setTasks: (tasks) =>
+    set((state) => {
+      // Use functional update to merge refreshed tasks with existing state
+      // This preserves executionProgress for tasks that are actively running
+      if (typeof tasks === 'function') {
+        // If a function is passed, call it with current state (for manual merge logic)
+        return { tasks: tasks(state.tasks) };
+      }
+
+      // Otherwise, merge the provided task array with existing state
+      const mergedTasks = mergeTaskStates(tasks, state.tasks);
+      return { tasks: mergedTasks };
+    }),
 
   addTask: (task) =>
     set((state) => {
@@ -414,12 +488,16 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           // This prevents unnecessary re-renders from the memo comparator
           const phaseChanged = progress.phase && progress.phase !== existingProgress.phase;
 
+          // CRITICAL: Create new executionProgress object to prevent reference sharing
+          // Deep clone ensures state isolation between tasks
+          const mergedProgress = {
+            ...existingProgress,
+            ...progress
+          };
+
           return {
             ...t,
-            executionProgress: {
-              ...existingProgress,
-              ...progress
-            },
+            executionProgress: mergedProgress,
             // Only set updatedAt on phase changes to reduce re-renders
             ...(phaseChanged ? { updatedAt: new Date() } : {})
           };
@@ -593,24 +671,32 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
 /**
  * Load tasks for a project
+ *
+ * Uses operation queue to prevent race conditions with delete/start operations.
  */
 export async function loadTasks(projectId: string): Promise<void> {
-  const store = useTaskStore.getState();
-  store.setLoading(true);
-  store.setError(null);
+  const queue = getTaskOperationQueue();
 
-  try {
-    const result = await window.electronAPI.getTasks(projectId);
-    if (result.success && result.data) {
-      store.setTasks(result.data);
-    } else {
-      store.setError(result.error || 'Failed to load tasks');
+  return queue.enqueue(async () => {
+    const store = useTaskStore.getState();
+    store.setLoading(true);
+    store.setError(null);
+
+    try {
+      const result = await window.electronAPI.getTasks(projectId);
+      if (result.success && result.data) {
+        // Use functional update to explicitly merge refreshed tasks with existing state
+        // This preserves executionProgress for tasks that are actively running
+        store.setTasks(prevTasks => mergeTaskStates(result.data, prevTasks));
+      } else {
+        store.setError(result.error || 'Failed to load tasks');
+      }
+    } catch (error) {
+      store.setError(error instanceof Error ? error.message : 'Unknown error');
+    } finally {
+      store.setLoading(false);
     }
-  } catch (error) {
-    store.setError(error instanceof Error ? error.message : 'Unknown error');
-  } finally {
-    store.setLoading(false);
-  }
+  });
 }
 
 /**
@@ -641,9 +727,16 @@ export async function createTask(
 
 /**
  * Start a task
+ *
+ * Uses operation queue to prevent race conditions with refresh/delete operations.
  */
 export function startTask(taskId: string, options?: { parallel?: boolean; workers?: number }): void {
-  window.electronAPI.startTask(taskId, options);
+  const queue = getTaskOperationQueue();
+
+  // Enqueue the start operation but don't await - fire and forget
+  void queue.enqueue(async () => {
+    window.electronAPI.startTask(taskId, options);
+  });
 }
 
 /**
@@ -818,36 +911,42 @@ export async function recoverStuckTask(
 
 /**
  * Delete a task and its spec directory
+ *
+ * Uses operation queue to prevent race conditions with refresh/start operations.
  */
 export async function deleteTask(
   taskId: string
 ): Promise<{ success: boolean; error?: string }> {
-  const store = useTaskStore.getState();
+  const queue = getTaskOperationQueue();
 
-  try {
-    const result = await window.electronAPI.deleteTask(taskId);
+  return queue.enqueue(async () => {
+    const store = useTaskStore.getState();
 
-    if (result.success) {
-      // Remove from local state
-      store.setTasks(store.tasks.filter(t => t.id !== taskId && t.specId !== taskId));
-      // Clear selection if this task was selected
-      if (store.selectedTaskId === taskId) {
-        store.selectTask(null);
+    try {
+      const result = await window.electronAPI.deleteTask(taskId);
+
+      if (result.success) {
+        // Remove from local state
+        store.setTasks(store.tasks.filter(t => t.id !== taskId && t.specId !== taskId));
+        // Clear selection if this task was selected
+        if (store.selectedTaskId === taskId) {
+          store.selectTask(null);
+        }
+        return { success: true };
       }
-      return { success: true };
-    }
 
-    return {
-      success: false,
-      error: result.error || 'Failed to delete task'
-    };
-  } catch (error) {
-    console.error('Error deleting task:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    };
-  }
+      return {
+        success: false,
+        error: result.error || 'Failed to delete task'
+      };
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  });
 }
 
 /**

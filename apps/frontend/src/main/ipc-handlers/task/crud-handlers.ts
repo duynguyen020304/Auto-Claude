@@ -226,6 +226,10 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
       const specDir = task.specsPath || path.join(project.path, getSpecsDir(project.autoBuildPath), task.specId);
 
       try {
+        // Invalidate cache BEFORE deletion to minimize race condition window
+        // This ensures concurrent getTasks() calls are less likely to return stale cached data
+        projectStore.invalidateTasksCache(project.id);
+
         console.warn(`[TASK_DELETE] Attempting to delete: ${specDir} (location: ${task.location || 'unknown'})`);
         if (existsSync(specDir)) {
           await rm(specDir, { recursive: true, force: true });
@@ -233,9 +237,6 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
         } else {
           console.warn(`[TASK_DELETE] Spec directory not found: ${specDir}`);
         }
-
-        // Invalidate cache since a task was deleted
-        projectStore.invalidateTasksCache(project.id);
 
         return { success: true };
       } catch (error) {
