@@ -185,6 +185,12 @@ export interface FileContext {
   content?: string;         // File content or excerpt
   language?: string;        // Programming language for syntax highlighting
   startLine?: number;       // Line number where content starts (for partial content)
+  // Metadata from backend file reader
+  lineCount?: number;       // Total lines in file
+  fileSize?: number;        // File size in bytes
+  encoding?: string;        // Detected encoding
+  truncated?: boolean;      // Whether content was truncated
+  linesIncluded?: number;   // Number of lines included in content
 }
 
 // File mention in chat messages (using @sym syntax)
