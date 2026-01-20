@@ -463,3 +463,144 @@ class ManualRotationStrategy(RotationStrategy):
             The credential ID if set, None otherwise
         """
         return self._selected_credential_id
+
+
+class RoundRobinRotationStrategy(RotationStrategy):
+    """
+    Round-robin rotation strategy for sequential credential cycling.
+
+    In round-robin mode, credentials are selected sequentially from the pool,
+    cycling back to the beginning after reaching the end. This provides
+    simple load distribution across multiple credentials.
+
+    The strategy maintains an index that advances after each selection:
+    - index = (current_index + 1) % len(available_credentials)
+    - Skips credentials that are not can_be_used() (disabled/rate_limited)
+    - Handles empty pools and single-credential setups gracefully
+
+    Example:
+        >>> strategy = RoundRobinRotationStrategy()
+        >>> # First call selects cred1, second selects cred2, etc.
+        >>> credential1 = strategy.select_credential(pool, config, context)
+        >>> credential2 = strategy.select_credential(pool, config, context)
+        >>> credential3 = strategy.select_credential(pool, config, context)
+        >>> # Fourth call cycles back to cred1
+    """
+
+    def __init__(self) -> None:
+        """Initialize round-robin rotation strategy."""
+        super().__init__(mode=RotationMode.ROUND_ROBIN)
+        self._current_index: int = 0
+        logger.debug("Initialized RoundRobinRotationStrategy")
+
+    def select_credential(
+        self,
+        pool: list[CredentialProfile],
+        config: "RotationConfig",  # type: ignore[name-defined]
+        context: "RotationContext",  # type: ignore[name-defined]
+    ) -> CredentialProfile | None:
+        """
+        Select a credential using round-robin sequential selection.
+
+        The selection process:
+        1. Filter pool to only active credentials (can_be_used())
+        2. Return None if no active credentials available
+        3. Select credential at current_index
+        4. Advance index: (current_index + 1) % len(active_credentials)
+        5. Log selection for debugging
+
+        Args:
+            pool: List of available credential profiles
+            config: Rotation configuration (not used in round-robin)
+            context: Selection context (not used in round-robin)
+
+        Returns:
+            The selected CredentialProfile, or None if no suitable credential found
+
+        Raises:
+            ValueError: If pool is empty
+
+        Note:
+            The index is maintained across calls and wraps around using modulo
+            arithmetic. If all credentials become rate_limited during rotation,
+            the strategy will return None on the next call.
+        """
+        if not pool:
+            raise ValueError("Credential pool is empty")
+
+        # Filter to only active credentials
+        active_pool = self.filter_active_credentials(pool)
+
+        if not active_pool:
+            logger.warning(
+                "Round-robin rotation: No active credentials available in pool"
+            )
+            return None
+
+        # Select credential at current index
+        selected = active_pool[self._current_index]
+        logger.info(
+            f"Round-robin rotation: Selected credential {selected.id} "
+            f"({selected.name}) at index {self._current_index} "
+            f"of {len(active_pool)} active credentials"
+        )
+
+        # Advance index for next selection (with wraparound)
+        self._current_index = (self._current_index + 1) % len(active_pool)
+        logger.debug(
+            f"Round-robin index advanced to {self._current_index} "
+            f"(wraps at {len(active_pool)})"
+        )
+
+        return selected
+
+    def reset_index(self) -> None:
+        """
+        Reset the round-robin index to the beginning.
+
+        This allows the rotation cycle to restart from the first credential.
+        Useful for testing or when you want to restart the rotation sequence.
+
+        Example:
+            >>> strategy = RoundRobinRotationStrategy()
+            >>> # After several selections...
+            >>> strategy.reset_index()  # Start over from first credential
+        """
+        self._current_index = 0
+        logger.debug("Round-robin index reset to 0")
+
+    def get_current_index(self) -> int:
+        """
+        Get the current round-robin index.
+
+        Returns:
+            The current index position (0-based)
+
+        Note:
+            This is the index that will be used for the NEXT selection,
+            not the index of the previously selected credential.
+        """
+        return self._current_index
+
+    def set_index(self, index: int) -> None:
+        """
+        Set the round-robin index to a specific position.
+
+        This allows manual control over the rotation sequence, useful for
+        testing or recovery scenarios.
+
+        Args:
+            index: The index position to set (0-based)
+
+        Raises:
+            ValueError: If index is negative
+
+        Example:
+            >>> strategy = RoundRobinRotationStrategy()
+            >>> strategy.set_index(2)  # Next selection will use credential at index 2
+        """
+        if index < 0:
+            raise ValueError(f"Index must be non-negative, got {index}")
+
+        self._current_index = index
+        logger.debug(f"Round-robin index set to {index}")
