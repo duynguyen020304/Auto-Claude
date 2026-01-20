@@ -585,4 +585,321 @@ describe('ProjectStore', () => {
       expect(projects).toEqual([]);
     });
   });
+
+  describe('status validation logic edge cases', () => {
+    it('should preserve in_progress status with no subtasks (planning phase)', async () => {
+      // Edge case: Task in planning phase with no subtasks yet
+      const specsDir = path.join(TEST_PROJECT_PATH, '.auto-claude', 'specs', '007-planning');
+      mkdirSync(specsDir, { recursive: true });
+
+      const plan = {
+        feature: 'Planning Task',
+        workflow_type: 'feature',
+        status: 'in_progress', // User explicitly set to in_progress
+        services_involved: [],
+        phases: [], // No subtasks yet
+        final_acceptance: [],
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+        spec_file: 'spec.md'
+      };
+
+      writeFileSync(
+        path.join(specsDir, 'implementation_plan.json'),
+        JSON.stringify(plan)
+      );
+
+      const { ProjectStore } = await import('../project-store');
+      const store = new ProjectStore();
+
+      const project = store.addProject(TEST_PROJECT_PATH);
+      const tasks = store.getTasks(project.id);
+
+      expect(tasks[0].status).toBe('in_progress');
+    });
+
+    it('should preserve in_progress status with partial subtasks completed', async () => {
+      // Normal case: Task in progress with some work done
+      const specsDir = path.join(TEST_PROJECT_PATH, '.auto-claude', 'specs', '008-partial');
+      mkdirSync(specsDir, { recursive: true });
+
+      const plan = {
+        feature: 'Partial Progress Task',
+        workflow_type: 'feature',
+        status: 'in_progress', // User explicitly set to in_progress
+        services_involved: [],
+        phases: [
+          {
+            phase: 1,
+            name: 'Phase 1',
+            type: 'implementation',
+            subtasks: [
+              { id: 'subtask-1', description: 'Subtask 1', status: 'completed' },
+              { id: 'subtask-2', description: 'Subtask 2', status: 'completed' },
+              { id: 'subtask-3', description: 'Subtask 3', status: 'pending' }
+            ]
+          }
+        ],
+        final_acceptance: [],
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+        spec_file: 'spec.md'
+      };
+
+      writeFileSync(
+        path.join(specsDir, 'implementation_plan.json'),
+        JSON.stringify(plan)
+      );
+
+      const { ProjectStore } = await import('../project-store');
+      const store = new ProjectStore();
+
+      const project = store.addProject(TEST_PROJECT_PATH);
+      const tasks = store.getTasks(project.id);
+
+      expect(tasks[0].status).toBe('in_progress');
+    });
+
+    it('should preserve in_progress status even when all subtasks completed', async () => {
+      // BUG FIX TEST: This is the critical bug fix - user-set in_progress should persist
+      // even when all subtasks are completed (the calculated status would be ai_review)
+      const specsDir = path.join(TEST_PROJECT_PATH, '.auto-claude', 'specs', '009-all-done-but-in-progress');
+      mkdirSync(specsDir, { recursive: true });
+
+      const plan = {
+        feature: 'All Subtasks Completed But Still In Progress',
+        workflow_type: 'feature',
+        status: 'in_progress', // User explicitly set to in_progress
+        services_involved: [],
+        phases: [
+          {
+            phase: 1,
+            name: 'Phase 1',
+            type: 'implementation',
+            subtasks: [
+              { id: 'subtask-1', description: 'Subtask 1', status: 'completed' },
+              { id: 'subtask-2', description: 'Subtask 2', status: 'completed' },
+              { id: 'subtask-3', description: 'Subtask 3', status: 'completed' }
+            ]
+          }
+        ],
+        final_acceptance: [],
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+        spec_file: 'spec.md'
+      };
+
+      writeFileSync(
+        path.join(specsDir, 'implementation_plan.json'),
+        JSON.stringify(plan)
+      );
+
+      const { ProjectStore } = await import('../project-store');
+      const store = new ProjectStore();
+
+      const project = store.addProject(TEST_PROJECT_PATH);
+      const tasks = store.getTasks(project.id);
+
+      // CRITICAL: This test would fail before the fix
+      // The bug was that hasRemainingWork=false caused in_progress to be overridden by ai_review
+      expect(tasks[0].status).toBe('in_progress');
+      expect(tasks[0].status).not.toBe('ai_review');
+    });
+
+    it('should preserve backlog to in_progress transition', async () => {
+      // Simulate user dragging task from backlog to in_progress column
+      const specsDir = path.join(TEST_PROJECT_PATH, '.auto-claude', 'specs', '010-transition');
+      mkdirSync(specsDir, { recursive: true });
+
+      const plan = {
+        feature: 'Transition Task',
+        workflow_type: 'feature',
+        status: 'in_progress', // User dragged to in_progress column
+        services_involved: [],
+        phases: [
+          {
+            phase: 1,
+            name: 'Phase 1',
+            type: 'implementation',
+            subtasks: [
+              { id: 'subtask-1', description: 'Subtask 1', status: 'pending' }
+            ]
+          }
+        ],
+        final_acceptance: [],
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+        spec_file: 'spec.md'
+      };
+
+      writeFileSync(
+        path.join(specsDir, 'implementation_plan.json'),
+        JSON.stringify(plan)
+      );
+
+      const { ProjectStore } = await import('../project-store');
+      const store = new ProjectStore();
+
+      const project = store.addProject(TEST_PROJECT_PATH);
+      const tasks = store.getTasks(project.id);
+
+      expect(tasks[0].status).toBe('in_progress');
+    });
+
+    it('should preserve human_review status with review reason', async () => {
+      // Ensure human_review status and its reason are preserved
+      const specsDir = path.join(TEST_PROJECT_PATH, '.auto-claude', 'specs', '011-human-review');
+      mkdirSync(specsDir, { recursive: true });
+
+      const plan = {
+        feature: 'Human Review Task',
+        workflow_type: 'feature',
+        status: 'human_review', // User set to human_review
+        services_involved: [],
+        phases: [
+          {
+            phase: 1,
+            name: 'Phase 1',
+            type: 'implementation',
+            subtasks: [
+              { id: 'subtask-1', description: 'Subtask 1', status: 'completed' }
+            ]
+          }
+        ],
+        final_acceptance: [],
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+        spec_file: 'spec.md'
+      };
+
+      writeFileSync(
+        path.join(specsDir, 'implementation_plan.json'),
+        JSON.stringify(plan)
+      );
+
+      const { ProjectStore } = await import('../project-store');
+      const store = new ProjectStore();
+
+      const project = store.addProject(TEST_PROJECT_PATH);
+      const tasks = store.getTasks(project.id);
+
+      expect(tasks[0].status).toBe('human_review');
+      // Review reason should be 'completed' since all subtasks are done
+      expect(tasks[0].reviewReason).toBe('completed');
+    });
+
+    it('should preserve done status even when work remains', async () => {
+      // Edge case: User marked as done despite incomplete subtasks
+      const specsDir = path.join(TEST_PROJECT_PATH, '.auto-claude', 'specs', '012-done-early');
+      mkdirSync(specsDir, { recursive: true });
+
+      const plan = {
+        feature: 'Done Early Task',
+        workflow_type: 'feature',
+        status: 'done', // User explicitly marked as done
+        services_involved: [],
+        phases: [
+          {
+            phase: 1,
+            name: 'Phase 1',
+            type: 'implementation',
+            subtasks: [
+              { id: 'subtask-1', description: 'Subtask 1', status: 'completed' },
+              { id: 'subtask-2', description: 'Subtask 2', status: 'pending' }
+            ]
+          }
+        ],
+        final_acceptance: [],
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+        spec_file: 'spec.md'
+      };
+
+      writeFileSync(
+        path.join(specsDir, 'implementation_plan.json'),
+        JSON.stringify(plan)
+      );
+
+      const { ProjectStore } = await import('../project-store');
+      const store = new ProjectStore();
+
+      const project = store.addProject(TEST_PROJECT_PATH);
+      const tasks = store.getTasks(project.id);
+
+      // User's explicit 'done' should always be respected
+      expect(tasks[0].status).toBe('done');
+      expect(tasks[0].status).not.toBe('in_progress');
+    });
+
+    it('should preserve planning status (spec creation in progress)', async () => {
+      // Edge case: Task in 'planning' phase (spec creation running)
+      const specsDir = path.join(TEST_PROJECT_PATH, '.auto-claude', 'specs', '013-planning-phase');
+      mkdirSync(specsDir, { recursive: true });
+
+      const plan = {
+        feature: 'Planning Phase Task',
+        workflow_type: 'feature',
+        status: 'planning', // Spec creation in progress
+        services_involved: [],
+        phases: [], // No subtasks yet during planning
+        final_acceptance: [],
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+        spec_file: 'spec.md'
+      };
+
+      writeFileSync(
+        path.join(specsDir, 'implementation_plan.json'),
+        JSON.stringify(plan)
+      );
+
+      const { ProjectStore } = await import('../project-store');
+      const store = new ProjectStore();
+
+      const project = store.addProject(TEST_PROJECT_PATH);
+      const tasks = store.getTasks(project.id);
+
+      expect(tasks[0].status).toBe('in_progress'); // 'planning' maps to 'in_progress'
+    });
+
+    it('should preserve coding status (implementation in progress)', async () => {
+      // Edge case: Task in 'coding' phase
+      const specsDir = path.join(TEST_PROJECT_PATH, '.auto-claude', 'specs', '014-coding-phase');
+      mkdirSync(specsDir, { recursive: true });
+
+      const plan = {
+        feature: 'Coding Phase Task',
+        workflow_type: 'feature',
+        status: 'coding', // Implementation in progress
+        services_involved: [],
+        phases: [
+          {
+            phase: 1,
+            name: 'Phase 1',
+            type: 'implementation',
+            subtasks: [
+              { id: 'subtask-1', description: 'Subtask 1', status: 'in_progress' }
+            ]
+          }
+        ],
+        final_acceptance: [],
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+        spec_file: 'spec.md'
+      };
+
+      writeFileSync(
+        path.join(specsDir, 'implementation_plan.json'),
+        JSON.stringify(plan)
+      );
+
+      const { ProjectStore } = await import('../project-store');
+      const store = new ProjectStore();
+
+      const project = store.addProject(TEST_PROJECT_PATH);
+      const tasks = store.getTasks(project.id);
+
+      expect(tasks[0].status).toBe('in_progress'); // 'coding' maps to 'in_progress'
+    });
+  });
 });
