@@ -120,11 +120,27 @@ function isTaskInActivePhase(task: Task | undefined): boolean {
 }
 
 /**
+ * Deep clone executionProgress to prevent reference sharing between tasks.
+ * This ensures state isolation between concurrent tasks.
+ */
+function cloneExecutionProgress(progress: ExecutionProgress | undefined): ExecutionProgress | undefined {
+  if (!progress) return undefined;
+  return {
+    phase: progress.phase,
+    phaseProgress: progress.phaseProgress,
+    overallProgress: progress.overallProgress,
+    sequenceNumber: progress.sequenceNumber
+  };
+}
+
+/**
  * Merge refreshed tasks from backend with existing task state from frontend.
  * Preserves executionProgress for tasks that are actively running to prevent progress loss during refresh.
  *
  * This solves the "progress loss bug" where clicking "Refresh Tasks" would reset all running tasks to 0%.
  * The backend doesn't have executionProgress (it's transient runtime state), so we preserve it from local state.
+ *
+ * CRITICAL: Always creates new task objects to ensure state isolation and prevent reference sharing.
  *
  * @param refreshedTasks - Tasks loaded from backend (without executionProgress)
  * @param existingTasks - Current tasks from frontend state (with executionProgress for running tasks)
@@ -137,14 +153,16 @@ function mergeTaskStates(refreshedTasks: Task[], existingTasks: Task[]): Task[] 
     // Preserve executionProgress for tasks in active execution phases
     if (existingTask && isTaskInActivePhase(existingTask)) {
       // Task is actively running - preserve its execution progress from local state
+      // CRITICAL: Deep clone executionProgress to prevent reference sharing
       return {
         ...refreshedTask,
-        executionProgress: existingTask.executionProgress
+        executionProgress: cloneExecutionProgress(existingTask.executionProgress)
       };
     }
 
-    // Task is not running or doesn't exist locally - use refreshed data as-is
-    return refreshedTask;
+    // Task is not running or doesn't exist locally - create a copy to ensure isolation
+    // This prevents mutations to the input array from affecting store state
+    return { ...refreshedTask };
   });
 }
 
@@ -470,12 +488,16 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           // This prevents unnecessary re-renders from the memo comparator
           const phaseChanged = progress.phase && progress.phase !== existingProgress.phase;
 
+          // CRITICAL: Create new executionProgress object to prevent reference sharing
+          // Deep clone ensures state isolation between tasks
+          const mergedProgress = {
+            ...existingProgress,
+            ...progress
+          };
+
           return {
             ...t,
-            executionProgress: {
-              ...existingProgress,
-              ...progress
-            },
+            executionProgress: mergedProgress,
             // Only set updatedAt on phase changes to reduce re-renders
             ...(phaseChanged ? { updatedAt: new Date() } : {})
           };
