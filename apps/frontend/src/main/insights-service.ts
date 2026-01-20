@@ -3,7 +3,8 @@ import type {
   InsightsSession,
   InsightsSessionSummary,
   InsightsChatMessage,
-  InsightsModelConfig
+  InsightsModelConfig,
+  FileMention
 } from '../shared/types';
 import { InsightsConfig } from './insights/config';
 import { InsightsPaths } from './insights/paths';
@@ -116,7 +117,8 @@ export class InsightsService extends EventEmitter {
     projectId: string,
     projectPath: string,
     message: string,
-    modelConfig?: InsightsModelConfig
+    modelConfig?: InsightsModelConfig,
+    fileMentions?: FileMention[]
   ): Promise<void> {
     // Cancel any existing session
     this.executor.cancelSession(projectId);
@@ -144,7 +146,8 @@ export class InsightsService extends EventEmitter {
       id: `msg-${Date.now()}`,
       role: 'user',
       content: message,
-      timestamp: new Date()
+      timestamp: new Date(),
+      fileMentions: fileMentions && fileMentions.length > 0 ? fileMentions : undefined
     };
     session.messages.push(userMessage);
     session.updatedAt = new Date();

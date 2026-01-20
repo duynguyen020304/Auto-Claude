@@ -208,6 +208,8 @@ export interface InsightsChatMessage {
   role: InsightsChatRole;
   content: string;
   timestamp: Date;
+  // For user messages with file mentions
+  fileMentions?: FileMention[];
   // For assistant messages that suggest task creation
   suggestedTask?: {
     title: string;
