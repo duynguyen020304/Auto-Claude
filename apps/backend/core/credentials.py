@@ -29,6 +29,94 @@ class CredentialStatus(str, Enum):
     DISABLED = "disabled"
 
 
+class RotationMode(str, Enum):
+    """Rotation mode for credential selection."""
+
+    MANUAL = "manual"
+    ROUND_ROBIN = "round_robin"
+    USAGE_BASED = "usage_based"
+    RATE_LIMIT_AWARE = "rate_limit_aware"
+
+
+@dataclass
+class RotationConfig:
+    """
+    Configuration for credential rotation strategy.
+
+    Attributes:
+        mode: Rotation mode to use (manual, round_robin, usage_based, rate_limit_aware)
+        credential_pool: List of credential IDs to rotate through
+        rate_limit_threshold: Threshold (0.0-1.0) for rate_limit_aware mode to rotate before hitting limits
+        max_retries: Maximum number of retry attempts when swapping credentials on errors
+        retry_delay_seconds: Delay between retry attempts
+    """
+
+    mode: RotationMode
+    credential_pool: list[str] = field(default_factory=list)
+    rate_limit_threshold: float = 0.8
+    max_retries: int = 3
+    retry_delay_seconds: int = 1
+
+    def __post_init__(self):
+        """Validate configuration after initialization."""
+        if not 0.0 <= self.rate_limit_threshold <= 1.0:
+            raise ValueError(
+                f"rate_limit_threshold must be between 0.0 and 1.0, got {self.rate_limit_threshold}"
+            )
+        if self.max_retries < 0:
+            raise ValueError(
+                f"max_retries must be non-negative, got {self.max_retries}"
+            )
+        if self.retry_delay_seconds < 0:
+            raise ValueError(
+                f"retry_delay_seconds must be non-negative, got {self.retry_delay_seconds}"
+            )
+
+    def is_enabled(self) -> bool:
+        """
+        Check if credential rotation is enabled.
+
+        Returns:
+            True if rotation is enabled (pool has multiple credentials), False otherwise
+        """
+        return len(self.credential_pool) > 1
+
+    def get_effective_pool(self) -> list[str]:
+        """
+        Get the effective credential pool for rotation.
+
+        Returns:
+            List of credential IDs. If pool is empty, returns empty list.
+        """
+        return self.credential_pool.copy()
+
+    def should_rotate_proactively(self, current_usage: float, limit: float) -> bool:
+        """
+        Check if rotation should occur proactively based on usage.
+
+        Used by rate_limit_aware mode to determine when to rotate before hitting limits.
+
+        Args:
+            current_usage: Current usage level (e.g., tokens used)
+            limit: Usage limit (e.g., TPM/RPM limit)
+
+        Returns:
+            True if usage exceeds threshold, False otherwise
+        """
+        if limit == 0:
+            return False
+        usage_ratio = current_usage / limit
+        return usage_ratio >= self.rate_limit_threshold
+
+    def __repr__(self) -> str:
+        """Return string representation."""
+        return (
+            f"RotationConfig(mode={self.mode.value!r}, "
+            f"pool_size={len(self.credential_pool)}, "
+            f"threshold={self.rate_limit_threshold})"
+        )
+
+
 @dataclass
 class RateLimitInfo:
     """
