@@ -1,0 +1,6 @@
+{
+  "fileMention": {
+    "removeAriaLabel": "Supprimer la mention de fichier : {{fileName}}",
+    "badgeTitle": "Fichier : {{filePath}}"
+  }
+}
