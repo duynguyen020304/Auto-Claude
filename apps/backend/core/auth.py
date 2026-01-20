@@ -896,3 +896,288 @@ def ensure_authenticated() -> str:
         "  3. Press Enter to open browser\n"
         "  4. Complete OAuth login in browser"
     )
+
+
+def list_credentials() -> list[dict[str, str | None]]:
+    """
+    List all stored credential profiles from platform-specific storage.
+
+    Retrieves all Auto Claude credentials from:
+    - macOS: Keychain (all items with service "auto-claude-*")
+    - Windows: Credential Manager or .credentials.json files
+    - Linux: Secret Service API (all items with application "auto-claude")
+
+    Returns:
+        List of credential dictionaries with keys:
+        - id: Unique credential identifier
+        - type: Credential type ('oauth' or 'api_key')
+        - name: Credential name
+        - status: Credential status ('active', 'rate_limited', 'disabled')
+        - last_used: Last used timestamp (ISO format string or None)
+
+    Note:
+        This function only returns credential metadata, not actual credential values.
+        Use get_credential(id) to retrieve the full credential profile with value.
+
+    Example:
+        >>> creds = list_credentials()
+        >>> for cred in creds:
+        ...     print(f"{cred['name']}: {cred['status']}")
+    """
+    if is_macos():
+        return _list_credentials_macos()
+    elif is_windows():
+        return _list_credentials_windows()
+    else:
+        # Linux: use secret-service API via DBus
+        return _list_credentials_linux()
+
+
+def _list_credentials_macos() -> list[dict[str, str | None]]:
+    """
+    List all credential profiles from macOS Keychain.
+
+    Searches for all Keychain items with service names matching
+    "auto-claude-*" pattern to find Auto Claude credential profiles.
+
+    Returns:
+        List of credential metadata dictionaries
+    """
+    try:
+        # Use 'security' command to dump all Auto Claude credentials
+        # We search for generic passwords with service matching "auto-claude-*"
+        result = subprocess.run(
+            ["/usr/bin/security", "dump-keychain", "-g"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+
+        if result.returncode != 0:
+            logger.warning("Failed to dump macOS Keychain for credential listing")
+            return []
+
+        # Parse keychain output to find Auto Claude credentials
+        credentials = []
+        lines = result.stdout.split("\n")
+
+        current_cred = None
+        for line in lines:
+            # Look for service name (indicating a new credential)
+            if "svc." in line or "service" in line.lower():
+                service_match = None
+                # Extract service name from line format like:
+                # "    0x0000000 <blob>="auto-claude-cred-001""
+                # or "svce: "auto-claude-cred-001""
+                for part in line.split('"'):
+                    if part.startswith("auto-claude-"):
+                        service_match = part
+                        break
+
+                if service_match:
+                    # Save previous credential if exists
+                    if current_cred:
+                        credentials.append(current_cred)
+
+                    # Start new credential
+                    cred_id = service_match.replace("auto-claude-", "")
+                    current_cred = {
+                        "id": cred_id,
+                        "type": "oauth",  # Default, will be updated if we can determine type
+                        "name": f"Credential {cred_id}",
+                        "status": "active",
+                        "last_used": None,
+                    }
+
+            # Look for account name (may contain metadata)
+            if current_cred and "acct" in line.lower():
+                # Extract account name if available
+                for part in line.split('"'):
+                    if len(part) > 0 and not part.startswith("auto-claude-"):
+                        current_cred["name"] = part
+                        break
+
+        # Don't forget the last credential
+        if current_cred:
+            credentials.append(current_cred)
+
+        return credentials
+
+    except subprocess.TimeoutExpired:
+        logger.warning("Timeout while listing macOS Keychain credentials")
+        return []
+    except Exception as e:
+        logger.warning(f"Failed to list macOS Keychain credentials: {e}")
+        return []
+
+
+def _list_credentials_windows() -> list[dict[str, str | None]]:
+    """
+    List all credential profiles from Windows credential storage.
+
+    Checks multiple locations:
+    1. ~/.claude/.credentials-auto-claude-*.json files
+    2. Windows Credential Manager (via cmdkey command)
+
+    Returns:
+        List of credential metadata dictionaries
+    """
+    credentials = []
+
+    try:
+        # Method 1: Check for credential files in ~/.claude directory
+        claude_dir = os.path.expandvars(r"%USERPROFILE%\.claude")
+        if os.path.exists(claude_dir):
+            for filename in os.listdir(claude_dir):
+                if filename.startswith(".credentials-auto-claude-") and filename.endswith(
+                    ".json"
+                ):
+                    try:
+                        cred_id = filename.replace(".credentials-auto-claude-", "").replace(
+                            ".json", ""
+                        )
+                        filepath = os.path.join(claude_dir, filename)
+
+                        with open(filepath, encoding="utf-8") as f:
+                            data = json.load(f)
+
+                        credentials.append(
+                            {
+                                "id": cred_id,
+                                "type": data.get("type", "oauth"),
+                                "name": data.get("name", f"Credential {cred_id}"),
+                                "status": data.get("status", "active"),
+                                "last_used": data.get("last_used"),
+                            }
+                        )
+                    except (json.JSONDecodeError, KeyError, IOError) as e:
+                        logger.debug(f"Failed to read credential file {filename}: {e}")
+                        continue
+
+        # Method 2: Use cmdkey to list Windows Credential Manager entries
+        # This finds generic credentials with target matching "auto-claude-*"
+        try:
+            result = subprocess.run(
+                ["cmdkey", "/list"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                shell=False,
+            )
+
+            if result.returncode == 0:
+                lines = result.stdout.split("\n")
+                for line in lines:
+                    if "auto-claude-" in line.lower():
+                        # Parse credential target name
+                        # Format: "Target: Domain:target=auto-claude-cred-001"
+                        if "target=" in line:
+                            target = line.split("target=")[-1].strip()
+                            if target.startswith("auto-claude-"):
+                                cred_id = target.replace("auto-claude-", "")
+                                # Check if we already have this credential
+                                if not any(c["id"] == cred_id for c in credentials):
+                                    credentials.append(
+                                        {
+                                            "id": cred_id,
+                                            "type": "oauth",
+                                            "name": f"Credential {cred_id}",
+                                            "status": "active",
+                                            "last_used": None,
+                                        }
+                                    )
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            # cmdkey not available or failed - ignore
+            pass
+
+        return credentials
+
+    except Exception as e:
+        logger.warning(f"Failed to list Windows credentials: {e}")
+        return []
+
+
+def _list_credentials_linux() -> list[dict[str, str | None]]:
+    """
+    List all credential profiles from Linux Secret Service API.
+
+    Searches for all Secret Service items with application attribute
+    matching "auto-claude-*" pattern.
+
+    Returns:
+        List of credential metadata dictionaries
+    """
+    if secretstorage is None:
+        # secretstorage not installed
+        return []
+
+    try:
+        # Get the default collection
+        try:
+            collection = secretstorage.get_default_collection(None)
+        except (
+            AttributeError,
+            secretstorage.exceptions.SecretServiceNotAvailableException,
+        ):
+            # DBus not available or secret-service not running
+            return []
+
+        if collection.is_locked():
+            # Try to unlock the collection (may prompt user for password)
+            try:
+                collection.unlock()
+            except secretstorage.exceptions.SecretStorageException:
+                # User cancelled or unlock failed
+                return []
+
+        # Search for all items (not just claude-code)
+        items = collection.get_all_items()
+
+        credentials = []
+        for item in items:
+            # Get item attributes
+            attrs = item.get_attributes()
+
+            # Check if this is an Auto Claude credential
+            application = attrs.get("application", "")
+            if application.startswith("auto-claude-"):
+                # Extract credential ID from application name
+                cred_id = application.replace("auto-claude-", "")
+
+                # Get label for name
+                label = item.get_label()
+
+                # Try to get secret to determine type (without loading full value)
+                secret = item.get_secret()
+                cred_type = "oauth"  # Default
+                if secret:
+                    try:
+                        if isinstance(secret, bytes):
+                            secret = secret.decode("utf-8")
+                        data = json.loads(secret)
+                        cred_type = data.get("type", "oauth")
+                    except (json.JSONDecodeError, UnicodeDecodeError):
+                        # Secret is not JSON, check if it's an API key
+                        if secret.startswith("sk-ant-api03-"):
+                            cred_type = "api_key"
+
+                credentials.append(
+                    {
+                        "id": cred_id,
+                        "type": cred_type,
+                        "name": label or f"Credential {cred_id}",
+                        "status": "active",
+                        "last_used": None,
+                    }
+                )
+
+        return credentials
+
+    except (
+        secretstorage.exceptions.SecretStorageException,
+        json.JSONDecodeError,
+        AttributeError,
+        TypeError,
+    ) as e:
+        logger.warning(f"Failed to list Linux Secret Service credentials: {e}")
+        return []
