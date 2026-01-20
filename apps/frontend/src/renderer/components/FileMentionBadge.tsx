@@ -3,7 +3,7 @@ import { FileCode, X } from '@/lib/icons';
 import { Badge } from './ui/badge';
 import { cn } from '../lib/utils';
 import { useTranslation } from 'react-i18next';
-import type { FileMention } from '@/shared/types/insights';
+import type { FileMention } from '@shared/types/insights';
 
 export interface FileMentionBadgeProps extends React.HTMLAttributes<HTMLDivElement> {
   mention: FileMention;
