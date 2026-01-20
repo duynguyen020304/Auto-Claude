@@ -629,7 +629,7 @@ export class ProjectStore {
           (storedStatus === calculatedStatus) || // Matches calculated
           (storedStatus === 'human_review' && (calculatedStatus === 'ai_review' || calculatedStatus === 'in_progress')) || // Human review is more advanced than ai_review or in_progress (fixes status loop bug)
           (storedStatus === 'human_review' && isPlanReviewStage) || // Plan review stage (awaiting spec approval)
-          (isActiveProcessStatus && storedStatus === 'in_progress' && hasRemainingWork); // Planning/coding phases should show as in_progress ONLY when there's remaining work
+          (isActiveProcessStatus && storedStatus === 'in_progress'); // Planning/coding phases should show as in_progress (removed hasRemainingWork check to respect user-set status)
 
         if (isStoredStatusValid) {
           // Preserve reviewReason for human_review status
