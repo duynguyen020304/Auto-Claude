@@ -10,6 +10,7 @@ import logging
 from pathlib import Path
 
 from .schema import (
+    EPISODE_TYPE_CREDENTIAL_USAGE,
     EPISODE_TYPE_GOTCHA,
     EPISODE_TYPE_PATTERN,
     EPISODE_TYPE_SESSION_INSIGHT,
@@ -338,3 +339,113 @@ class GraphitiSearch:
         except Exception as e:
             logger.warning(f"Failed to get patterns/gotchas: {e}")
             return [], []
+
+    async def get_credential_usage(self, credential_id: str) -> dict:
+        """
+        Get aggregated usage metrics for a specific credential.
+
+        Args:
+            credential_id: Unique identifier for the credential
+
+        Returns:
+            Dictionary with usage metrics:
+            {
+                "total_tokens": int,
+                "request_count": int,
+                "last_used": str (ISO timestamp),
+                "average_tokens_per_request": float
+            }
+            Returns empty dict if no usage found or on error.
+        """
+        try:
+            # Search for all credential usage episodes for this credential
+            results = await self.client.graphiti.search(
+                query=f"credential usage {credential_id}",
+                group_ids=[self.group_id],
+                num_results=1000,  # Get all usage records
+            )
+
+            total_tokens = 0
+            request_count = 0
+            last_used = None
+
+            for result in results:
+                content = getattr(result, "content", None) or getattr(
+                    result, "fact", None
+                )
+                if content and EPISODE_TYPE_CREDENTIAL_USAGE in str(content):
+                    try:
+                        data = (
+                            json.loads(content) if isinstance(content, str) else content
+                        )
+                        # Ensure data is a dict before processing (fixes ACS-215)
+                        if not isinstance(data, dict):
+                            continue
+                        if (
+                            data.get("type") == EPISODE_TYPE_CREDENTIAL_USAGE
+                            and data.get("credential_id") == credential_id
+                        ):
+                            total_tokens += data.get("tokens", 0)
+                            request_count += 1
+                            timestamp = data.get("timestamp")
+                            if timestamp:
+                                if not last_used or timestamp > last_used:
+                                    last_used = timestamp
+                    except (json.JSONDecodeError, TypeError, AttributeError):
+                        continue
+
+            if request_count == 0:
+                return {}
+
+            average_tokens = total_tokens / request_count if request_count > 0 else 0
+
+            usage_metrics = {
+                "total_tokens": total_tokens,
+                "request_count": request_count,
+                "last_used": last_used,
+                "average_tokens_per_request": average_tokens,
+            }
+
+            logger.debug(
+                f"Retrieved usage for {credential_id}: {total_tokens} tokens in {request_count} requests"
+            )
+            return usage_metrics
+
+        except Exception as e:
+            logger.warning(f"Failed to get credential usage for {credential_id}: {e}")
+            return {}
+
+    async def get_least_used_credential(self, pool_ids: list[str]) -> str | None:
+        """
+        Find the least used credential from a pool of credential IDs.
+
+        Args:
+            pool_ids: List of credential IDs to compare
+
+        Returns:
+            Credential ID with lowest total token usage, or None if pool is empty
+        """
+        if not pool_ids:
+            logger.warning("Cannot get least used credential from empty pool")
+            return None
+
+        try:
+            # Get usage for all credentials in pool
+            usage_by_credential = {}
+            for cred_id in pool_ids:
+                usage = await self.get_credential_usage(cred_id)
+                usage_by_credential[cred_id] = usage.get("total_tokens", 0)
+
+            # Find credential with minimum usage
+            least_used_id = min(usage_by_credential, key=usage_by_credential.get)
+            least_used_tokens = usage_by_credential[least_used_id]
+
+            logger.debug(
+                f"Least used credential: {least_used_id} ({least_used_tokens} tokens)"
+            )
+            return least_used_id
+
+        except Exception as e:
+            logger.warning(f"Failed to get least used credential: {e}")
+            # Fallback: return first credential in pool
+            return pool_ids[0] if pool_ids else None

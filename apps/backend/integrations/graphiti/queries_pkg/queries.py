@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 
 from .schema import (
     EPISODE_TYPE_CODEBASE_DISCOVERY,
+    EPISODE_TYPE_CREDENTIAL_USAGE,
     EPISODE_TYPE_GOTCHA,
     EPISODE_TYPE_PATTERN,
     EPISODE_TYPE_SESSION_INSIGHT,
@@ -459,4 +460,51 @@ class GraphitiQueries:
 
         except Exception as e:
             logger.warning(f"Failed to save structured insights: {e}")
+            return False
+
+    async def add_credential_usage(
+        self,
+        credential_id: str,
+        tokens: int,
+        metadata: dict | None = None,
+    ) -> bool:
+        """
+        Record credential usage (token consumption) to the knowledge graph.
+
+        Args:
+            credential_id: Unique identifier for the credential
+            tokens: Number of tokens used in the request
+            metadata: Optional additional context (model, agent_type, etc.)
+
+        Returns:
+            True if saved successfully
+        """
+        try:
+            from graphiti_core.nodes import EpisodeType
+
+            episode_content = {
+                "type": EPISODE_TYPE_CREDENTIAL_USAGE,
+                "spec_id": self.spec_context_id,
+                "credential_id": credential_id,
+                "tokens": tokens,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                **(metadata or {}),
+            }
+
+            await self.client.graphiti.add_episode(
+                name=f"credential_usage_{credential_id}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S%f')}",
+                episode_body=json.dumps(episode_content),
+                source=EpisodeType.text,
+                source_description=f"Credential usage for {credential_id}",
+                reference_time=datetime.now(timezone.utc),
+                group_id=self.group_id,
+            )
+
+            logger.debug(
+                f"Recorded {tokens} tokens for credential {credential_id} in Graphiti"
+            )
+            return True
+
+        except Exception as e:
+            logger.warning(f"Failed to record credential usage: {e}")
             return False
