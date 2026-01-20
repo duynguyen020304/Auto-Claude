@@ -196,7 +196,7 @@ export function IdeationHeader({
               <Button
                 variant="outline"
                 size="icon"
-                onClick={onOpenAddMore}
+                onClick={onRefresh}
                 aria-label={t('accessibility.refreshIdeasAriaLabel')}
               >
                 <RefreshCw className="h-4 w-4" />
