@@ -6,6 +6,7 @@ with support for multiple credential profiles, rotation strategies, and usage tr
 """
 
 import logging
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -345,3 +346,120 @@ class CredentialProfile:
             f"name={self.name!r}, status={self.status.value!r}, "
             f"usage_metrics={self.usage_metrics})"
         )
+
+
+class CredentialStorage(ABC):
+    """
+    Abstract interface for platform-specific credential storage.
+
+    This interface defines the contract for storing and retrieving credentials
+    across different platforms (macOS Keychain, Windows Credential Manager,
+    Linux Secret Service, and file-based fallback).
+
+    Implementations must provide methods for:
+    - Saving credentials with metadata
+    - Loading credentials by ID or listing all
+    - Deleting credentials
+    - Updating credential status (for rate limiting)
+
+    All operations should handle platform-specific error conditions gracefully,
+    logging errors and returning None or False rather than raising exceptions
+    for expected failure modes (missing credentials, permission denied, etc.).
+
+    Example:
+        >>> storage = KeychainStorage()  # Platform-specific implementation
+        >>> storage.save_profile(credential_profile)
+        >>> profile = storage.load_profile("cred-001")
+    """
+
+    @abstractmethod
+    def save_profile(self, profile: CredentialProfile) -> bool:
+        """
+        Save a credential profile to platform storage.
+
+        Stores the credential profile along with its metadata. If a profile
+        with the same ID already exists, it will be overwritten.
+
+        Args:
+            profile: CredentialProfile to save
+
+        Returns:
+            True if save was successful, False otherwise
+
+        Raises:
+            PermissionError: If insufficient permissions to access storage
+            ValueError: If profile data is invalid
+        """
+        pass
+
+    @abstractmethod
+    def load_profile(self, profile_id: str) -> CredentialProfile | None:
+        """
+        Load a credential profile by ID from platform storage.
+
+        Args:
+            profile_id: Unique identifier for the credential profile
+
+        Returns:
+            CredentialProfile if found, None otherwise
+        """
+        pass
+
+    @abstractmethod
+    def list_profiles(self) -> list[CredentialProfile]:
+        """
+        List all credential profiles in platform storage.
+
+        Returns:
+            List of all CredentialProfile objects (empty list if none found)
+
+        Note:
+            This should return all profiles regardless of their status
+            (active, rate_limited, disabled).
+        """
+        pass
+
+    @abstractmethod
+    def delete_profile(self, profile_id: str) -> bool:
+        """
+        Delete a credential profile from platform storage.
+
+        Args:
+            profile_id: Unique identifier for the credential profile
+
+        Returns:
+            True if profile was deleted, False if not found or deletion failed
+        """
+        pass
+
+    @abstractmethod
+    def update_status(
+        self, profile_id: str, status: CredentialStatus, reason: str | None = None
+    ) -> bool:
+        """
+        Update the status of a credential profile.
+
+        Used for marking credentials as rate_limited or disabled during
+        API rotation operations.
+
+        Args:
+            profile_id: Unique identifier for the credential profile
+            status: New status to set
+            reason: Optional reason for status change (logged for audit)
+
+        Returns:
+            True if status was updated, False if profile not found or update failed
+        """
+        pass
+
+    def profile_exists(self, profile_id: str) -> bool:
+        """
+        Check if a credential profile exists in storage.
+
+        Args:
+            profile_id: Unique identifier for the credential profile
+
+        Returns:
+            True if profile exists, False otherwise
+        """
+        return self.load_profile(profile_id) is not None
