@@ -721,3 +721,267 @@ class UsageBasedRotationStrategy(RotationStrategy):
         )
 
         return selected
+
+
+class RateLimitAwareRotationStrategy(RotationStrategy):
+    """
+    Rate-limit-aware rotation strategy for proactive credential rotation.
+
+    In rate-limit-aware mode, the strategy monitors usage patterns and predicts
+    when credentials are approaching their rate limits, rotating BEFORE hitting
+    limits to prevent 429 errors. This provides proactive load distribution that
+    considers both historical usage and rate limit thresholds.
+
+    The strategy queries Graphiti memory system for usage metrics:
+    - Retrieves token usage for each credential in the pool
+    - Calculates usage ratio (current_usage / limit) for each credential
+    - Selects the credential with the lowest usage ratio below threshold
+    - Falls back to first active credential if Graphiti is unavailable
+    - Handles missing rate limit info gracefully
+
+    Example:
+        >>> strategy = RateLimitAwareRotationStrategy()
+        >>> # Selects credential farthest from rate limit
+        >>> credential = strategy.select_credential(
+        ...     pool=[cred1, cred2, cred3],
+        ...     config=rotation_config,  # threshold=0.8 (80%)
+        ...     context=selection_context  # Must include memory for usage queries
+        ... )
+    """
+
+    def __init__(self) -> None:
+        """Initialize rate-limit-aware rotation strategy."""
+        super().__init__(mode=RotationMode.RATE_LIMIT_AWARE)
+        logger.debug("Initialized RateLimitAwareRotationStrategy")
+
+    def select_credential(
+        self,
+        pool: list[CredentialProfile],
+        config: "RotationConfig",  # type: ignore[name-defined]
+        context: "RotationContext",  # type: ignore[name-defined]
+    ) -> CredentialProfile | None:
+        """
+        Select a credential based on lowest usage ratio to avoid rate limits.
+
+        The selection process:
+        1. Filter pool to only active credentials (can_be_used())
+        2. Return None if no active credentials available
+        3. If Graphiti memory available, query for usage of all credentials
+        4. Calculate usage ratio for each credential (usage / limit)
+        5. Select credential with lowest usage ratio below threshold
+        6. If all credentials at/above threshold, select lowest usage anyway
+        7. If Graphiti unavailable or no usage data, fall back to first active
+        8. Log selection for debugging
+
+        Args:
+            pool: List of available credential profiles
+            config: Rotation configuration (rate_limit_threshold is used)
+            context: Selection context (memory is used for usage queries)
+
+        Returns:
+            The selected CredentialProfile, or None if no suitable credential found
+
+        Raises:
+            ValueError: If pool is empty
+
+        Note:
+            Requires context.memory to be set for rate-limit-aware selection.
+            Falls back to first active credential if memory is unavailable.
+            The threshold from config.rate_limit_threshold determines when to
+            rotate (default 0.8 = 80% of limit).
+        """
+        if not pool:
+            raise ValueError("Credential pool is empty")
+
+        # Filter to only active credentials
+        active_pool = self.filter_active_credentials(pool)
+
+        if not active_pool:
+            logger.warning(
+                "Rate-limit-aware rotation: No active credentials available in pool"
+            )
+            return None
+
+        # Try to use Graphiti memory for intelligent selection
+        if context.memory and context.memory.is_enabled:
+            try:
+                # Query Graphiti for usage of all credentials
+                import asyncio
+
+                usage_map = self._get_usage_map(context, active_pool)
+
+                if usage_map:
+                    # Find credential with lowest usage ratio
+                    selected_credential = self._select_by_usage_ratio(
+                        active_pool, usage_map, config
+                    )
+                    if selected_credential:
+                        return selected_credential
+                else:
+                    logger.debug(
+                        "Rate-limit-aware rotation: No usage data available in Graphiti, "
+                        "falling back to first active credential"
+                    )
+            except Exception as e:
+                logger.warning(
+                    f"Rate-limit-aware rotation: Failed to query Graphiti for usage: {e}, "
+                    "falling back to first active credential"
+                )
+
+        # Fallback: Use first active credential
+        selected = active_pool[0]
+        logger.info(
+            f"Rate-limit-aware rotation: Selected credential {selected.id} "
+            f"({selected.name}) as fallback (no usage data available)"
+        )
+
+        return selected
+
+    def _get_usage_map(
+        self, context: "RotationContext", active_pool: list[CredentialProfile]  # type: ignore[name-defined]
+    ) -> dict[str, int] | None:
+        """
+        Query Graphiti for usage metrics of all credentials in the pool.
+
+        Args:
+            context: Rotation context with memory system
+            active_pool: List of active credential profiles
+
+        Returns:
+            Dictionary mapping credential IDs to total token usage, or None if queries fail
+        """
+        import asyncio
+
+        usage_map: dict[str, int] = {}
+
+        async def query_credential_usage() -> None:
+            """Query usage for all credentials asynchronously."""
+            if not context.memory:
+                return
+
+            for credential in active_pool:
+                try:
+                    usage_data = await context.memory.get_credential_usage(credential.id)
+                    if usage_data and "total_tokens" in usage_data:
+                        usage_map[credential.id] = usage_data["total_tokens"]
+                except Exception as e:
+                    logger.debug(
+                        f"Failed to get usage for credential {credential.id}: {e}"
+                    )
+                    # Continue with other credentials
+
+        try:
+            asyncio.run(query_credential_usage())
+        except Exception as e:
+            logger.warning(f"Failed to query credential usage: {e}")
+            return None
+
+        return usage_map if usage_map else None
+
+    def _select_by_usage_ratio(
+        self,
+        active_pool: list[CredentialProfile],
+        usage_map: dict[str, int],
+        config: "RotationConfig",  # type: ignore[name-defined]
+    ) -> CredentialProfile | None:
+        """
+        Select credential with lowest usage ratio below threshold.
+
+        Args:
+            active_pool: List of active credential profiles
+            usage_map: Dictionary mapping credential IDs to total token usage
+            config: Rotation configuration with rate_limit_threshold
+
+        Returns:
+            CredentialProfile with lowest usage ratio, or None if selection fails
+        """
+        # Default rate limit (can be overridden per credential)
+        # Anthropic's default TPM limit is typically 200,000 tokens/minute
+        DEFAULT_TOKEN_LIMIT = 200_000
+
+        best_credential = None
+        best_usage_ratio = float("inf")
+
+        for credential in active_pool:
+            # Get usage for this credential
+            usage = usage_map.get(credential.id, 0)
+
+            # Get rate limit for this credential (from metadata or default)
+            limit = self._get_credential_limit(credential, DEFAULT_TOKEN_LIMIT)
+
+            # Calculate usage ratio
+            if limit > 0:
+                usage_ratio = usage / limit
+            else:
+                usage_ratio = 0.0
+                logger.debug(
+                    f"Credential {credential.id} has limit of 0, setting usage_ratio to 0"
+                )
+
+            # Check if this credential is better than current best
+            if usage_ratio < best_usage_ratio:
+                best_usage_ratio = usage_ratio
+                best_credential = credential
+
+                # If we found a credential well below threshold, use it
+                if usage_ratio < config.rate_limit_threshold * 0.8:
+                    logger.debug(
+                        f"Found credential {credential.id} with usage ratio "
+                        f"{usage_ratio:.2%} (well below threshold {config.rate_limit_threshold:.2%})"
+                    )
+                    break
+
+        if best_credential:
+            threshold_status = (
+                "ABOVE" if best_usage_ratio >= config.rate_limit_threshold else "below"
+            )
+            logger.info(
+                f"Rate-limit-aware rotation: Selected credential {best_credential.id} "
+                f"({best_credential.name}) with usage ratio {best_usage_ratio:.2%} "
+                f"({threshold_status} threshold {config.rate_limit_threshold:.2%}) "
+                f"from {len(active_pool)} active credentials"
+            )
+
+            # Warn if all credentials are near/at threshold
+            if best_usage_ratio >= config.rate_limit_threshold:
+                logger.warning(
+                    f"All credentials may be near rate limits! "
+                    f"Best usage ratio: {best_usage_ratio:.2%}"
+                )
+
+        return best_credential
+
+    def _get_credential_limit(
+        self, credential: CredentialProfile, default_limit: int
+    ) -> int:
+        """
+        Get the rate limit for a credential.
+
+        Checks the credential's rate_limit_info and metadata for limit information,
+        falling back to the default limit if not found.
+
+        Args:
+            credential: CredentialProfile to get limit for
+            default_limit: Default limit to use if not found in credential
+
+        Returns:
+            Rate limit in tokens per minute
+        """
+        # Check rate_limit_info first
+        if credential.rate_limit_info:
+            if credential.rate_limit_info.tokens_per_minute:
+                return credential.rate_limit_info.tokens_per_minute
+
+        # Check metadata for custom limit
+        if credential.metadata:
+            custom_limit = credential.metadata.get("tokens_per_minute")
+            if custom_limit:
+                try:
+                    return int(custom_limit)
+                except (ValueError, TypeError):
+                    logger.debug(
+                        f"Invalid tokens_per_minute in metadata for {credential.id}"
+                    )
+
+        # Return default limit
+        return default_limit
