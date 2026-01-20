@@ -604,3 +604,120 @@ class RoundRobinRotationStrategy(RotationStrategy):
 
         self._current_index = index
         logger.debug(f"Round-robin index set to {index}")
+
+
+class UsageBasedRotationStrategy(RotationStrategy):
+    """
+    Usage-based rotation strategy for intelligent credential selection.
+
+    In usage-based mode, the strategy selects the credential with the lowest
+    usage metrics (total tokens consumed) from the pool. This provides smart
+    load distribution that considers actual consumption rather than just
+    request count.
+
+    The strategy queries Graphiti memory system for usage metrics:
+    - Retrieves token usage for each credential in the pool
+    - Selects the credential with the lowest total token consumption
+    - Falls back to first active credential if Graphiti is unavailable
+    - Handles missing usage data gracefully
+
+    Example:
+        >>> strategy = UsageBasedRotationStrategy()
+        >>> # Selects least-used credential from pool
+        >>> credential = strategy.select_credential(
+        ...     pool=[cred1, cred2, cred3],
+        ...     config=rotation_config,
+        ...     context=selection_context  # Must include memory for usage queries
+        ... )
+    """
+
+    def __init__(self) -> None:
+        """Initialize usage-based rotation strategy."""
+        super().__init__(mode=RotationMode.USAGE_BASED)
+        logger.debug("Initialized UsageBasedRotationStrategy")
+
+    def select_credential(
+        self,
+        pool: list[CredentialProfile],
+        config: "RotationConfig",  # type: ignore[name-defined]
+        context: "RotationContext",  # type: ignore[name-defined]
+    ) -> CredentialProfile | None:
+        """
+        Select a credential based on lowest usage metrics from Graphiti.
+
+        The selection process:
+        1. Filter pool to only active credentials (can_be_used())
+        2. Return None if no active credentials available
+        3. If Graphiti memory available, query for least-used credential
+        4. If Graphiti unavailable or no usage data, fall back to first active
+        5. Log selection for debugging
+
+        Args:
+            pool: List of available credential profiles
+            config: Rotation configuration (not used in usage-based)
+            context: Selection context (memory is used for usage queries)
+
+        Returns:
+            The selected CredentialProfile, or None if no suitable credential found
+
+        Raises:
+            ValueError: If pool is empty
+
+        Note:
+            Requires context.memory to be set for usage-based selection.
+            Falls back to first active credential if memory is unavailable.
+        """
+        if not pool:
+            raise ValueError("Credential pool is empty")
+
+        # Filter to only active credentials
+        active_pool = self.filter_active_credentials(pool)
+
+        if not active_pool:
+            logger.warning(
+                "Usage-based rotation: No active credentials available in pool"
+            )
+            return None
+
+        # Try to use Graphiti memory for intelligent selection
+        if context.memory and context.memory.is_enabled:
+            try:
+                # Get credential IDs from active pool
+                credential_ids = [cred.id for cred in active_pool]
+
+                # Query Graphiti for least-used credential
+                import asyncio
+
+                least_used_id = asyncio.run(
+                    context.memory.get_least_used_credential(credential_ids)
+                )
+
+                if least_used_id:
+                    # Find the credential with the least-used ID
+                    for credential in active_pool:
+                        if credential.id == least_used_id:
+                            logger.info(
+                                f"Usage-based rotation: Selected credential {credential.id} "
+                                f"({credential.name}) based on lowest token usage "
+                                f"from {len(active_pool)} active credentials"
+                            )
+                            return credential
+                else:
+                    logger.debug(
+                        "Usage-based rotation: No usage data available in Graphiti, "
+                        "falling back to first active credential"
+                    )
+            except Exception as e:
+                logger.warning(
+                    f"Usage-based rotation: Failed to query Graphiti for usage: {e}, "
+                    "falling back to first active credential"
+                )
+
+        # Fallback: Use first active credential
+        selected = active_pool[0]
+        logger.info(
+            f"Usage-based rotation: Selected credential {selected.id} "
+            f"({selected.name}) as fallback (no usage data available)"
+        )
+
+        return selected
