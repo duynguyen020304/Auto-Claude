@@ -199,6 +199,7 @@ export function FileMentionInput({
    */
   const highlightOverlay = (
     <div
+      data-testid="highlight-overlay"
       className="absolute inset-0 pointer-events-none overflow-hidden rounded-md border border-transparent"
       style={{
         padding: '0.5rem 0.75rem',
@@ -211,7 +212,7 @@ export function FileMentionInput({
     >
       {value.split(/(@[\w\-./\\]+\.\w+(:\d+(?:-\d+)?)?)/g).map((part, i) => {
         // Match @mentions with optional line range
-        if (part.match(/^@[\w\-./\\]+\.\w+(:\d+(?:-\d+)?)?$/)) {
+        if (part && part.match(/^@[\w\-./\\]+\.\w+(:\d+(?:-\d+)?)?$/)) {
           return (
             <span
               key={i}
@@ -222,7 +223,7 @@ export function FileMentionInput({
             </span>
           );
         }
-        return <span key={i}>{part}</span>;
+        return <span key={i}>{part || ''}</span>;
       })}
     </div>
   );
