@@ -3,6 +3,7 @@ import { arrayMove } from '@dnd-kit/sortable';
 import type { Task, TaskStatus, SubtaskStatus, ImplementationPlan, Subtask, TaskMetadata, ExecutionProgress, ExecutionPhase, ReviewReason, TaskDraft, ImageAttachment, TaskOrderState } from '../../shared/types';
 import { debugLog } from '../../shared/utils/debug-logger';
 import { isTerminalPhase } from '../../shared/constants/phase-protocol';
+import { getTaskOperationQueue } from '../lib/taskOperationQueue';
 
 interface TaskState {
   tasks: Task[];
@@ -648,26 +649,32 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
 /**
  * Load tasks for a project
+ *
+ * Uses operation queue to prevent race conditions with delete/start operations.
  */
 export async function loadTasks(projectId: string): Promise<void> {
-  const store = useTaskStore.getState();
-  store.setLoading(true);
-  store.setError(null);
+  const queue = getTaskOperationQueue();
 
-  try {
-    const result = await window.electronAPI.getTasks(projectId);
-    if (result.success && result.data) {
-      // Use functional update to explicitly merge refreshed tasks with existing state
-      // This preserves executionProgress for tasks that are actively running
-      store.setTasks(prevTasks => mergeTaskStates(result.data, prevTasks));
-    } else {
-      store.setError(result.error || 'Failed to load tasks');
+  return queue.enqueue(async () => {
+    const store = useTaskStore.getState();
+    store.setLoading(true);
+    store.setError(null);
+
+    try {
+      const result = await window.electronAPI.getTasks(projectId);
+      if (result.success && result.data) {
+        // Use functional update to explicitly merge refreshed tasks with existing state
+        // This preserves executionProgress for tasks that are actively running
+        store.setTasks(prevTasks => mergeTaskStates(result.data, prevTasks));
+      } else {
+        store.setError(result.error || 'Failed to load tasks');
+      }
+    } catch (error) {
+      store.setError(error instanceof Error ? error.message : 'Unknown error');
+    } finally {
+      store.setLoading(false);
     }
-  } catch (error) {
-    store.setError(error instanceof Error ? error.message : 'Unknown error');
-  } finally {
-    store.setLoading(false);
-  }
+  });
 }
 
 /**
@@ -698,9 +705,16 @@ export async function createTask(
 
 /**
  * Start a task
+ *
+ * Uses operation queue to prevent race conditions with refresh/delete operations.
  */
 export function startTask(taskId: string, options?: { parallel?: boolean; workers?: number }): void {
-  window.electronAPI.startTask(taskId, options);
+  const queue = getTaskOperationQueue();
+
+  // Enqueue the start operation but don't await - fire and forget
+  void queue.enqueue(async () => {
+    window.electronAPI.startTask(taskId, options);
+  });
 }
 
 /**
@@ -875,36 +889,42 @@ export async function recoverStuckTask(
 
 /**
  * Delete a task and its spec directory
+ *
+ * Uses operation queue to prevent race conditions with refresh/start operations.
  */
 export async function deleteTask(
   taskId: string
 ): Promise<{ success: boolean; error?: string }> {
-  const store = useTaskStore.getState();
+  const queue = getTaskOperationQueue();
 
-  try {
-    const result = await window.electronAPI.deleteTask(taskId);
+  return queue.enqueue(async () => {
+    const store = useTaskStore.getState();
 
-    if (result.success) {
-      // Remove from local state
-      store.setTasks(store.tasks.filter(t => t.id !== taskId && t.specId !== taskId));
-      // Clear selection if this task was selected
-      if (store.selectedTaskId === taskId) {
-        store.selectTask(null);
+    try {
+      const result = await window.electronAPI.deleteTask(taskId);
+
+      if (result.success) {
+        // Remove from local state
+        store.setTasks(store.tasks.filter(t => t.id !== taskId && t.specId !== taskId));
+        // Clear selection if this task was selected
+        if (store.selectedTaskId === taskId) {
+          store.selectTask(null);
+        }
+        return { success: true };
       }
-      return { success: true };
-    }
 
-    return {
-      success: false,
-      error: result.error || 'Failed to delete task'
-    };
-  } catch (error) {
-    console.error('Error deleting task:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    };
-  }
+      return {
+        success: false,
+        error: result.error || 'Failed to delete task'
+      };
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  });
 }
 
 /**
