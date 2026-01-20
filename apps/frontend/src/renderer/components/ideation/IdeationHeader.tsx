@@ -12,6 +12,7 @@ interface IdeationHeaderProps {
   ideaCountByType: Record<string, number>;
   showDismissed: boolean;
   selectedCount: number;
+  maxIdeasPerType: number;
   onToggleShowDismissed: () => void;
   onOpenConfig: () => void;
   onOpenAddMore: () => void;
@@ -29,6 +30,7 @@ export function IdeationHeader({
   ideaCountByType,
   showDismissed,
   selectedCount,
+  maxIdeasPerType,
   onToggleShowDismissed,
   onOpenConfig,
   onOpenAddMore,
@@ -187,6 +189,9 @@ export function IdeationHeader({
             <span className="ml-1">{count}</span>
           </Badge>
         ))}
+        <Badge variant="outline" className="text-muted-foreground">
+          Max: {maxIdeasPerType} ideas/type
+        </Badge>
       </div>
     </div>
   );
