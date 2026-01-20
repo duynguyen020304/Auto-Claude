@@ -90,6 +90,258 @@ describe('Task Store', () => {
 
       expect(useTaskStore.getState().tasks).toHaveLength(0);
     });
+
+    describe('addTask', () => {
+        // Create tasks with explicit IDs
+        const task1: Task = {
+          id: 'task-1',
+          specId: 'spec-1',
+          projectId: 'proj-1',
+          title: 'Task 1',
+          description: 'Test task 1',
+          status: 'in_progress' as TaskStatus,
+          subtasks: [],
+          logs: [],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          executionProgress: { phase: 'planning', phaseProgress: 45, overallProgress: 10 }
+        };
+
+        const task2: Task = {
+          id: 'task-1',
+          specId: 'spec-1',
+          projectId: 'proj-1',
+          title: 'Task 1 Updated',
+          description: 'Test task 1 updated',
+          status: 'in_progress' as TaskStatus,
+          subtasks: [],
+          logs: [],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          executionProgress: undefined
+        };
+
+        // Set initial state with task1 (has executionProgress)
+        useTaskStore.getState().setTasks([task1]);
+
+        // Verify initial state
+        expect(useTaskStore.getState().tasks).toHaveLength(1);
+        expect(useTaskStore.getState().tasks[0].id).toBe('task-1');
+        expect(useTaskStore.getState().tasks[0].executionProgress?.phase).toBe('planning');
+
+        // Refresh with task2 (no executionProgress - simulates backend refresh)
+        useTaskStore.getState().setTasks([task2]);
+
+        // Should preserve executionProgress from task1
+        expect(useTaskStore.getState().tasks).toHaveLength(1);
+        const finalTask = useTaskStore.getState().tasks.find(t => t.id === 'task-1');
+        expect(finalTask?.executionProgress).toBeDefined();
+        expect(finalTask?.executionProgress?.phase).toBe('planning');
+        expect(finalTask?.executionProgress?.phaseProgress).toBe(45);
+        expect(finalTask?.executionProgress?.overallProgress).toBe(10);
+      });
+
+      it('should preserve executionProgress for tasks in coding phase', () => {
+        const runningTask = createTestTask({
+          id: 'task-1',
+          status: 'in_progress',
+          executionProgress: { phase: 'coding', phaseProgress: 60, overallProgress: 40 }
+        });
+
+        const refreshedTask = createTestTask({
+          id: 'task-1',
+          status: 'in_progress',
+          executionProgress: undefined
+        });
+
+        useTaskStore.getState().setTasks([runningTask]);
+        useTaskStore.getState().setTasks([refreshedTask]);
+
+        const task = useTaskStore.getState().tasks.find(t => t.id === 'task-1');
+        expect(task?.executionProgress).toEqual({
+          phase: 'coding',
+          phaseProgress: 60,
+          overallProgress: 40
+        });
+      });
+
+      it('should preserve executionProgress for tasks in qa_review phase', () => {
+        const runningTask = createTestTask({
+          id: 'task-1',
+          status: 'ai_review',
+          executionProgress: { phase: 'qa_review', phaseProgress: 30, overallProgress: 85 }
+        });
+
+        const refreshedTask = createTestTask({
+          id: 'task-1',
+          status: 'ai_review',
+          executionProgress: undefined
+        });
+
+        useTaskStore.getState().setTasks([runningTask]);
+        useTaskStore.getState().setTasks([refreshedTask]);
+
+        const task = useTaskStore.getState().tasks.find(t => t.id === 'task-1');
+        expect(task?.executionProgress).toEqual({
+          phase: 'qa_review',
+          phaseProgress: 30,
+          overallProgress: 85
+        });
+      });
+
+      it('should preserve executionProgress for tasks in qa_fixing phase', () => {
+        const runningTask = createTestTask({
+          id: 'task-1',
+          status: 'human_review',
+          executionProgress: { phase: 'qa_fixing', phaseProgress: 20, overallProgress: 70 }
+        });
+
+        const refreshedTask = createTestTask({
+          id: 'task-1',
+          status: 'human_review',
+          executionProgress: undefined
+        });
+
+        useTaskStore.getState().setTasks([runningTask]);
+        useTaskStore.getState().setTasks([refreshedTask]);
+
+        const task = useTaskStore.getState().tasks.find(t => t.id === 'task-1');
+        expect(task?.executionProgress).toEqual({
+          phase: 'qa_fixing',
+          phaseProgress: 20,
+          overallProgress: 70
+        });
+      });
+
+      it('should NOT preserve executionProgress for tasks in idle phase', () => {
+        const idleTask = createTestTask({
+          id: 'task-1',
+          status: 'backlog',
+          executionProgress: { phase: 'idle', phaseProgress: 0, overallProgress: 0 }
+        });
+
+        const refreshedTask = createTestTask({
+          id: 'task-1',
+          status: 'backlog',
+          executionProgress: undefined
+        });
+
+        useTaskStore.getState().setTasks([idleTask]);
+        useTaskStore.getState().setTasks([refreshedTask]);
+
+        // Idle is not an active phase, so executionProgress should NOT be preserved
+        const task = useTaskStore.getState().tasks.find(t => t.id === 'task-1');
+        expect(task?.executionProgress).toBeUndefined();
+      });
+
+      it('should NOT preserve executionProgress for tasks in complete phase', () => {
+        const completedTask = createTestTask({
+          id: 'task-1',
+          status: 'done',
+          executionProgress: { phase: 'complete', phaseProgress: 100, overallProgress: 100 }
+        });
+
+        const refreshedTask = createTestTask({
+          id: 'task-1',
+          status: 'done',
+          executionProgress: undefined
+        });
+
+        useTaskStore.getState().setTasks([completedTask]);
+        useTaskStore.getState().setTasks([refreshedTask]);
+
+        // Complete is a terminal phase, not an active phase
+        const task = useTaskStore.getState().tasks.find(t => t.id === 'task-1');
+        expect(task?.executionProgress).toBeUndefined();
+      });
+
+      it('should NOT preserve executionProgress for tasks in failed phase', () => {
+        const failedTask = createTestTask({
+          id: 'task-1',
+          status: 'human_review',
+          executionProgress: { phase: 'failed', phaseProgress: 50, overallProgress: 30 }
+        });
+
+        const refreshedTask = createTestTask({
+          id: 'task-1',
+          status: 'human_review',
+          executionProgress: undefined
+        });
+
+        useTaskStore.getState().setTasks([failedTask]);
+        useTaskStore.getState().setTasks([refreshedTask]);
+
+        // Failed is a terminal phase, not an active phase
+        const task = useTaskStore.getState().tasks.find(t => t.id === 'task-1');
+        expect(task?.executionProgress).toBeUndefined();
+      });
+
+      it('should handle mixed scenario with some running and some idle tasks', () => {
+        const runningTask = createTestTask({
+          id: 'task-1',
+          status: 'in_progress',
+          executionProgress: { phase: 'coding', phaseProgress: 50, overallProgress: 35 }
+        });
+
+        const idleTask = createTestTask({
+          id: 'task-2',
+          status: 'backlog',
+          executionProgress: undefined
+        });
+
+        const refreshedTasks = [
+          createTestTask({ id: 'task-1', status: 'in_progress', executionProgress: undefined }),
+          createTestTask({ id: 'task-2', status: 'backlog', executionProgress: undefined })
+        ];
+
+        useTaskStore.getState().setTasks([runningTask, idleTask]);
+        useTaskStore.getState().setTasks(refreshedTasks);
+
+        // Task 1 should preserve progress (active phase)
+        const task1 = useTaskStore.getState().tasks.find(t => t.id === 'task-1');
+        expect(task1?.executionProgress).toEqual({
+          phase: 'coding',
+          phaseProgress: 50,
+          overallProgress: 35
+        });
+
+        // Task 2 should not have progress (was never running)
+        const task2 = useTaskStore.getState().tasks.find(t => t.id === 'task-2');
+        expect(task2?.executionProgress).toBeUndefined();
+      });
+
+      it('should handle new tasks that do not exist in current state', () => {
+        const existingTask = createTestTask({
+          id: 'task-1',
+          status: 'in_progress',
+          executionProgress: { phase: 'planning', phaseProgress: 20, overallProgress: 5 }
+        });
+
+        const newTask = createTestTask({
+          id: 'task-2',
+          status: 'backlog',
+          executionProgress: undefined
+        });
+
+        useTaskStore.getState().setTasks([existingTask]);
+        useTaskStore.getState().setTasks([existingTask, newTask]);
+
+        // Both tasks should be present
+        expect(useTaskStore.getState().tasks).toHaveLength(2);
+
+        // Existing task should preserve progress
+        const task1 = useTaskStore.getState().tasks.find(t => t.id === 'task-1');
+        expect(task1?.executionProgress).toEqual({
+          phase: 'planning',
+          phaseProgress: 20,
+          overallProgress: 5
+        });
+
+        // New task should not have progress
+        const task2 = useTaskStore.getState().tasks.find(t => t.id === 'task-2');
+        expect(task2?.executionProgress).toBeUndefined();
+      });
+    });
   });
 
   describe('addTask', () => {
