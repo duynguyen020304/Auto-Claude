@@ -59,9 +59,10 @@ export function FileMentionBadge({
       variant={badgeVariant}
       className={cn('gap-1.5 pr-1.5', className)}
       title={fullPath}
+      aria-label={t('insights:fileMention.badgeTitle', { filePath: fullPath })}
       {...props}
     >
-      <FileCode className="h-3 w-3" />
+      <FileCode className="h-3 w-3" aria-hidden="true" />
       <span className="truncate max-w-[150px]">{displayName}</span>
       {onRemove && (
         <button
@@ -74,7 +75,7 @@ export function FileMentionBadge({
           )}
           aria-label={t('insights:fileMention.removeAriaLabel', { fileName: displayName })}
         >
-          <X className="h-3 w-3" />
+          <X className="h-3 w-3" aria-hidden="true" />
         </button>
       )}
     </Badge>

@@ -1,7 +1,13 @@
 {
   "fileMention": {
     "removeAriaLabel": "Supprimer la mention de fichier : {{fileName}}",
-    "badgeTitle": "Fichier : {{filePath}}"
+    "badgeTitle": "Fichier : {{filePath}}",
+    "inputAriaLabel": "Zone de saisie de message avec support de mention de fichier",
+    "inputAriaDescription": "Tapez @ pour mentionner et référencer des fichiers de votre projet",
+    "autocompleteLabel": "Suggestions de fichiers",
+    "autocompleteCount": "{{count}} suggestion de fichier disponible",
+    "autocompleteCount_plural": "{{count}} suggestions de fichiers disponibles",
+    "noFilesFound": "Aucun fichier trouvé correspondant à votre requête"
   },
   "fileContext": {
     "title": "Fichiers référencés",

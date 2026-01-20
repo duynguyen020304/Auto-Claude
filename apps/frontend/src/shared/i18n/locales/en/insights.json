@@ -1,7 +1,13 @@
 {
   "fileMention": {
     "removeAriaLabel": "Remove file mention: {{fileName}}",
-    "badgeTitle": "File: {{filePath}}"
+    "badgeTitle": "File: {{filePath}}",
+    "inputAriaLabel": "Message input with file mention support",
+    "inputAriaDescription": "Type @ to mention and reference files from your project",
+    "autocompleteLabel": "File autocomplete suggestions",
+    "autocompleteCount": "{{count}} file suggestion available",
+    "autocompleteCount_plural": "{{count}} file suggestions available",
+    "noFilesFound": "No files found matching your query"
   },
   "fileContext": {
     "title": "Referenced Files",

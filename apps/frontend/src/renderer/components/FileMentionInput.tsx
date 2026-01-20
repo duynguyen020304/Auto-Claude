@@ -54,6 +54,7 @@ export function FileMentionInput({
 
   // Refs
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const descriptionId = useRef(`file-mention-desc-${Math.random().toString(36).substr(2, 9)}`);
 
   // Autocomplete state
   const [autocomplete, setAutocomplete] = useState<{
@@ -209,6 +210,7 @@ export function FileMentionInput({
         whiteSpace: 'pre-wrap',
         color: 'transparent'
       }}
+      aria-hidden="true"
     >
       {value.split(/(@[\w\-./\\]+\.\w+(:\d+(?:-\d+)?)?)/g).map((part, i) => {
         // Match @mentions with optional line range
@@ -230,6 +232,11 @@ export function FileMentionInput({
 
   return (
     <div className="relative">
+      {/* Screen reader only description */}
+      <span id={descriptionId.current} className="sr-only">
+        {t('fileMention.inputAriaDescription')}
+      </span>
+
       {/* Highlight overlay */}
       {highlightOverlay}
 
@@ -243,7 +250,11 @@ export function FileMentionInput({
         placeholder={placeholder}
         rows={rows}
         disabled={disabled}
-        aria-label={ariaLabel}
+        aria-label={ariaLabel || t('fileMention.inputAriaLabel')}
+        aria-describedby={descriptionId.current}
+        aria-autocomplete="list"
+        aria-controls={autocomplete?.show ? 'file-mention-list' : undefined}
+        aria-expanded={autocomplete?.show}
         className={cn(
           'w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background',
           'placeholder:text-muted-foreground',
