@@ -8,9 +8,10 @@ import type { Task, TaskStatus, ImplementationPlan } from '../../shared/types';
 
 // Helper to create test tasks
 function createTestTask(overrides: Partial<Task> = {}): Task {
+  const uniqueId = `task-${Date.now()}-${Math.random().toString(36).substring(7)}`;
   return {
-    id: `task-${Date.now()}-${Math.random().toString(36).substring(7)}`,
-    specId: 'test-spec-001',
+    id: uniqueId,
+    specId: `spec-${uniqueId}`,
     projectId: 'project-1',
     title: 'Test Task',
     description: 'Test description',
@@ -51,12 +52,7 @@ function createTestPlan(overrides: Partial<ImplementationPlan> = {}): Implementa
 describe('Task Store', () => {
   beforeEach(() => {
     // Reset store to initial state before each test
-    useTaskStore.setState({
-      tasks: [],
-      selectedTaskId: null,
-      isLoading: false,
-      error: null
-    });
+    useTaskStore.getState().clearTasks();
   });
 
   afterEach(() => {
@@ -2127,4 +2123,3 @@ describe('Task Store', () => {
       });
     });
   });
-});
