@@ -362,6 +362,7 @@ from core.auth import (
     require_auth_token,
     validate_token_not_encrypted,
 )
+from core.usage_tracker import TokenUsage
 from linear_updater import is_linear_enabled
 from prompts_pkg.project_context import detect_project_capabilities, load_project_index
 from security import bash_security_hook
@@ -659,6 +660,99 @@ def load_claude_md(project_dir: Path) -> str | None:
         except Exception:
             return None
     return None
+
+
+def extract_token_usage(response_message: Any) -> TokenUsage:
+    """
+    Extract token usage information from SDK response message.
+
+    This function parses SDK response messages to extract token counts for
+    input, output, cache creation, and cache read tokens. It handles multiple
+    message types and gracefully handles missing usage data.
+
+    The SDK typically returns a StopMessage or similar message type at the
+    end of a response stream that contains usage information in the
+    following format:
+        - input_tokens: Number of tokens in the input prompt
+        - output_tokens: Number of tokens in the model's response
+        - cache_creation_input_tokens: Tokens used for prompt caching (creation)
+        - cache_read_tokens: Tokens read from cache (not charged at full rate)
+
+    Args:
+        response_message: A message object from client.receive_response() stream.
+                         Can be AssistantMessage, UserMessage, StopMessage, or others.
+
+    Returns:
+        TokenUsage object with extracted token counts (all zeros if usage data not found)
+
+    Example:
+        >>> # In agent session after receiving messages
+        >>> async for msg in client.receive_response():
+        ...     msg_type = type(msg).__name__
+        ...     if msg_type == "StopMessage":
+        ...         usage = extract_token_usage(msg)
+        ...         logger.info(f"Used {usage.total_tokens} tokens")
+    """
+    # Default: no usage data available
+    usage = TokenUsage()
+
+    # StopMessage typically contains usage information at the end of the stream
+    if hasattr(response_message, "usage"):
+        # Direct usage attribute (most common pattern)
+        usage_data = response_message.usage
+
+        # Handle both dict and object formats
+        if isinstance(usage_data, dict):
+            usage.input_tokens = usage_data.get("input_tokens", 0)
+            usage.output_tokens = usage_data.get("output_tokens", 0)
+            usage.cache_creation_input_tokens = usage_data.get(
+                "cache_creation_input_tokens", 0
+            )
+            usage.cache_read_tokens = usage_data.get("cache_read_tokens", 0)
+        else:
+            # Object with attributes
+            usage.input_tokens = getattr(usage_data, "input_tokens", 0)
+            usage.output_tokens = getattr(usage_data, "output_tokens", 0)
+            usage.cache_creation_input_tokens = getattr(
+                usage_data, "cache_creation_input_tokens", 0
+            )
+            usage.cache_read_tokens = getattr(usage_data, "cache_read_tokens", 0)
+
+        logger.debug(
+            f"Extracted token usage: {usage.input_tokens} input, "
+            f"{usage.output_tokens} output, "
+            f"{usage.cache_creation_input_tokens} cache creation, "
+            f"{usage.cache_read_tokens} cache read"
+        )
+    elif hasattr(response_message, "token_usage"):
+        # Alternative attribute name
+        usage_data = response_message.token_usage
+
+        if isinstance(usage_data, dict):
+            usage.input_tokens = usage_data.get("input_tokens", 0)
+            usage.output_tokens = usage_data.get("output_tokens", 0)
+            usage.cache_creation_input_tokens = usage_data.get(
+                "cache_creation_input_tokens", 0
+            )
+            usage.cache_read_tokens = usage_data.get("cache_read_tokens", 0)
+        else:
+            usage.input_tokens = getattr(usage_data, "input_tokens", 0)
+            usage.output_tokens = getattr(usage_data, "output_tokens", 0)
+            usage.cache_creation_input_tokens = getattr(
+                usage_data, "cache_creation_input_tokens", 0
+            )
+            usage.cache_read_tokens = getattr(usage_data, "cache_read_tokens", 0)
+
+        logger.debug(
+            f"Extracted token usage: {usage.input_tokens} input, "
+            f"{usage.output_tokens} output"
+        )
+    else:
+        # No usage data in this message type (e.g., AssistantMessage, UserMessage)
+        # This is normal - only the final StopMessage typically contains usage
+        logger.debug(f"No usage data in message type: {type(response_message).__name__}")
+
+    return usage
 
 
 def create_client(
