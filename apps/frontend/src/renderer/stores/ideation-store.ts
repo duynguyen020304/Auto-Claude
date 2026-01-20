@@ -329,7 +329,7 @@ export const useIdeationStore = create<IdeationState>((set) => ({
             id: `session-${Date.now()}`,
             projectId: '',
             config,
-            ideas,
+            ideas: ideas,
             projectContext: {
               existingFeatures: [],
               techStack: [],
@@ -343,7 +343,7 @@ export const useIdeationStore = create<IdeationState>((set) => ({
 
       // Replace ideas of this type (remove old ones including dismissed), keep other types
       const otherTypeIdeas = state.session.ideas.filter(
-        (idea) => idea.type !== ideationType
+        (idea) => idea.type !== ideationType && idea.status !== 'dismissed' && idea.status !== 'archived'
       );
 
       return {
