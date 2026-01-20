@@ -7,7 +7,10 @@
     "autocompleteLabel": "File autocomplete suggestions",
     "autocompleteCount": "{{count}} file suggestion available",
     "autocompleteCount_plural": "{{count}} file suggestions available",
-    "noFilesFound": "No files found matching your query"
+    "noFilesFound": "No files found matching your query",
+    "syntaxHelpTitle": "Tip: Use line ranges",
+    "syntaxHelpFile": "to mention entire file",
+    "syntaxHelpLineRange": "to specify lines (e.g., 10-50)"
   },
   "fileContext": {
     "title": "Referenced Files",

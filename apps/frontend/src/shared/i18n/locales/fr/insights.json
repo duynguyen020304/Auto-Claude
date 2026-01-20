@@ -7,7 +7,10 @@
     "autocompleteLabel": "Suggestions de fichiers",
     "autocompleteCount": "{{count}} suggestion de fichier disponible",
     "autocompleteCount_plural": "{{count}} suggestions de fichiers disponibles",
-    "noFilesFound": "Aucun fichier trouvé correspondant à votre requête"
+    "noFilesFound": "Aucun fichier trouvé correspondant à votre requête",
+    "syntaxHelpTitle": "Astuce : Utilisez des plages de lignes",
+    "syntaxHelpFile": "pour mentionner le fichier entier",
+    "syntaxHelpLineRange": "pour spécifier des lignes (ex: 10-50)"
   },
   "fileContext": {
     "title": "Fichiers référencés",
