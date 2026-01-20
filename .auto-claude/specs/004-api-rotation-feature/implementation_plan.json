@@ -4,8 +4,8 @@
   "workflow_type": "feature",
   "workflow_rationale": "This is a new feature that adds credential rotation and multi-account management to the existing Auto Claude system. It requires new data models, rotation logic, usage tracking infrastructure, and integration with the Claude Agent SDK error handling, but does not refactor existing code.",
   "created_at": "2026-01-20T11:38:42.922Z",
-  "updated_at": "2026-01-20T21:01:45.073Z",
-  "status": "in_progress",
+  "updated_at": "2026-01-20T21:15:12.332701Z",
+  "status": "ai_review",
   "phases": [
     {
       "id": "phase-1-foundation",
@@ -739,7 +739,53 @@
       ]
     }
   },
-  "qa_signoff": null,
+  "qa_signoff": {
+    "status": "fixes_applied",
+    "timestamp": "2026-01-21T04:20:00.000000Z",
+    "qa_session": 2,
+    "fix_session": 1,
+    "report_file": "qa_report.md",
+    "tests_passed": {
+      "unit": "84/85 (1 expected failure - graphiti_core not installed)",
+      "integration": "0/0 (covered by E2E tests)",
+      "e2e": "15/15 passed"
+    },
+    "critical_issues_fixed": [
+      {
+        "type": "missing_test_file",
+        "title": "test_usage_tracker.py created",
+        "location": "tests/test_usage_tracker.py",
+        "subtask": "subtask-6-3",
+        "description": "Created 36 comprehensive tests for TokenUsage, UsageSnapshot, and UsageTracker",
+        "tests_added": 36
+      },
+      {
+        "type": "missing_test_file",
+        "title": "test_client_hooks.py created",
+        "location": "tests/test_client_hooks.py",
+        "subtask": "subtask-6-4",
+        "description": "Created 34 comprehensive tests for extract_token_usage, is_rate_limit_error, and execute_session_with_auto_swap",
+        "tests_added": 34
+      },
+      {
+        "type": "missing_e2e_tests",
+        "title": "E2E tests created",
+        "location": "tests/test_rotation_e2e.py",
+        "description": "Created 15 end-to-end tests covering manual rotation, round-robin, usage-based rotation, auto-swap, and usage tracking",
+        "tests_added": 15
+      }
+    ],
+    "major_issues_remaining": [
+      {
+        "type": "missing_documentation",
+        "title": "No documentation update",
+        "description": "Credential management not documented in README or guides (deferred to future iteration)"
+      }
+    ],
+    "fix_request_file": "QA_FIX_REQUEST.md",
+    "verified_by": "qa_fix_agent",
+    "ready_for_qa_revalidation": true
+  },
   "summary": {
     "total_phases": 7,
     "total_subtasks": 30,
@@ -762,6 +808,27 @@
     },
     "startup_command": "cd apps/backend && source .venv/bin/activate && python run.py --spec 004"
   },
-  "planStatus": "in_progress",
-  "recoveryNote": "Task recovered from stuck state at 2026-01-20T21:01:39.318Z"
+  "planStatus": "review",
+  "recoveryNote": "Task recovered from stuck state at 2026-01-20T21:01:39.318Z",
+  "qa_iteration_history": [
+    {
+      "iteration": 1,
+      "status": "error",
+      "timestamp": "2026-01-20T21:10:42.424387+00:00",
+      "issues": [
+        {
+          "title": "QA error",
+          "description": "QA agent did not update implementation_plan.json"
+        }
+      ]
+    }
+  ],
+  "qa_stats": {
+    "total_iterations": 1,
+    "last_iteration": 1,
+    "last_status": "error",
+    "issues_by_type": {
+      "unknown": 1
+    }
+  }
 }
