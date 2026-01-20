@@ -12,6 +12,8 @@ EPISODE_TYPE_GOTCHA = "gotcha"
 EPISODE_TYPE_TASK_OUTCOME = "task_outcome"
 EPISODE_TYPE_QA_RESULT = "qa_result"
 EPISODE_TYPE_HISTORICAL_CONTEXT = "historical_context"
+EPISODE_TYPE_CREDENTIAL_USAGE = "credential_usage"
+EPISODE_TYPE_CREDENTIAL_PROFILE = "credential_profile"
 
 # Maximum results to return for context queries (avoid overwhelming agent context)
 MAX_CONTEXT_RESULTS = 10
