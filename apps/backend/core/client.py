@@ -757,6 +757,104 @@ def extract_token_usage(response_message: Any) -> TokenUsage:
     return usage
 
 
+def is_rate_limit_error(response_message: Any) -> bool:
+    """
+    Detect if an SDK response message indicates a rate limit error (HTTP 429).
+
+    This function checks for various indicators of rate limiting in SDK response
+    messages, including HTTP status codes, error types, and error messages.
+    It handles multiple response formats and gracefully handles missing error data.
+
+    Rate limit errors can occur when:
+    - Too many requests are sent in a short time period
+    - Token usage limits are exceeded
+    - Request quotas are exhausted
+
+    Args:
+        response_message: A message object from client.receive_response() stream.
+                         Can be an error message, exception, or other response type.
+
+    Returns:
+        True if the response indicates a rate limit error (HTTP 429), False otherwise
+
+    Example:
+        >>> # In agent session after receiving messages
+        >>> async for msg in client.receive_response():
+        ...     if is_rate_limit_error(msg):
+        ...         logger.warning("Rate limit detected, rotating credential")
+        ...         # Trigger credential rotation
+    """
+    # Check for HTTP status code attribute (most direct indicator)
+    if hasattr(response_message, "status_code"):
+        status = response_message.status_code
+        if status == 429:
+            logger.debug(f"Rate limit error detected via status_code: {status}")
+            return True
+
+    # Check for error type attribute (SDK-specific error types)
+    if hasattr(response_message, "type"):
+        error_type = response_message.type
+        # Common rate limit error type names
+        if error_type and "rate" in str(error_type).lower():
+            logger.debug(f"Rate limit error detected via error type: {error_type}")
+            return True
+
+    # Check for error message content (text-based detection)
+    error_attrs = ["error", "error_message", "message", "detail", "reason"]
+    for attr in error_attrs:
+        if hasattr(response_message, attr):
+            error_content = getattr(response_message, attr)
+
+            # Handle both dict and string formats
+            if isinstance(error_content, dict):
+                # Check for 'type' or 'message' fields in error dict
+                error_dict_type = error_content.get("type", "")
+                error_dict_message = error_content.get("message", "")
+                error_dict_detail = error_content.get("detail", "")
+
+                if (
+                    "rate" in error_dict_type.lower()
+                    or "rate" in error_dict_message.lower()
+                    or "rate" in error_dict_detail.lower()
+                    or "429" in error_dict_message
+                    or "429" in error_dict_detail
+                ):
+                    logger.debug(f"Rate limit error detected via {attr}: {error_content}")
+                    return True
+
+            elif isinstance(error_content, str):
+                # Check for rate limit keywords in error string
+                error_lower = error_content.lower()
+                rate_limit_indicators = [
+                    "rate limit",
+                    "rate_limit",
+                    "rate-limit",
+                    "too many requests",
+                    "quota exceeded",
+                    "throttled",
+                    "429",
+                ]
+
+                for indicator in rate_limit_indicators:
+                    if indicator in error_lower:
+                        logger.debug(
+                            f"Rate limit error detected via {attr}: '{error_content}'"
+                        )
+                        return True
+
+    # Check if it's an exception with a status code
+    if hasattr(response_message, "__class__"):
+        # Some SDK errors are exceptions
+        exc_class = response_message.__class__.__name__
+        if "RateLimit" in exc_class or "TooManyRequests" in exc_class:
+            logger.debug(f"Rate limit error detected via exception type: {exc_class}")
+            return True
+
+    # Not a rate limit error
+    logger.debug(f"Not a rate limit error: {type(response_message).__name__}")
+    return False
+
+
 def _load_rotation_config(project_dir: Path, spec_dir: Path) -> RotationConfig | None:
     """
     Load credential rotation configuration from environment variables.
