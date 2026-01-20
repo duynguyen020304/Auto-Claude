@@ -313,3 +313,153 @@ def get_strategy_registry() -> StrategyRegistry:
         _global_registry = StrategyRegistry()
 
     return _global_registry
+
+
+class ManualRotationStrategy(RotationStrategy):
+    """
+    Manual rotation strategy where user explicitly selects the credential.
+
+    In manual mode, the credential is selected based on user configuration
+    via environment variables or spec settings. This provides direct control
+    over which credential is used, with no automatic rotation.
+
+    The strategy looks for the credential ID in:
+    1. RotationConfig.manual_credential_id (explicit configuration)
+    2. Environment variable AUTO_CLAUDE_CREDENTIAL_ID
+    3. First available credential in pool if no specific selection
+
+    Example:
+        >>> strategy = ManualRotationStrategy()
+        >>> # Configure manual credential via environment
+        >>> os.environ['AUTO_CLAUDE_CREDENTIAL_ID'] = 'cred-001'
+        >>> credential = strategy.select_credential(pool, config, context)
+    """
+
+    def __init__(self) -> None:
+        """Initialize manual rotation strategy."""
+        super().__init__(mode=RotationMode.MANUAL)
+        self._selected_credential_id: str | None = None
+        logger.debug("Initialized ManualRotationStrategy")
+
+    def select_credential(
+        self,
+        pool: list[CredentialProfile],
+        config: "RotationConfig",  # type: ignore[name-defined]
+        context: "RotationContext",  # type: ignore[name-defined]
+    ) -> CredentialProfile | None:
+        """
+        Select a credential based on user's explicit selection.
+
+        The selection priority is:
+        1. Check if config.manual_credential_id is set and valid
+        2. Check environment variable AUTO_CLAUDE_CREDENTIAL_ID
+        3. Fall back to first active credential in pool (backward compatibility)
+
+        Args:
+            pool: List of available credential profiles
+            config: Rotation configuration (may contain manual_credential_id)
+            context: Selection context (not used in manual mode)
+
+        Returns:
+            The selected CredentialProfile, or None if no suitable credential found
+
+        Raises:
+            ValueError: If pool is empty
+        """
+        import os
+
+        if not pool:
+            raise ValueError("Credential pool is empty")
+
+        # Filter to only active credentials
+        active_pool = self.filter_active_credentials(pool)
+
+        if not active_pool:
+            logger.warning(
+                "Manual rotation: No active credentials available in pool"
+            )
+            return None
+
+        # Priority 1: Check config for explicit credential ID
+        if hasattr(config, "manual_credential_id") and config.manual_credential_id:
+            credential_id = config.manual_credential_id
+            logger.debug(f"Manual selection from config: {credential_id}")
+            credential = self._find_credential_by_id(active_pool, credential_id)
+            if credential:
+                return credential
+            else:
+                logger.warning(
+                    f"Configured credential {credential_id} not found or inactive"
+                )
+
+        # Priority 2: Check environment variable
+        env_credential_id = os.environ.get("AUTO_CLAUDE_CREDENTIAL_ID")
+        if env_credential_id:
+            logger.debug(f"Manual selection from environment: {env_credential_id}")
+            credential = self._find_credential_by_id(
+                active_pool, env_credential_id
+            )
+            if credential:
+                return credential
+            else:
+                logger.warning(
+                    f"Environment credential {env_credential_id} not found or inactive"
+                )
+
+        # Priority 3: Fall back to first active credential (backward compatibility)
+        # This ensures single-credential setups continue to work
+        selected = active_pool[0]
+        logger.debug(
+            f"Manual selection: Using first active credential {selected.id}"
+        )
+        return selected
+
+    def _find_credential_by_id(
+        self, pool: list[CredentialProfile], credential_id: str
+    ) -> CredentialProfile | None:
+        """
+        Find a credential in the pool by ID.
+
+        Args:
+            pool: List of credential profiles to search
+            credential_id: ID of credential to find
+
+        Returns:
+            CredentialProfile if found, None otherwise
+        """
+        for credential in pool:
+            if credential.id == credential_id:
+                logger.info(
+                    f"Manual rotation: Selected credential {credential_id} "
+                    f"({credential.name})"
+                )
+                return credential
+
+        return None
+
+    def set_credential(self, credential_id: str) -> None:
+        """
+        Programmatically set the credential ID for manual selection.
+
+        This allows programmatic override of the manual selection without
+        using environment variables or config.
+
+        Args:
+            credential_id: ID of credential to use
+
+        Example:
+            >>> strategy = ManualRotationStrategy()
+            >>> strategy.set_credential('cred-001')
+            >>> credential = strategy.select_credential(pool, config, context)
+        """
+        self._selected_credential_id = credential_id
+        logger.debug(f"Manual credential set to: {credential_id}")
+
+    def get_selected_credential(self) -> str | None:
+        """
+        Get the currently selected credential ID.
+
+        Returns:
+            The credential ID if set, None otherwise
+        """
+        return self._selected_credential_id
