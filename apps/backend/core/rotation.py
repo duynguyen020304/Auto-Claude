@@ -7,7 +7,7 @@ Supports four rotation modes: manual, round_robin, usage_based, and rate_limit_a
 
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from core.credentials import CredentialProfile, CredentialStatus, RotationMode
 
@@ -985,3 +985,543 @@ class RateLimitAwareRotationStrategy(RotationStrategy):
 
         # Return default limit
         return default_limit
+
+
+class RotationManager:
+    """
+    Manager class for coordinating credential rotation strategies and selection.
+
+    The RotationManager provides a high-level interface for credential rotation,
+    coordinating between rotation configuration, strategy selection, and credential
+    storage. It handles the complete rotation workflow including credential selection,
+    validation, error handling, and fallback logic.
+
+    This class serves as the main entry point for SDK client code to perform
+    credential rotation, abstracting away the complexity of strategy selection
+    and credential management.
+
+    Attributes:
+        config: Rotation configuration (mode, pool, thresholds, etc.)
+        registry: Strategy registry for creating/getting strategy instances
+        current_credential_id: The ID of the currently active credential
+
+    Example:
+        >>> manager = RotationManager(
+        ...     config=RotationConfig(mode=RotationMode.ROUND_ROBIN, pool=["cred1", "cred2"]),
+        ...     memory=graphiti_memory
+        ... )
+        >>> # Select credential for API request
+        >>> credential = manager.select_credential()
+        >>> # Record usage after request completes
+        >>> manager.record_usage(credential.id, tokens=1000)
+        >>> # Handle rate limit error
+        >>> manager.handle_rate_limit(current_credential_id)
+    """
+
+    def __init__(
+        self,
+        config: "RotationConfig",  # type: ignore[name-defined]
+        memory: "GraphitiMemory | None" = None,
+        task_id: str | None = None,
+    ) -> None:
+        """
+        Initialize the rotation manager.
+
+        Args:
+            config: Rotation configuration (mode, credential pool, thresholds)
+            memory: Optional GraphitiMemory instance for usage-based strategies
+            task_id: Optional task/spec identifier for logging and tracking
+
+        Raises:
+            ValueError: If configuration is invalid
+        """
+        # Import RotationConfig locally to avoid circular dependency
+        from core.credentials import RotationConfig
+
+        if not isinstance(config, RotationConfig):
+            raise ValueError(
+                f"config must be a RotationConfig instance, got {type(config)}"
+            )
+
+        self.config = config
+        self.memory = memory
+        self.task_id = task_id
+        self.current_credential_id: str | None = None
+        self.request_count = 0
+
+        # Get strategy registry and initial strategy
+        self._registry = get_strategy_registry()
+        self._strategy: RotationStrategy | None = None
+
+        logger.info(
+            f"Initialized RotationManager: mode={config.mode.value}, "
+            f"pool_size={len(config.credential_pool)}, "
+            f"task={task_id or 'N/A'}"
+        )
+
+    def select_credential(self) -> "CredentialProfile | None":  # type: ignore[name-defined]
+        """
+        Select a credential using the configured rotation strategy.
+
+        This is the main method called by SDK client code to get the appropriate
+        credential for an API request. It coordinates with the strategy registry
+        to get the appropriate strategy instance and delegates credential selection
+        to that strategy.
+
+        The method handles:
+        - Loading credentials from storage based on the configured pool
+        - Filtering to only active credentials
+        - Delegating selection to the appropriate strategy
+        - Updating the current credential tracking
+        - Error handling and logging
+
+        Returns:
+            The selected CredentialProfile, or None if no suitable credential found
+
+        Raises:
+            ValueError: If credential pool is empty or configuration is invalid
+
+        Note:
+            The selected credential is automatically tracked as current_credential_id
+            for use in subsequent operations like handle_rate_limit().
+
+        Example:
+            >>> manager = RotationManager(config, memory)
+            >>> credential = manager.select_credential()
+            >>> if credential:
+            ...     # Use credential for API request
+            ...     api_call(credential.credential_value)
+        """
+        from core.auth import get_credential, list_credentials
+
+        # Load credentials from the configured pool
+        pool = self._load_credential_pool()
+
+        if not pool:
+            logger.error(
+                f"RotationManager: No credentials available in pool "
+                f"(pool IDs: {self.config.credential_pool})"
+            )
+            return None
+
+        # Get or create strategy instance
+        strategy = self._get_strategy()
+
+        # Create rotation context
+        context = RotationContext(
+            current_credential_id=self.current_credential_id,
+            memory=self.memory,
+            task_id=self.task_id,
+            request_count=self.request_count,
+        )
+
+        # Delegate selection to strategy
+        try:
+            selected = strategy.select_credential(pool, self.config, context)
+
+            if selected:
+                # Update tracking
+                self.current_credential_id = selected.id
+                self.request_count += 1
+
+                logger.debug(
+                    f"RotationManager: Selected credential {selected.id} "
+                    f"({selected.name}) for request #{self.request_count}"
+                )
+            else:
+                logger.warning(
+                    f"RotationManager: Strategy returned None for credential selection"
+                )
+
+            return selected
+
+        except Exception as e:
+            logger.error(
+                f"RotationManager: Failed to select credential: {e}",
+                exc_info=True,
+            )
+            return None
+
+    def _load_credential_pool(self) -> list["CredentialProfile"]:  # type: ignore[name-defined]
+        """
+        Load credential profiles from storage based on the configured pool.
+
+        Loads credentials by ID from the configured credential pool. Handles
+        missing credentials, disabled credentials, and storage errors gracefully.
+
+        Returns:
+            List of CredentialProfile objects from the pool (empty if none found)
+
+        Note:
+            Credentials that fail to load from storage are logged but not included
+            in the returned pool. The strategy will handle empty pools.
+        """
+        from core.auth import get_credential
+        from core.credentials import CredentialProfile
+
+        pool: list[CredentialProfile] = []
+        pool_ids = self.config.get_effective_pool()
+
+        if not pool_ids:
+            logger.debug("RotationManager: Credential pool is empty")
+            return []
+
+        for cred_id in pool_ids:
+            try:
+                credential = get_credential(cred_id)
+                if credential:
+                    pool.append(credential)
+                    logger.debug(
+                        f"RotationManager: Loaded credential {cred_id} "
+                        f"({credential.name}, status={credential.status.value})"
+                    )
+                else:
+                    logger.warning(
+                        f"RotationManager: Credential {cred_id} not found in storage"
+                    )
+            except Exception as e:
+                logger.warning(
+                    f"RotationManager: Failed to load credential {cred_id}: {e}"
+                )
+
+        logger.info(
+            f"RotationManager: Loaded {len(pool)} credentials from pool "
+            f"(requested {len(pool_ids)})"
+        )
+
+        return pool
+
+    def _get_strategy(self) -> RotationStrategy:
+        """
+        Get or create the rotation strategy instance.
+
+        Uses the strategy registry to get the appropriate strategy for the
+        configured rotation mode. Strategy instances are cached by the registry
+        for efficiency.
+
+        Returns:
+            A RotationStrategy instance for the configured mode
+
+        Raises:
+            ValueError: If the rotation mode is not recognized
+        """
+        if self._strategy is None:
+            self._strategy = self._registry.get_strategy(self.config.mode)
+            logger.debug(
+                f"RotationManager: Using strategy {self._strategy.__class__.__name__}"
+            )
+
+        return self._strategy
+
+    def record_usage(
+        self,
+        credential_id: str,
+        input_tokens: int = 0,
+        output_tokens: int = 0,
+        cache_read_tokens: int = 0,
+        cache_creation_tokens: int = 0,
+    ) -> None:
+        """
+        Record API usage for a credential.
+
+        This method should be called after each API request completes to update
+        usage metrics in both the credential profile and Graphiti memory system.
+        This enables usage-based and rate-limit-aware rotation strategies to make
+        informed decisions.
+
+        Args:
+            credential_id: ID of the credential that was used
+            input_tokens: Number of input tokens consumed
+            output_tokens: Number of output tokens consumed
+            cache_read_tokens: Number of cache read tokens
+            cache_creation_tokens: Number of cache creation tokens
+
+        Note:
+            Usage is recorded to both the credential profile (for immediate access)
+            and Graphiti memory (for persistent tracking across sessions).
+
+        Example:
+            >>> manager = RotationManager(config, memory)
+            >>> credential = manager.select_credential()
+            >>> # Make API request...
+            >>> manager.record_usage(
+            ...     credential.id,
+            ...     input_tokens=1000,
+            ...     output_tokens=500
+            ... )
+        """
+        from core.auth import get_credential
+
+        total_tokens = input_tokens + output_tokens + cache_read_tokens
+
+        try:
+            # Update credential profile usage metrics
+            credential = get_credential(credential_id)
+            if credential:
+                credential.record_usage(
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    cache_read_tokens=cache_read_tokens,
+                    cache_creation_tokens=cache_creation_tokens,
+                )
+                logger.debug(
+                    f"RotationManager: Recorded {total_tokens} tokens for credential "
+                    f"{credential_id} (total: {credential.usage_metrics.total_tokens})"
+                )
+
+            # Record to Graphiti memory if available
+            if self.memory and self.memory.is_enabled:
+                import asyncio
+
+                try:
+                    asyncio.run(
+                        self.memory.record_usage(credential_id, total_tokens)
+                    )
+                    logger.debug(
+                        f"RotationManager: Recorded usage to Graphiti for {credential_id}"
+                    )
+                except Exception as e:
+                    logger.warning(
+                        f"RotationManager: Failed to record usage to Graphiti: {e}"
+                    )
+
+        except Exception as e:
+            logger.error(
+                f"RotationManager: Failed to record usage for {credential_id}: {e}",
+                exc_info=True,
+            )
+
+    def handle_rate_limit(self, credential_id: str) -> str | None:
+        """
+        Handle a rate limit error for a credential.
+
+        When a 429 rate limit error occurs, this method:
+        1. Marks the credential as rate_limited
+        2. Logs the rate limit event
+        3. Returns the ID of the next available credential (if any)
+
+        This allows the SDK client code to automatically retry with a different
+        credential without manual intervention.
+
+        Args:
+            credential_id: ID of the credential that hit the rate limit
+
+        Returns:
+            ID of the next available credential to retry with, or None if no
+            alternative credential is available
+
+        Example:
+            >>> try:
+            ...     response = api_request(credential.credential_value)
+            ... except RateLimitError:
+            ...     next_credential_id = manager.handle_rate_limit(credential.id)
+            ...     if next_credential_id:
+            ...         # Retry with new credential
+            ...         credential = get_credential(next_credential_id)
+            ...         response = api_request(credential.credential_value)
+        """
+        from core.auth import get_credential, save_credential
+
+        try:
+            # Mark credential as rate_limited
+            credential = get_credential(credential_id)
+            if credential:
+                credential.mark_rate_limited()
+                save_credential(credential)
+
+                logger.warning(
+                    f"RotationManager: Credential {credential_id} ({credential.name}) "
+                    f"marked as rate_limited"
+                )
+
+                # Try to select next available credential
+                next_credential = self.select_credential()
+
+                if next_credential:
+                    logger.info(
+                        f"RotationManager: Switching to credential {next_credential.id} "
+                        f"({next_credential.name}) after rate limit"
+                    )
+                    return next_credential.id
+                else:
+                    logger.error(
+                        f"RotationManager: No alternative credentials available "
+                        f"after rate limit on {credential_id}"
+                    )
+                    return None
+            else:
+                logger.warning(
+                    f"RotationManager: Credential {credential_id} not found, "
+                    f"cannot mark as rate_limited"
+                )
+                return None
+
+        except Exception as e:
+            logger.error(
+                f"RotationManager: Failed to handle rate limit for {credential_id}: {e}",
+                exc_info=True,
+            )
+            return None
+
+    def should_rotate_proactively(
+        self, credential_id: str | None = None
+    ) -> bool:
+        """
+        Check if proactive rotation is recommended based on current usage.
+
+        This method is used by rate-limit-aware mode to determine if a credential
+        is approaching its rate limit and should be rotated before hitting the limit.
+
+        Args:
+            credential_id: Optional credential ID to check (uses current if None)
+
+        Returns:
+            True if rotation is recommended, False otherwise
+
+        Note:
+            This is a proactive check - actual rotation is performed by calling
+            select_credential() which will use the strategy to select the best
+            credential based on current conditions.
+        """
+        from core.auth import get_credential
+
+        cred_id = credential_id or self.current_credential_id
+
+        if not cred_id:
+            return False
+
+        try:
+            # Only applicable for rate_limit_aware mode
+            if self.config.mode != RotationMode.RATE_LIMIT_AWARE:
+                return False
+
+            # Get credential usage
+            credential = get_credential(cred_id)
+            if not credential or not self.memory:
+                return False
+
+            # Query Graphiti for usage
+            import asyncio
+
+            usage_data = asyncio.run(self.memory.get_credential_usage(cred_id))
+            if not usage_data:
+                return False
+
+            # Get rate limit for credential
+            limit = self._get_credential_limit(credential)
+            current_usage = usage_data.get("total_tokens", 0)
+
+            # Check if threshold exceeded
+            should_rotate = self.config.should_rotate_proactively(
+                current_usage, limit
+            )
+
+            if should_rotate:
+                logger.info(
+                    f"RotationManager: Credential {cred_id} at {current_usage}/{limit} "
+                    f"tokens ({current_usage/limit:.1%}), proactive rotation recommended"
+                )
+
+            return should_rotate
+
+        except Exception as e:
+            logger.warning(
+                f"RotationManager: Failed to check proactive rotation for {cred_id}: {e}"
+            )
+            return False
+
+    def _get_credential_limit(
+        self, credential: "CredentialProfile",  # type: ignore[name-defined]
+    ) -> int:
+        """
+        Get the rate limit for a credential.
+
+        Checks the credential's rate_limit_info and metadata for limit information,
+        falling back to the default limit if not found.
+
+        Args:
+            credential: CredentialProfile to get limit for
+
+        Returns:
+            Rate limit in tokens per minute
+        """
+        # Check rate_limit_info first
+        if credential.rate_limit_info:
+            if credential.rate_limit_info.tokens_per_minute:
+                return credential.rate_limit_info.tokens_per_minute
+
+        # Check metadata for custom limit
+        if credential.metadata:
+            custom_limit = credential.metadata.get("tokens_per_minute")
+            if custom_limit:
+                try:
+                    return int(custom_limit)
+                except (ValueError, TypeError):
+                    logger.debug(
+                        f"Invalid tokens_per_minute in metadata for {credential.id}"
+                    )
+
+        # Return default limit (Anthropic's typical TPM limit)
+        return 200_000
+
+    def get_status(self) -> dict[str, Any]:
+        """
+        Get the current status of the rotation manager.
+
+        Returns a dictionary with information about the current rotation state,
+        including active credential, pool status, and request statistics.
+
+        Returns:
+            Dictionary containing rotation manager status
+
+        Example:
+            >>> manager = RotationManager(config, memory)
+            >>> status = manager.get_status()
+            >>> print(f"Current credential: {status['current_credential_id']}")
+            >>> print(f"Requests made: {status['request_count']}")
+        """
+        status: dict[str, Any] = {
+            "mode": self.config.mode.value,
+            "pool_size": len(self.config.credential_pool),
+            "pool_ids": self.config.credential_pool.copy(),
+            "current_credential_id": self.current_credential_id,
+            "request_count": self.request_count,
+            "task_id": self.task_id,
+            "strategy": self._strategy.__class__.__name__
+            if self._strategy
+            else None,
+        }
+
+        return status
+
+    def reset(self) -> None:
+        """
+        Reset the rotation manager state.
+
+        Clears tracking state (current credential, request count) without
+        changing the configuration. Useful for testing or when restarting
+        a session.
+
+        Example:
+            >>> manager = RotationManager(config, memory)
+            >>> # After many requests...
+            >>> manager.reset()  # Start fresh with same config
+        """
+        self.current_credential_id = None
+        self.request_count = 0
+
+        # Reset round-robin index if applicable
+        if self.config.mode == RotationMode.ROUND_ROBIN and self._strategy:
+            if isinstance(self._strategy, RoundRobinRotationStrategy):
+                self._strategy.reset_index()
+
+        logger.info("RotationManager: State reset")
+
+    def __repr__(self) -> str:
+        """Return string representation."""
+        return (
+            f"RotationManager(mode={self.config.mode.value}, "
+            f"pool_size={len(self.config.credential_pool)}, "
+            f"current={self.current_credential_id}, "
+            f"requests={self.request_count})"
+        )
