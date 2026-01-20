@@ -160,21 +160,6 @@ export function IdeationHeader({
             </TooltipTrigger>
             <TooltipContent>{t('accessibility.configureAriaLabel')}</TooltipContent>
           </Tooltip>
-          {canAddMore && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  onClick={onOpenAddMore}
-                  aria-label={t('accessibility.addMoreAriaLabel')}
-                >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add More
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{t('accessibility.addMoreAriaLabel')}</TooltipContent>
-            </Tooltip>
-          )}
           {hasActiveIdeas && !hasSelection && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -196,7 +181,7 @@ export function IdeationHeader({
               <Button
                 variant="outline"
                 size="icon"
-                onClick={onRefresh}
+                onClick={onOpenAddMore}
                 aria-label={t('accessibility.refreshIdeasAriaLabel')}
               >
                 <RefreshCw className="h-4 w-4" />
