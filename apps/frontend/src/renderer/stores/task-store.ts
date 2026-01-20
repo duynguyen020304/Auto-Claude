@@ -104,6 +104,49 @@ function validatePlanData(plan: ImplementationPlan): boolean {
   return true;
 }
 
+/**
+ * Active execution phases where task is actively running and progress should be preserved
+ */
+const ACTIVE_EXECUTION_PHASES: ExecutionPhase[] = ['planning', 'coding', 'qa_review', 'qa_fixing'];
+
+/**
+ * Check if a task is in an active execution phase
+ * Returns true if task is actively running and its progress should be preserved during refresh
+ */
+function isTaskInActivePhase(task: Task | undefined): boolean {
+  if (!task?.executionProgress?.phase) return false;
+  return ACTIVE_EXECUTION_PHASES.includes(task.executionProgress.phase);
+}
+
+/**
+ * Merge refreshed tasks from backend with existing task state from frontend.
+ * Preserves executionProgress for tasks that are actively running to prevent progress loss during refresh.
+ *
+ * This solves the "progress loss bug" where clicking "Refresh Tasks" would reset all running tasks to 0%.
+ * The backend doesn't have executionProgress (it's transient runtime state), so we preserve it from local state.
+ *
+ * @param refreshedTasks - Tasks loaded from backend (without executionProgress)
+ * @param existingTasks - Current tasks from frontend state (with executionProgress for running tasks)
+ * @returns Merged task array with executionProgress preserved for active tasks
+ */
+function mergeTaskStates(refreshedTasks: Task[], existingTasks: Task[]): Task[] {
+  return refreshedTasks.map((refreshedTask) => {
+    const existingTask = existingTasks.find((t) => t.id === refreshedTask.id || t.specId === refreshedTask.specId);
+
+    // Preserve executionProgress for tasks in active execution phases
+    if (existingTask && isTaskInActivePhase(existingTask)) {
+      // Task is actively running - preserve its execution progress from local state
+      return {
+        ...refreshedTask,
+        executionProgress: existingTask.executionProgress
+      };
+    }
+
+    // Task is not running or doesn't exist locally - use refreshed data as-is
+    return refreshedTask;
+  });
+}
+
 // localStorage key prefix for task order persistence
 const TASK_ORDER_KEY_PREFIX = 'task-order-state';
 
@@ -135,7 +178,19 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   error: null,
   taskOrder: null,
 
-  setTasks: (tasks) => set({ tasks }),
+  setTasks: (tasks) =>
+    set((state) => {
+      // Use functional update to merge refreshed tasks with existing state
+      // This preserves executionProgress for tasks that are actively running
+      if (typeof tasks === 'function') {
+        // If a function is passed, call it with current state (for manual merge logic)
+        return { tasks: tasks(state.tasks) };
+      }
+
+      // Otherwise, merge the provided task array with existing state
+      const mergedTasks = mergeTaskStates(tasks, state.tasks);
+      return { tasks: mergedTasks };
+    }),
 
   addTask: (task) =>
     set((state) => {
