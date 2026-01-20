@@ -48,7 +48,7 @@ export function useIdeation(projectId: string, options: UseIdeationOptions = {})
   const [showDismissed, setShowDismissed] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [showEnvConfigModal, setShowEnvConfigModal] = useState(false);
-  const [pendingAction, setPendingAction] = useState<'generate' | 'refresh' | 'append' | null>(null);
+  const [pendingAction, setPendingAction] = useState<'generate' | 'refresh' | 'fresh' | 'append' | null>(null);
   const [showAddMoreDialog, setShowAddMoreDialog] = useState(false);
   const [typesToAdd, setTypesToAdd] = useState<IdeationType[]>([]);
   const [convertingIdeas, setConvertingIdeas] = useState<Set<string>>(new Set());
@@ -82,6 +82,15 @@ export function useIdeation(projectId: string, options: UseIdeationOptions = {})
     refreshIdeation(projectId);
   };
 
+  const handleGenerateFresh = async () => {
+    if (hasToken === false) {
+      setPendingAction('fresh');
+      setShowEnvConfigModal(true);
+      return;
+    }
+    generateIdeation(projectId);
+  };
+
   const handleStop = async () => {
     await stopIdeation(projectId);
   };
@@ -96,6 +105,8 @@ export function useIdeation(projectId: string, options: UseIdeationOptions = {})
       generateIdeation(projectId);
     } else if (pendingAction === 'refresh') {
       refreshIdeation(projectId);
+    } else if (pendingAction === 'fresh') {
+      generateIdeation(projectId);
     } else if (pendingAction === 'append' && typesToAdd.length > 0) {
       appendIdeation(projectId, typesToAdd);
       setTypesToAdd([]);
@@ -279,6 +290,7 @@ export function useIdeation(projectId: string, options: UseIdeationOptions = {})
     setConfig,
     handleGenerate,
     handleRefresh,
+    handleGenerateFresh,
     handleStop,
     handleDismissAll,
     handleDeleteSelected,
