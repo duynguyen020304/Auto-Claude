@@ -19,7 +19,6 @@ import {
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Button } from './ui/button';
-import { Textarea } from './ui/textarea';
 import { ScrollArea } from './ui/scroll-area';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
@@ -36,9 +35,11 @@ import {
   createTaskFromSuggestion,
   setupInsightsListeners
 } from '../stores/insights-store';
+import { useProjectStore } from '../stores/project-store';
 import { loadTasks } from '../stores/task-store';
 import { ChatHistorySidebar } from './ChatHistorySidebar';
 import { InsightsModelSelector } from './InsightsModelSelector';
+import { FileMentionInput } from './FileMentionInput';
 import type { InsightsChatMessage, InsightsModelConfig } from '../../shared/types';
 import {
   TASK_CATEGORY_LABELS,
@@ -96,6 +97,9 @@ export function Insights({ projectId }: InsightsProps) {
   const currentTool = useInsightsStore((state) => state.currentTool);
   const isLoadingSessions = useInsightsStore((state) => state.isLoadingSessions);
 
+  // Get project for file mention feature
+  const project = useProjectStore((state) => state.projects.find((p) => p.id === projectId));
+
   // Create markdown components with translated accessibility text
   const markdownComponents = useMemo(() => ({
     a: createSafeLink(t('accessibility.opensInNewWindow')),
@@ -107,7 +111,6 @@ export function Insights({ projectId }: InsightsProps) {
   const [showSidebar, setShowSidebar] = useState(true);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Load session and set up listeners on mount
   useEffect(() => {
@@ -120,11 +123,6 @@ export function Insights({ projectId }: InsightsProps) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [session?.messages, streamingContent]);
-
-  // Focus textarea on mount
-  useEffect(() => {
-    textareaRef.current?.focus();
-  }, []);
 
   // Reset taskCreated when switching sessions
   useEffect(() => {
@@ -139,17 +137,9 @@ export function Insights({ projectId }: InsightsProps) {
     sendMessage(projectId, message);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
-
   const handleNewSession = async () => {
     await newSession(projectId);
     setTaskCreated(new Set());
-    textareaRef.current?.focus();
   };
 
   const handleSelectSession = async (sessionId: string) => {
@@ -286,7 +276,6 @@ export function Insights({ projectId }: InsightsProps) {
                   className="text-xs"
                   onClick={() => {
                     setInputValue(suggestion);
-                    textareaRef.current?.focus();
                   }}
                 >
                   {suggestion}
@@ -361,14 +350,14 @@ export function Insights({ projectId }: InsightsProps) {
       {/* Input */}
       <div className="border-t border-border p-4">
         <div className="flex gap-2">
-          <Textarea
-            ref={textareaRef}
+          <FileMentionInput
             value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask about your codebase..."
-            className="min-h-[80px] resize-none"
+            onChange={setInputValue}
+            projectPath={project?.path || ''}
+            placeholder="Ask about your codebase... Use @ to mention files"
+            rows={3}
             disabled={isLoading}
+            className="min-h-[80px] flex-1"
           />
           <Button
             onClick={handleSend}
@@ -383,7 +372,7 @@ export function Insights({ projectId }: InsightsProps) {
           </Button>
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
-          Press Enter to send, Shift+Enter for new line
+          Press Enter to send, Shift+Enter for new line. Use @ to mention files
         </p>
       </div>
       </div>
