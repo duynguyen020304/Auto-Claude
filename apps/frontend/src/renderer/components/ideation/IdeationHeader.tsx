@@ -1,17 +1,20 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Lightbulb, Eye, EyeOff, Settings2, Plus, Trash2, RefreshCw, CheckSquare, X } from 'lucide-react';
+import { Lightbulb, Eye, EyeOff, Settings2, Plus, Trash2, RefreshCw, Sparkles, CheckSquare, X } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { IDEATION_TYPE_COLORS } from '../../../shared/constants';
 import type { IdeationType } from '../../../shared/types';
 import { TypeIcon } from './TypeIcon';
+import { GenerateFreshDialog } from './GenerateFreshDialog';
 
 interface IdeationHeaderProps {
   totalIdeas: number;
   ideaCountByType: Record<string, number>;
   showDismissed: boolean;
   selectedCount: number;
+  maxIdeasPerType: number;
   onToggleShowDismissed: () => void;
   onOpenConfig: () => void;
   onOpenAddMore: () => void;
@@ -19,7 +22,7 @@ interface IdeationHeaderProps {
   onDeleteSelected: () => void;
   onSelectAll: () => void;
   onClearSelection: () => void;
-  onRefresh: () => void;
+  onRefresh: () => void | Promise<void>;
   hasActiveIdeas: boolean;
   canAddMore: boolean;
 }
@@ -29,6 +32,7 @@ export function IdeationHeader({
   ideaCountByType,
   showDismissed,
   selectedCount,
+  maxIdeasPerType,
   onToggleShowDismissed,
   onOpenConfig,
   onOpenAddMore,
@@ -42,6 +46,29 @@ export function IdeationHeader({
 }: IdeationHeaderProps) {
   const { t } = useTranslation('common');
   const hasSelection = selectedCount > 0;
+
+  // Generate Fresh dialog state
+  const [isGenerateFreshDialogOpen, setIsGenerateFreshDialogOpen] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | undefined>();
+
+  const handleGenerateFresh = async () => {
+    setIsGenerating(true);
+    setGenerateError(undefined);
+    try {
+      await onRefresh();
+      setIsGenerateFreshDialogOpen(false);
+    } catch (error) {
+      setGenerateError(error instanceof Error ? error.message : 'Failed to generate fresh ideas');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleOpenGenerateFreshDialog = () => {
+    setGenerateError(undefined);
+    setIsGenerateFreshDialogOpen(true);
+  };
   return (
     <div className="shrink-0 border-b border-border p-4 bg-card/50">
       <div className="flex items-start justify-between">
@@ -133,21 +160,6 @@ export function IdeationHeader({
             </TooltipTrigger>
             <TooltipContent>{t('accessibility.configureAriaLabel')}</TooltipContent>
           </Tooltip>
-          {canAddMore && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  onClick={onOpenAddMore}
-                  aria-label={t('accessibility.addMoreAriaLabel')}
-                >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add More
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{t('accessibility.addMoreAriaLabel')}</TooltipContent>
-            </Tooltip>
-          )}
           {hasActiveIdeas && !hasSelection && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -166,11 +178,29 @@ export function IdeationHeader({
           )}
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="outline" size="icon" onClick={onRefresh} aria-label={t('accessibility.regenerateIdeasAriaLabel')}>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={onOpenAddMore}
+                aria-label={t('accessibility.refreshIdeasAriaLabel')}
+              >
                 <RefreshCw className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>{t('accessibility.regenerateIdeasAriaLabel')}</TooltipContent>
+            <TooltipContent>{t('accessibility.refreshIdeasAriaLabel')}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleOpenGenerateFreshDialog}
+                aria-label={t('accessibility.replaceIdeasAriaLabel')}
+              >
+                <Sparkles className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{t('accessibility.replaceIdeasAriaLabel')}</TooltipContent>
           </Tooltip>
         </div>
       </div>
@@ -187,7 +217,19 @@ export function IdeationHeader({
             <span className="ml-1">{count}</span>
           </Badge>
         ))}
+        <Badge variant="outline" className="text-muted-foreground">
+          Max: {maxIdeasPerType} ideas/type
+        </Badge>
       </div>
+
+      {/* Generate Fresh Dialog */}
+      <GenerateFreshDialog
+        open={isGenerateFreshDialogOpen}
+        isProcessing={isGenerating}
+        error={generateError}
+        onOpenChange={setIsGenerateFreshDialogOpen}
+        onConfirm={handleGenerateFresh}
+      />
     </div>
   );
 }

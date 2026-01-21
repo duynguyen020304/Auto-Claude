@@ -38,6 +38,8 @@
     "addMoreAriaLabel": "Add more",
     "dismissAllAriaLabel": "Dismiss all ideas",
     "regenerateIdeasAriaLabel": "Regenerate ideas",
+    "refreshIdeasAriaLabel": "Add more ideas to existing set",
+    "replaceIdeasAriaLabel": "Replace all ideas with fresh batch",
     "dismissAriaLabel": "Dismiss",
     "browseFilesAriaLabel": "Browse files",
     "renameAriaLabel": "Rename",

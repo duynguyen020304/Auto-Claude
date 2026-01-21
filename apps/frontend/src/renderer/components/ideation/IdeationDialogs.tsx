@@ -84,6 +84,29 @@ export function IdeationDialogs({
             </div>
 
             <div className="space-y-3">
+              <h4 className="text-sm font-medium">Max Ideas per Type</h4>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Number of ideas to generate for each type</span>
+                  <span className="text-sm font-medium">{config.maxIdeasPerType}</span>
+                </div>
+                <input
+                  type="range"
+                  min="1"
+                  max="20"
+                  step="1"
+                  value={config.maxIdeasPerType}
+                  onChange={(e) => onSetConfig({ maxIdeasPerType: parseInt(e.target.value, 10) })}
+                  className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>1</span>
+                  <span>20</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
               <h4 className="text-sm font-medium">Context Sources</h4>
               <div className="flex items-center justify-between">
                 <span className="text-sm">Include Roadmap Context</span>

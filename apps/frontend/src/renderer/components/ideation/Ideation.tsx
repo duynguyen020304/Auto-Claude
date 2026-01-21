@@ -135,6 +135,7 @@ export function Ideation({ projectId, onGoToTask }: IdeationProps) {
         ideaCountByType={summary.byType}
         showDismissed={showDismissed}
         selectedCount={selectedIds.size}
+        maxIdeasPerType={config.maxIdeasPerType}
         onToggleShowDismissed={() => setShowDismissed(!showDismissed)}
         onOpenConfig={() => setShowConfigDialog(true)}
         onOpenAddMore={() => {

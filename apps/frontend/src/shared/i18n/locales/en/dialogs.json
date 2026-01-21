@@ -165,5 +165,15 @@
     "downloadError": "Failed to download update",
     "claudeCodeChangelog": "View Claude Code Changelog",
     "claudeCodeChangelogAriaLabel": "View Claude Code Changelog (opens in new window)"
+  },
+  "generateFresh": {
+    "title": "Generate Fresh Ideas?",
+    "description": "This will delete all existing ideas and generate new ones from scratch.",
+    "willDelete": "All current ideas, including dismissed ones, will be permanently removed.",
+    "warning": "This action cannot be undone.",
+    "confirm": "Generate Fresh",
+    "generating": "Generating...",
+    "errorTitle": "Generation Failed",
+    "errorDescription": "Failed to generate fresh ideas. Please try again."
   }
 }
