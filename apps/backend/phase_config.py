@@ -85,6 +85,7 @@ class TaskMetadataConfig(TypedDict, total=False):
     phaseThinking: PhaseThinkingConfig
     model: str
     thinkingLevel: str
+    apiProfileId: str
 
 
 Phase = Literal["spec", "planning", "coding", "qa"]

@@ -114,6 +114,9 @@ export function TaskCreationWizard({
   const [images, setImages] = useState<ImageAttachment[]>([]);
   const [referencedFiles, setReferencedFiles] = useState<ReferencedFile[]>([]);
 
+  // API profile selection
+  const [apiProfileId, setApiProfileId] = useState<string>('');
+
   // Review setting
   const [requireReviewBeforeCoding, setRequireReviewBeforeCoding] = useState(false);
 
@@ -152,6 +155,7 @@ export function TaskCreationWizard({
         setThinkingLevel(draft.thinkingLevel || selectedProfile.thinkingLevel);
         setPhaseModels(draft.phaseModels || settings.customPhaseModels || selectedProfile.phaseModels || DEFAULT_PHASE_MODELS);
         setPhaseThinking(draft.phaseThinking || settings.customPhaseThinking || selectedProfile.phaseThinking || DEFAULT_PHASE_THINKING);
+        setApiProfileId(draft.apiProfileId || '');
         setImages(draft.images);
         setReferencedFiles(draft.referencedFiles ?? []);
         setRequireReviewBeforeCoding(draft.requireReviewBeforeCoding ?? false);
@@ -174,6 +178,7 @@ export function TaskCreationWizard({
         setThinkingLevel(selectedProfile.thinkingLevel);
         setPhaseModels(settings.customPhaseModels || selectedProfile.phaseModels || DEFAULT_PHASE_MODELS);
         setPhaseThinking(settings.customPhaseThinking || selectedProfile.phaseThinking || DEFAULT_PHASE_THINKING);
+        setApiProfileId('');
         setImages([]);
         setReferencedFiles([]);
         setRequireReviewBeforeCoding(false);
@@ -249,11 +254,12 @@ export function TaskCreationWizard({
     thinkingLevel,
     phaseModels,
     phaseThinking,
+    apiProfileId,
     images,
     referencedFiles,
     requireReviewBeforeCoding,
     savedAt: new Date()
-  }), [projectId, title, description, category, priority, complexity, impact, profileId, model, thinkingLevel, phaseModels, phaseThinking, images, referencedFiles, requireReviewBeforeCoding]);
+  }), [projectId, title, description, category, priority, complexity, impact, profileId, model, thinkingLevel, phaseModels, phaseThinking, apiProfileId, images, referencedFiles, requireReviewBeforeCoding]);
 
   /**
    * Detect @ mention being typed and show autocomplete
@@ -419,6 +425,7 @@ export function TaskCreationWizard({
         metadata.phaseModels = phaseModels;
         metadata.phaseThinking = phaseThinking;
       }
+      if (apiProfileId) metadata.apiProfileId = apiProfileId;
       if (images.length > 0) metadata.attachedImages = images;
       if (allReferencedFiles.length > 0) metadata.referencedFiles = allReferencedFiles;
       if (requireReviewBeforeCoding) metadata.requireReviewBeforeCoding = true;
@@ -460,6 +467,7 @@ export function TaskCreationWizard({
     setThinkingLevel(selectedProfile.thinkingLevel);
     setPhaseModels(settings.customPhaseModels || selectedProfile.phaseModels || DEFAULT_PHASE_MODELS);
     setPhaseThinking(settings.customPhaseThinking || selectedProfile.phaseThinking || DEFAULT_PHASE_THINKING);
+    setApiProfileId('');
     setImages([]);
     setReferencedFiles([]);
     setRequireReviewBeforeCoding(false);
@@ -631,6 +639,8 @@ export function TaskCreationWizard({
           onThinkingLevelChange={setThinkingLevel}
           onPhaseModelsChange={setPhaseModels}
           onPhaseThinkingChange={setPhaseThinking}
+          apiProfileId={apiProfileId}
+          onApiProfileChange={setApiProfileId}
           category={category}
           priority={priority}
           complexity={complexity}

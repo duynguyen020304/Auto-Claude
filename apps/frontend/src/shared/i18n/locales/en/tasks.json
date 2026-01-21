@@ -258,5 +258,13 @@
     "noTasksToSelect": "No tasks available to select",
     "confirmBulkAction": "Confirm bulk action for {{count}} tasks",
     "processingTasks": "Processing selected tasks..."
+  },
+  "apiProfile": {
+    "label": "API Profile",
+    "placeholder": "Select API profile",
+    "empty": "No API profiles available",
+    "errors": {
+      "profileNotFound": "Profile not found"
+    }
   }
 }

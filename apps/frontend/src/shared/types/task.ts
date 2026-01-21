@@ -151,6 +151,7 @@ export interface TaskDraft {
   // Auto profile - per-phase configuration
   phaseModels?: PhaseModelConfig;
   phaseThinking?: PhaseThinkingConfig;
+  apiProfileId?: string;  // API profile ID for per-task API profile selection
   images: ImageAttachment[];
   referencedFiles: ReferencedFile[];
   requireReviewBeforeCoding?: boolean;
@@ -232,6 +233,9 @@ export interface TaskMetadata {
   isAutoProfile?: boolean;  // True when using Auto (Optimized) profile
   phaseModels?: PhaseModelConfig;  // Per-phase model configuration
   phaseThinking?: PhaseThinkingConfig;  // Per-phase thinking configuration
+
+  // API configuration
+  apiProfileId?: string;  // API profile ID for per-task API profile selection
 
   // Git/Worktree configuration
   baseBranch?: string;  // Override base branch for this task's worktree

@@ -5,6 +5,7 @@
  * - Description (required, with image paste/drop support)
  * - Title (optional)
  * - Agent profile selector
+ * - API profile selector
  * - Classification fields (collapsible)
  * - Image thumbnails
  * - Review requirement checkbox
@@ -17,6 +18,7 @@ import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Checkbox } from '../ui/checkbox';
 import { AgentProfileSelector } from '../AgentProfileSelector';
+import { ApiProfileSelector } from '../ApiProfileSelector';
 import { ClassificationFields } from './ClassificationFields';
 import { useImageUpload, type FileReferenceData } from './useImageUpload';
 import { cn } from '../../lib/utils';
@@ -56,6 +58,10 @@ interface TaskFormFieldsProps {
   onThinkingLevelChange: (level: ThinkingLevel | '') => void;
   onPhaseModelsChange: (config: PhaseModelConfig | undefined) => void;
   onPhaseThinkingChange: (config: PhaseThinkingConfig | undefined) => void;
+
+  // API profile
+  apiProfileId: string;
+  onApiProfileChange: (profileId: string) => void;
 
   // Classification
   category: TaskCategory | '';
@@ -110,6 +116,8 @@ export function TaskFormFields({
   onThinkingLevelChange,
   onPhaseModelsChange,
   onPhaseThinkingChange,
+  apiProfileId,
+  onApiProfileChange,
   category,
   priority,
   complexity,
@@ -277,6 +285,13 @@ export function TaskFormFields({
         onThinkingLevelChange={onThinkingLevelChange}
         onPhaseModelsChange={onPhaseModelsChange}
         onPhaseThinkingChange={onPhaseThinkingChange}
+        disabled={disabled}
+      />
+
+      {/* API Profile Selection */}
+      <ApiProfileSelector
+        profileId={apiProfileId}
+        onProfileChange={onApiProfileChange}
         disabled={disabled}
       />
 
