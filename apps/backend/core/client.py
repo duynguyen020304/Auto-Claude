@@ -358,10 +358,12 @@ from agents.tools_pkg import (
 from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
 from claude_agent_sdk.types import HookMatcher
 from core.auth import (
+    get_credential,
     get_sdk_env_vars,
     require_auth_token,
     validate_token_not_encrypted,
 )
+from phase_config import load_task_metadata
 from core.usage_tracker import TokenUsage
 from core.rotation import RotationManager, RotationMode
 from core.credentials import RotationConfig
@@ -1448,6 +1450,33 @@ def create_client(
         except Exception as e:
             logger.error(
                 f"Credential rotation failed, falling back to default OAuth token: {e}",
+                exc_info=True
+            )
+
+    # Check if task metadata specifies an API profile to use
+    # This takes precedence over rotation and default token
+    task_metadata = load_task_metadata(spec_dir)
+    if task_metadata and task_metadata.get("apiProfileId"):
+        api_profile_id = task_metadata["apiProfileId"]
+        try:
+            # Load the credential profile from platform storage
+            credential = get_credential(api_profile_id)
+            if credential and credential.get("value"):
+                # Use the task-specific API profile credential
+                oauth_token = credential["value"]
+                logger.info(
+                    f"Using API profile {api_profile_id} ({credential.get('name', 'Unknown')}) "
+                    f"from task metadata"
+                )
+            else:
+                logger.warning(
+                    f"API profile '{api_profile_id}' specified in task metadata "
+                    f"but not found in credential storage, falling back to default token"
+                )
+        except Exception as e:
+            logger.error(
+                f"Failed to load API profile '{api_profile_id}' from task metadata: {e}. "
+                f"Using default credential.",
                 exc_info=True
             )
 
