@@ -75,7 +75,12 @@ const initialStatus: InsightsChatStatus = {
   message: ''
 };
 
-// Helper function to create initial session state
+/**
+ * Creates a fresh session state with default values.
+ * Used when initializing a new session or when switching to a session that has no prior state.
+ *
+ * @returns A new InsightsSessionState object with all fields set to their initial values
+ */
 function createInitialSessionState(): InsightsSessionState {
   return {
     status: initialStatus,
@@ -574,12 +579,25 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
   },
 
   // Selectors
+  /**
+   * Gets the state for the currently active session.
+   * Returns undefined if there is no active session.
+   *
+   * @returns The current session's state, or undefined if no session is active
+   */
   getCurrentSessionState: () => {
     const state = _get();
     if (!state.currentSessionId) return undefined;
     return state.sessionStates.get(state.currentSessionId);
   },
 
+  /**
+   * Gets the state for a specific session by ID.
+   * Returns undefined if the session has no recorded state.
+   *
+   * @param sessionId - The ID of the session to retrieve state for
+   * @returns The session's state, or undefined if no state exists for that session
+   */
   getSessionState: (sessionId: string) => {
     return _get().sessionStates.get(sessionId);
   }
