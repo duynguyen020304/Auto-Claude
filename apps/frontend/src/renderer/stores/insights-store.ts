@@ -709,6 +709,12 @@ export function sendMessage(projectId: string, message: string, modelConfig?: In
     return;
   }
 
+  // Create and store abort controller for this session
+  const abortController = new AbortController();
+  useInsightsStore.setState((state) => ({
+    abortControllers: new Map(state.abortControllers).set(session.id, abortController)
+  }));
+
   // Ensure session state exists for the current session
   if (!store.sessionStates.has(session.id)) {
     useInsightsStore.setState((state) => {
@@ -720,6 +726,12 @@ export function sendMessage(projectId: string, message: string, modelConfig?: In
       };
     });
   }
+
+  // Create and store abort controller for this session
+  const abortController = new AbortController();
+  useInsightsStore.setState((state) => ({
+    abortControllers: new Map(state.abortControllers).set(session.id, abortController)
+  }));
 
   // Add user message to session
   const userMessage: InsightsChatMessage = {
@@ -742,6 +754,12 @@ export function sendMessage(projectId: string, message: string, modelConfig?: In
   // Store the projectId -> sessionId mapping so IPC chunks know which session to update
   useInsightsStore.setState((state) => ({
     generatingSessionIds: new Map(state.generatingSessionIds).set(projectId, session.id)
+  }));
+
+  // Create and store abort controller for this session
+  const abortController = new AbortController();
+  useInsightsStore.setState((state) => ({
+    abortControllers: new Map(state.abortControllers).set(session.id, abortController)
   }));
 
   // Use provided modelConfig, or fall back to session's config
