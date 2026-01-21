@@ -38,8 +38,6 @@
     "addMoreAriaLabel": "Ajouter plus",
     "dismissAllAriaLabel": "Rejeter toutes les idées",
     "regenerateIdeasAriaLabel": "Régénérer les idées",
-    "refreshIdeasAriaLabel": "Ajouter plus d'idées à l'ensemble existant",
-    "replaceIdeasAriaLabel": "Remplacer toutes les idées par un nouveau lot",
     "dismissAriaLabel": "Ignorer",
     "browseFilesAriaLabel": "Parcourir les fichiers",
     "renameAriaLabel": "Renommer",
@@ -121,7 +119,9 @@
     "taskNotFoundForWorktree": "Tâche introuvable pour le worktree : {{specName}}",
     "failedToDeleteTaskWorktree": "Échec de la suppression du worktree de tâche : {{specName}}",
     "terminalWorktreeNotFound": "Worktree terminal introuvable : {{name}}",
-    "failedToDeleteTerminalWorktree": "Échec de la suppression du worktree terminal : {{name}}"
+    "failedToDeleteTerminalWorktree": "Échec de la suppression du worktree terminal : {{name}}",
+    "taskCreationFailed": "Échec de la création de la tâche",
+    "taskCreationFailedDescription": "Impossible de créer la tâche à partir de la suggestion. Veuillez réessayer."
   },
   "notification": {
     "accountSwitched": "Compte changé",

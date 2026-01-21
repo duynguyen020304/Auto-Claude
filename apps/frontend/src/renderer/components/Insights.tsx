@@ -19,6 +19,7 @@ import {
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Button } from './ui/button';
+import { Textarea } from './ui/textarea';
 import { ScrollArea } from './ui/scroll-area';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
@@ -35,11 +36,9 @@ import {
   createTaskFromSuggestion,
   setupInsightsListeners
 } from '../stores/insights-store';
-import { useProjectStore } from '../stores/project-store';
-import { loadTasks } from '../stores/task-store';
+import { useTaskStore } from '../stores/task-store';
 import { ChatHistorySidebar } from './ChatHistorySidebar';
 import { InsightsModelSelector } from './InsightsModelSelector';
-import { FileMentionInput } from './FileMentionInput';
 import type { InsightsChatMessage, InsightsModelConfig } from '../../shared/types';
 import {
   TASK_CATEGORY_LABELS,
@@ -96,9 +95,7 @@ export function Insights({ projectId }: InsightsProps) {
   const streamingContent = useInsightsStore((state) => state.streamingContent);
   const currentTool = useInsightsStore((state) => state.currentTool);
   const isLoadingSessions = useInsightsStore((state) => state.isLoadingSessions);
-
-  // Get project for file mention feature
-  const project = useProjectStore((state) => state.projects.find((p) => p.id === projectId));
+  const addTask = useTaskStore((state) => state.addTask);
 
   // Create markdown components with translated accessibility text
   const markdownComponents = useMemo(() => ({
@@ -108,9 +105,11 @@ export function Insights({ projectId }: InsightsProps) {
   const [inputValue, setInputValue] = useState('');
   const [creatingTask, setCreatingTask] = useState<string | null>(null);
   const [taskCreated, setTaskCreated] = useState<Set<string>>(new Set());
+  const [taskCreationErrors, setTaskCreationErrors] = useState<Map<string, string>>(new Map());
   const [showSidebar, setShowSidebar] = useState(true);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Load session and set up listeners on mount
   useEffect(() => {
@@ -124,9 +123,15 @@ export function Insights({ projectId }: InsightsProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [session?.messages, streamingContent]);
 
-  // Reset taskCreated when switching sessions
+  // Focus textarea on mount
+  useEffect(() => {
+    textareaRef.current?.focus();
+  }, []);
+
+  // Reset taskCreated and taskCreationErrors when switching sessions
   useEffect(() => {
     setTaskCreated(new Set());
+    setTaskCreationErrors(new Map());
   }, [session?.id]);
 
   const handleSend = () => {
@@ -137,9 +142,17 @@ export function Insights({ projectId }: InsightsProps) {
     sendMessage(projectId, message);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
   const handleNewSession = async () => {
     await newSession(projectId);
     setTaskCreated(new Set());
+    textareaRef.current?.focus();
   };
 
   const handleSelectSession = async (sessionId: string) => {
@@ -159,6 +172,13 @@ export function Insights({ projectId }: InsightsProps) {
   const handleCreateTask = async (message: InsightsChatMessage) => {
     if (!message.suggestedTask) return;
 
+    // Clear any previous error for this message
+    setTaskCreationErrors(prev => {
+      const next = new Map(prev);
+      next.delete(message.id);
+      return next;
+    });
+
     setCreatingTask(message.id);
     try {
       const task = await createTaskFromSuggestion(
@@ -170,9 +190,15 @@ export function Insights({ projectId }: InsightsProps) {
 
       if (task) {
         setTaskCreated(prev => new Set(prev).add(message.id));
-        // Reload tasks to show the new task in the kanban
-        loadTasks(projectId);
+        // Add the new task to the store to update kanban board state
+        addTask(task);
+      } else {
+        // Task creation failed - set error state
+        setTaskCreationErrors(prev => new Map(prev).set(message.id, t('errors.taskCreationFailed')));
       }
+    } catch (error) {
+      // Task creation threw an error - set error state
+      setTaskCreationErrors(prev => new Map(prev).set(message.id, t('errors.taskCreationFailed')));
     } finally {
       setCreatingTask(null);
     }
@@ -276,6 +302,7 @@ export function Insights({ projectId }: InsightsProps) {
                   className="text-xs"
                   onClick={() => {
                     setInputValue(suggestion);
+                    textareaRef.current?.focus();
                   }}
                 >
                   {suggestion}
@@ -293,6 +320,7 @@ export function Insights({ projectId }: InsightsProps) {
                 onCreateTask={() => handleCreateTask(message)}
                 isCreatingTask={creatingTask === message.id}
                 taskCreated={taskCreated.has(message.id)}
+                taskCreationError={taskCreationErrors.get(message.id)}
               />
             ))}
 
@@ -350,14 +378,14 @@ export function Insights({ projectId }: InsightsProps) {
       {/* Input */}
       <div className="border-t border-border p-4">
         <div className="flex gap-2">
-          <FileMentionInput
+          <Textarea
+            ref={textareaRef}
             value={inputValue}
-            onChange={setInputValue}
-            projectPath={project?.path || ''}
-            placeholder="Ask about your codebase... Use @ to mention files"
-            rows={3}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Ask about your codebase..."
+            className="min-h-[80px] resize-none"
             disabled={isLoading}
-            className="min-h-[80px] flex-1"
           />
           <Button
             onClick={handleSend}
@@ -372,7 +400,7 @@ export function Insights({ projectId }: InsightsProps) {
           </Button>
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
-          Press Enter to send, Shift+Enter for new line. Use @ to mention files
+          Press Enter to send, Shift+Enter for new line
         </p>
       </div>
       </div>
@@ -386,6 +414,7 @@ interface MessageBubbleProps {
   onCreateTask: () => void;
   isCreatingTask: boolean;
   taskCreated: boolean;
+  taskCreationError?: string;
 }
 
 function MessageBubble({
@@ -393,7 +422,8 @@ function MessageBubble({
   markdownComponents,
   onCreateTask,
   isCreatingTask,
-  taskCreated
+  taskCreated,
+  taskCreationError
 }: MessageBubbleProps) {
   const isUser = message.role === 'user';
 
@@ -415,26 +445,6 @@ function MessageBubble({
         <div className="text-sm font-medium text-foreground">
           {isUser ? 'You' : 'Assistant'}
         </div>
-
-        {/* File mention badges for user messages */}
-        {isUser && message.fileMentions && message.fileMentions.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {message.fileMentions.map((mention) => (
-              <Badge
-                key={mention.id}
-                variant="secondary"
-                className="text-xs flex items-center gap-1.5 bg-primary/10 hover:bg-primary/20 transition-colors"
-              >
-                <FileText className="h-3 w-3" />
-                <span className="font-mono">
-                  {mention.displayName || mention.filePath}
-                  {mention.lineRange && `:${mention.lineRange.start}-${mention.lineRange.end}`}
-                </span>
-              </Badge>
-            ))}
-          </div>
-        )}
-
         <div className="prose prose-sm dark:prose-invert max-w-none">
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
             {message.content}
@@ -490,28 +500,42 @@ function MessageBubble({
                   )}
                 </div>
               )}
-              <Button
-                size="sm"
-                onClick={onCreateTask}
-                disabled={isCreatingTask || taskCreated}
-              >
-                {isCreatingTask ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating...
-                  </>
-                ) : taskCreated ? (
-                  <>
-                    <CheckCircle2 className="mr-2 h-4 w-4" />
-                    Task Created
-                  </>
-                ) : (
-                  <>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create Task
-                  </>
+              <div className="space-y-2">
+                {/* Error message */}
+                {taskCreationError && !taskCreated && (
+                  <div className="flex items-center gap-2 text-sm text-destructive">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>{taskCreationError}</span>
+                  </div>
                 )}
-              </Button>
+                <Button
+                  size="sm"
+                  onClick={onCreateTask}
+                  disabled={isCreatingTask || taskCreated}
+                  variant={taskCreationError ? "destructive" : "default"}
+                >
+                  {isCreatingTask ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : taskCreated ? (
+                    <>
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      Task Created
+                    </>
+                  ) : taskCreationError ? (
+                    <>
+                      Retry
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create Task
+                    </>
+                  )}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}
