@@ -649,6 +649,18 @@ export function sendMessage(projectId: string, message: string, modelConfig?: In
     return;
   }
 
+  // Ensure session state exists for the current session
+  if (!store.sessionStates.has(session.id)) {
+    useInsightsStore.setState((state) => {
+      const newSessionStates = new Map(state.sessionStates);
+      const newSessionState = createInitialSessionState();
+      newSessionStates.set(session.id, newSessionState);
+      return {
+        sessionStates: newSessionStates
+      };
+    });
+  }
+
   // Add user message to session
   const userMessage: InsightsChatMessage = {
     id: `msg-${Date.now()}`,
