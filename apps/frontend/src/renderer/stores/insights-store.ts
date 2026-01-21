@@ -691,7 +691,7 @@ export async function newSession(projectId: string): Promise<void> {
 export async function switchSession(projectId: string, sessionId: string): Promise<void> {
   const store = useInsightsStore.getState();
 
-  console.log('[InsightsStore] switchSession called', {
+  console.log('[InsightsStore] ===== switchSession START =====', {
     projectId,
     targetSessionId: sessionId,
     currentSessionId: store.session?.id || 'null',
@@ -700,6 +700,17 @@ export async function switchSession(projectId: string, sessionId: string): Promi
     toolsUsedCount: store.toolsUsed.length,
     isGenerating: store.status.phase === 'thinking' || store.status.phase === 'streaming'
   });
+
+  // Log the state that will be preserved for current session
+  if (store.currentSessionId) {
+    const currentState = store.sessionStates.get(store.currentSessionId);
+    console.log('[InsightsStore] switchSession - preserving state for current session', {
+      sessionId: store.currentSessionId,
+      statusPhase: currentState?.status.phase,
+      streamingContentLength: currentState?.streamingContent.length || 0,
+      hasStreamingContent: (currentState?.streamingContent.length || 0) > 0
+    });
+  }
 
   const result = await window.electronAPI.switchInsightsSession(projectId, sessionId);
 
@@ -710,6 +721,16 @@ export async function switchSession(projectId: string, sessionId: string): Promi
   });
 
   if (result.success && result.data) {
+    // Before switching, log what state exists for target session
+    const storeBefore = useInsightsStore.getState();
+    const targetStateBefore = storeBefore.sessionStates.get(sessionId);
+    console.log('[InsightsStore] switchSession - target session state BEFORE setSession', {
+      sessionId,
+      hasState: !!targetStateBefore,
+      statusPhase: targetStateBefore?.status.phase,
+      streamingContentLength: targetStateBefore?.streamingContent.length || 0
+    });
+
     useInsightsStore.getState().setSession(result.data);
 
     // NOTE: No need to manually clear/restore streaming state anymore!
@@ -718,8 +739,11 @@ export async function switchSession(projectId: string, sessionId: string): Promi
 
     console.log('[InsightsStore] switchSession - switched to new session', {
       newStatusPhase: useInsightsStore.getState().status.phase,
-      newStreamingContentLength: useInsightsStore.getState().streamingContent.length
+      newStreamingContentLength: useInsightsStore.getState().streamingContent.length,
+      statePreserved: (useInsightsStore.getState().streamingContent.length > 0)
     });
+
+    console.log('[InsightsStore] ===== switchSession END =====');
   } else {
     console.log('[InsightsStore] switchSession - failed', {
       success: result.success
