@@ -1074,6 +1074,39 @@ export function AgentTools() {
     await performImport(envConfig.customMcpServers || [], pendingImport.servers, pendingImport.servers);
   }, [pendingImport, selectedProjectId, envConfig, performImport]);
 
+  // Proceed with import flow after backup decision
+  const proceedWithImport = useCallback(async (validatedImport: {
+    servers: CustomMcpServer[];
+    duplicates: string[];
+    newServers: CustomMcpServer[];
+  }) => {
+    const existingServers = envConfig?.customMcpServers || [];
+
+    // If no duplicates, just import all
+    if (validatedImport.duplicates.length === 0) {
+      await performImport(existingServers, validatedImport.servers, validatedImport.newServers);
+      setPendingBackupImport(null);
+      return;
+    }
+
+    // If only duplicates, show duplicate dialog
+    if (validatedImport.newServers.length === 0) {
+      setPendingImport({
+        servers: validatedImport.servers,
+        duplicates: validatedImport.duplicates,
+        newServers: [],
+      });
+      setShowDuplicateDialog(true);
+      setPendingBackupImport(null);
+      return;
+    }
+
+    // Both duplicates and new servers, show duplicate dialog
+    setPendingImport(validatedImport);
+    setShowDuplicateDialog(true);
+    setPendingBackupImport(null);
+  }, [envConfig, performImport]);
+
   // Handle "Backup First" option - create backup, then proceed with import
   const handleBackupFirst = useCallback(async () => {
     if (!pendingBackupImport) return;
@@ -1131,39 +1164,6 @@ export function AgentTools() {
     // Proceed with import flow
     await proceedWithImport(pendingBackupImport);
   }, [pendingBackupImport, proceedWithImport]);
-
-  // Proceed with import flow after backup decision
-  const proceedWithImport = useCallback(async (validatedImport: {
-    servers: CustomMcpServer[];
-    duplicates: string[];
-    newServers: CustomMcpServer[];
-  }) => {
-    const existingServers = envConfig?.customMcpServers || [];
-
-    // If no duplicates, just import all
-    if (validatedImport.duplicates.length === 0) {
-      await performImport(existingServers, validatedImport.servers, validatedImport.newServers);
-      setPendingBackupImport(null);
-      return;
-    }
-
-    // If only duplicates, show duplicate dialog
-    if (validatedImport.newServers.length === 0) {
-      setPendingImport({
-        servers: validatedImport.servers,
-        duplicates: validatedImport.duplicates,
-        newServers: [],
-      });
-      setShowDuplicateDialog(true);
-      setPendingBackupImport(null);
-      return;
-    }
-
-    // Both duplicates and new servers, show duplicate dialog
-    setPendingImport(validatedImport);
-    setShowDuplicateDialog(true);
-    setPendingBackupImport(null);
-  }, [envConfig, performImport]);
 
   // Check health of all custom MCP servers
   const checkAllServersHealth = useCallback(async () => {
