@@ -824,6 +824,15 @@ export async function newSession(projectId: string): Promise<void> {
 export async function switchSession(projectId: string, sessionId: string): Promise<void> {
   const store = useInsightsStore.getState();
 
+  // Abort ongoing generation in the current session before switching
+  const currentSessionId = store.currentSessionId;
+  if (currentSessionId && currentSessionId !== sessionId) {
+    // Check if current session is generating (has an abort controller)
+    if (store.abortControllers.has(currentSessionId)) {
+      store.abortGeneration(currentSessionId);
+    }
+  }
+
   const result = await window.electronAPI.switchInsightsSession(projectId, sessionId);
 
   if (result.success && result.data) {
