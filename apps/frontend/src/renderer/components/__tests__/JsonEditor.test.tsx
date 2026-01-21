@@ -121,14 +121,14 @@ describe('JsonEditor Component', () => {
       const placeholder = '{\n\t\n}';
       render(<JsonEditor value="" onChange={vi.fn()} placeholder={placeholder} />);
 
-      const textarea = screen.getByTestId('editor-textarea');
+      const textarea = screen.getByTestId('editor-textarea') as HTMLTextAreaElement;
       expect(textarea.value).toBe(placeholder);
     });
 
     it('should use default placeholder when not provided', () => {
       render(<JsonEditor value="" onChange={vi.fn()} />);
 
-      const textarea = screen.getByTestId('editor-textarea');
+      const textarea = screen.getByTestId('editor-textarea') as HTMLTextAreaElement;
       expect(textarea.value).toBe('{\n\t\n}');
     });
 
@@ -183,13 +183,13 @@ describe('JsonEditor Component', () => {
   describe('Edge Cases', () => {
     it('should handle empty string value', () => {
       render(<JsonEditor value="" onChange={vi.fn()} />);
-      const textarea = screen.getByTestId('editor-textarea');
+      const textarea = screen.getByTestId('editor-textarea') as HTMLTextAreaElement;
       expect(textarea.value).toBe('{\n\t\n}'); // placeholder
     });
 
     it('should handle whitespace-only value', () => {
       render(<JsonEditor value="   " onChange={vi.fn()} />);
-      const textarea = screen.getByTestId('editor-textarea');
+      const textarea = screen.getByTestId('editor-textarea') as HTMLTextAreaElement;
       expect(textarea.value).toBe('   ');
     });
 

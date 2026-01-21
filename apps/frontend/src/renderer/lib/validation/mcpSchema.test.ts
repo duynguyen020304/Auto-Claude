@@ -7,7 +7,7 @@ import Ajv from 'ajv';
 import { validateCustomMcpServer, customMcpServerSchema } from './mcpSchema';
 
 describe('MCP Schema Validator', () => {
-  let ajv: Ajv;
+  let ajv: InstanceType<typeof Ajv>;
 
   beforeEach(() => {
     ajv = new Ajv({ allErrors: true });
