@@ -159,6 +159,27 @@ export function CustomMcpDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jsonMode, open]); // Only sync on mode change, not on every formData change
 
+  // Sync derived form fields when switching back from jsonMode
+  useEffect(() => {
+    if (!jsonMode && open) {
+      // Update argsInput from formData
+      if (formData.type === 'command' && formData.args) {
+        setArgsInput(formData.args.join(' '));
+      } else if (formData.type === 'http') {
+        setArgsInput('');
+      }
+
+      // Update bearerToken from formData headers
+      const authHeader = formData.headers?.['Authorization'] || formData.headers?.['authorization'] || '';
+      if (authHeader.toLowerCase().startsWith('bearer ')) {
+        setBearerToken(authHeader.substring(7));
+      } else {
+        setBearerToken('');
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jsonMode, open]); // Only sync on mode change
+
   // Generate ID from name
   const generateId = (name: string): string => {
     return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
