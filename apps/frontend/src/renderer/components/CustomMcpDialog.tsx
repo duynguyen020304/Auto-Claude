@@ -18,6 +18,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
+import { Switch } from './ui/switch';
 import { useTranslation } from 'react-i18next';
 import type { CustomMcpServer } from '../../shared/types';
 import { Terminal, Globe, X, Github, Loader2, ExternalLink } from 'lucide-react';
@@ -56,6 +57,7 @@ export function CustomMcpDialog({
   const [headerValue, setHeaderValue] = useState('');
   const [bearerToken, setBearerToken] = useState('');
   const [showAdvancedHeaders, setShowAdvancedHeaders] = useState(false);
+  const [jsonMode, setJsonMode] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Known provider patterns for helpful hints
@@ -237,6 +239,16 @@ export function CustomMcpDialog({
           <DialogTitle>
             {isEditing ? t('mcp.editCustomServer') : t('mcp.addCustomServer')}
           </DialogTitle>
+          <div className="flex items-center gap-2 py-2">
+            <Label htmlFor="json-mode-toggle" className="text-sm cursor-pointer">
+              {jsonMode ? t('mcp.jsonMode') : t('mcp.formMode')}
+            </Label>
+            <Switch
+              id="json-mode-toggle"
+              checked={jsonMode}
+              onCheckedChange={setJsonMode}
+            />
+          </div>
           <DialogDescription>
             {t('mcp.customServerDescription')}
           </DialogDescription>
