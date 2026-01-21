@@ -416,7 +416,7 @@ export function CustomMcpDialog({
           </DialogTitle>
           <div className="flex items-center gap-2 py-2">
             <Label htmlFor="json-mode-toggle" className="text-sm cursor-pointer">
-              {jsonMode ? t('mcp.jsonMode') : t('mcp.formMode')}
+              {jsonMode ? t('mcp.switchToFormMode') : t('mcp.switchToJsonMode')}
             </Label>
             <Switch
               id="json-mode-toggle"
