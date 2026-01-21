@@ -33,7 +33,9 @@ import {
   Loader2,
   RefreshCw,
   AlertTriangle,
-  Lock
+  Lock,
+  Download,
+  Upload
 } from 'lucide-react';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { ScrollArea } from './ui/scroll-area';
@@ -880,6 +882,89 @@ export function AgentTools() {
     }
   }, [selectedProjectId, envConfig]);
 
+  // Handle exporting custom MCP servers to JSON file
+  const handleExportServers = useCallback(async () => {
+    if (!envConfig?.customMcpServers || envConfig.customMcpServers.length === 0) {
+      return;
+    }
+
+    try {
+      // Create JSON blob
+      const jsonString = JSON.stringify(envConfig.customMcpServers, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+
+      // Trigger download
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+      const filename = `custom-mcp-servers-${timestamp}.json`;
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to export custom MCP servers:', error);
+    }
+  }, [envConfig?.customMcpServers]);
+
+  // Handle importing custom MCP servers from JSON file
+  const handleImportServers = useCallback(async () => {
+    try {
+      // Create file input element
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/json';
+
+      input.onchange = async (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (!file) return;
+
+        try {
+          const text = await file.text();
+          const importedServers = JSON.parse(text) as CustomMcpServer[];
+
+          // Validate array structure
+          if (!Array.isArray(importedServers)) {
+            throw new Error('Invalid format: expected an array');
+          }
+
+          // Validate each server object
+          for (const server of importedServers) {
+            if (!server.id || !server.name || !server.type) {
+              throw new Error('Invalid server format: missing required fields');
+            }
+          }
+
+          // Merge with existing servers (avoid duplicates by ID)
+          const existingServers = envConfig?.customMcpServers || [];
+          const existingIds = new Set(existingServers.map(s => s.id));
+          const newServers = importedServers.filter(s => !existingIds.has(s.id));
+          const mergedServers = [...existingServers, ...newServers];
+
+          // Save to backend
+          if (selectedProjectId) {
+            await window.electronAPI.updateProjectEnv(selectedProjectId, {
+              customMcpServers: mergedServers,
+            });
+
+            // Optimistic update
+            setEnvConfig((prev) => prev ? { ...prev, customMcpServers: mergedServers } : null);
+          }
+        } catch (error) {
+          console.error('Failed to import custom MCP servers:', error);
+          // TODO: Show error toast to user
+        }
+      };
+
+      input.click();
+    } catch (error) {
+      console.error('Failed to open file picker:', error);
+    }
+  }, [selectedProjectId, envConfig]);
+
   // Check health of all custom MCP servers
   const checkAllServersHealth = useCallback(async () => {
     const servers = envConfig?.customMcpServers || [];
@@ -1195,14 +1280,38 @@ export function AgentTools() {
                         {t('settings:mcp.customServers')}
                       </span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => { setEditingCustomServer(null); setShowCustomMcpDialog(true); }}
-                      className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
-                    >
-                      <Plus className="h-3 w-3" />
-                      {t('settings:mcp.addCustomServer')}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {/* Import Button */}
+                      <button
+                        type="button"
+                        onClick={handleImportServers}
+                        className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
+                        title={t('settings:mcp.importServers')}
+                      >
+                        <Upload className="h-3 w-3" />
+                        {t('settings:mcp.import')}
+                      </button>
+                      {/* Export Button */}
+                      <button
+                        type="button"
+                        onClick={handleExportServers}
+                        disabled={!envConfig?.customMcpServers || envConfig.customMcpServers.length === 0}
+                        className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors disabled:text-muted-foreground disabled:cursor-not-allowed"
+                        title={t('settings:mcp.exportServers')}
+                      >
+                        <Download className="h-3 w-3" />
+                        {t('settings:mcp.export')}
+                      </button>
+                      {/* Add Server Button */}
+                      <button
+                        type="button"
+                        onClick={() => { setEditingCustomServer(null); setShowCustomMcpDialog(true); }}
+                        className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
+                      >
+                        <Plus className="h-3 w-3" />
+                        {t('settings:mcp.addCustomServer')}
+                      </button>
+                    </div>
                   </div>
 
                   {(envConfig.customMcpServers?.length ?? 0) > 0 ? (
