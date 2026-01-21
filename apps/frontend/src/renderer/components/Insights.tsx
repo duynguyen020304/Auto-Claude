@@ -113,12 +113,7 @@ export function Insights({ projectId }: InsightsProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Load session and set up listeners on mount
-  useEffect(() => {
-    loadInsightsSession(projectId);
-    resetStatus();
-    const cleanup = setupInsightsListeners();
-    return cleanup;
-  }, [projectId]);
+  useEffect(() => { loadInsightsSession(projectId); resetStatus(); const cleanup = setupInsightsListeners(); return () => cleanup(); }, [projectId]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
