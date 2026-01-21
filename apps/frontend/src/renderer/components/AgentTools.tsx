@@ -53,6 +53,7 @@ import { useProjectStore } from '../stores/project-store';
 import type { ProjectEnvConfig, AgentMcpOverrides, AgentMcpOverride, CustomMcpServer, McpHealthCheckResult, McpHealthStatus } from '../../shared/types';
 import { CustomMcpDialog } from './CustomMcpDialog';
 import { useTranslation } from 'react-i18next';
+import { useToast } from '../hooks/use-toast';
 import {
   AVAILABLE_MODELS,
   THINKING_LEVELS,
@@ -639,6 +640,7 @@ function AgentCard({ id, config, modelLabel, thinkingLabel, overrides, mcpServer
 
 export function AgentTools() {
   const { t } = useTranslation(['settings']);
+  const { toast } = useToast();
   const settings = useSettingsStore((state) => state.settings);
   const projects = useProjectStore((state) => state.projects);
   const selectedProjectId = useProjectStore((state) => state.selectedProjectId);
@@ -928,13 +930,16 @@ export function AgentTools() {
 
           // Validate array structure
           if (!Array.isArray(importedServers)) {
-            throw new Error('Invalid format: expected an array');
+            throw new Error(t('settings:mcp.importError.invalidFormat'));
           }
 
           // Validate each server object
           for (const server of importedServers) {
             if (!server.id || !server.name || !server.type) {
-              throw new Error('Invalid server format: missing required fields');
+              throw new Error(t('settings:mcp.importError.missingFields'));
+            }
+            if (!['stdio', 'sse', 'command'].includes(server.type)) {
+              throw new Error(t('settings:mcp.importError.invalidType', { type: server.type }));
             }
           }
 
@@ -944,6 +949,16 @@ export function AgentTools() {
           const newServers = importedServers.filter(s => !existingIds.has(s.id));
           const mergedServers = [...existingServers, ...newServers];
 
+          // Check if any new servers were added
+          if (newServers.length === 0) {
+            toast({
+              title: t('settings:mcp.importNoNew.title'),
+              description: t('settings:mcp.importNoNew.description'),
+              variant: 'default',
+            });
+            return;
+          }
+
           // Save to backend
           if (selectedProjectId) {
             await window.electronAPI.updateProjectEnv(selectedProjectId, {
@@ -952,18 +967,36 @@ export function AgentTools() {
 
             // Optimistic update
             setEnvConfig((prev) => prev ? { ...prev, customMcpServers: mergedServers } : null);
+
+            // Show success toast
+            toast({
+              title: t('settings:mcp.importSuccess.title', { count: newServers.length }),
+              description: newServers.length === 1
+                ? newServers[0].name
+                : t('settings:mcp.importSuccess.descriptionMultiple', { count: newServers.length }),
+              variant: 'default',
+            });
           }
         } catch (error) {
           console.error('Failed to import custom MCP servers:', error);
-          // TODO: Show error toast to user
+          toast({
+            title: t('settings:mcp.importError.title'),
+            description: error instanceof Error ? error.message : t('settings:mcp.importError.unknown'),
+            variant: 'destructive',
+          });
         }
       };
 
       input.click();
     } catch (error) {
       console.error('Failed to open file picker:', error);
+      toast({
+        title: t('settings:mcp.importError.title'),
+        description: t('settings:mcp.importError.filePicker'),
+        variant: 'destructive',
+      });
     }
-  }, [selectedProjectId, envConfig]);
+  }, [selectedProjectId, envConfig, toast, t]);
 
   // Check health of all custom MCP servers
   const checkAllServersHealth = useCallback(async () => {

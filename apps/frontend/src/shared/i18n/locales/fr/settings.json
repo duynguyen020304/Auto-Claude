@@ -602,6 +602,23 @@
       "createAnthropicKey": "Créer une clé API Anthropic",
       "openai": "Ceci ressemble à une API OpenAI. Vous aurez besoin d'une clé API.",
       "createOpenaiKey": "Créer une clé API OpenAI"
+    },
+    "importError": {
+      "title": "Échec de l'importation",
+      "invalidFormat": "Format invalide : tableau de serveurs attendu",
+      "missingFields": "Format de serveur invalide : champs requis manquants (id, name, type)",
+      "invalidType": "Type de serveur invalide : {{type}}. Doit être l'un de : stdio, sse, command",
+      "filePicker": "Échec de l'ouverture du sélecteur de fichiers",
+      "unknown": "Une erreur inconnue s'est produite"
+    },
+    "importSuccess": {
+      "title": "{{count}} serveur importé",
+      "title_plural": "{{count}} serveurs importés",
+      "descriptionMultiple": "{{count}} nouveaux serveurs ajoutés à votre configuration"
+    },
+    "importNoNew": {
+      "title": "Aucun nouveau serveur",
+      "description": "Tous les serveurs du fichier existent déjà dans votre configuration"
     }
   }
 }

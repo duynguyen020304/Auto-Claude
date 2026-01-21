@@ -602,6 +602,23 @@
       "createAnthropicKey": "Create Anthropic API Key",
       "openai": "This looks like an OpenAI API. You'll need an API key.",
       "createOpenaiKey": "Create OpenAI API Key"
+    },
+    "importError": {
+      "title": "Import Failed",
+      "invalidFormat": "Invalid format: expected an array of servers",
+      "missingFields": "Invalid server format: missing required fields (id, name, type)",
+      "invalidType": "Invalid server type: {{type}}. Must be one of: stdio, sse, command",
+      "filePicker": "Failed to open file picker",
+      "unknown": "An unknown error occurred"
+    },
+    "importSuccess": {
+      "title": "Imported {{count}} server",
+      "title_plural": "Imported {{count}} servers",
+      "descriptionMultiple": "Added {{count}} new servers to your configuration"
+    },
+    "importNoNew": {
+      "title": "No New Servers",
+      "description": "All servers in the file already exist in your configuration"
     }
   }
 }
