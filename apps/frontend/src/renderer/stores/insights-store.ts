@@ -35,6 +35,7 @@ interface InsightsState {
   sessionStates: Map<string, InsightsSessionState>; // Per-session streaming state
   isLoadingSessions: boolean;
   generatingSessionIds: Map<string, string>; // projectId -> sessionId mapping for active generations
+  abortControllers: Map<string, AbortController>; // sessionId -> AbortController mapping for active generations
 
   // Current session state (mirrored from sessionStates for easy access)
   status: InsightsChatStatus;
@@ -100,6 +101,7 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
   sessionStates: new Map<string, InsightsSessionState>(),
   isLoadingSessions: false,
   generatingSessionIds: new Map<string, string>(),
+  abortControllers: new Map<string, AbortController>(),
   status: initialStatus,
   pendingMessage: '',
   streamingContent: '',
@@ -194,10 +196,20 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
         }
       }
 
+      // Clean up abortControllers: remove entries for deleted sessions
+      const newAbortControllers = new Map<string, AbortController>();
+      for (const [sessionId, abortController] of state.abortControllers.entries()) {
+        // Keep abort controller if the session still exists
+        if (currentSessionIds.has(sessionId)) {
+          newAbortControllers.set(sessionId, abortController);
+        }
+      }
+
       return {
         sessions,
         sessionStates: newSessionStates,
-        generatingSessionIds: newGeneratingSessionIds
+        generatingSessionIds: newGeneratingSessionIds,
+        abortControllers: newAbortControllers
       };
     }),
 
@@ -569,6 +581,7 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       currentSessionId: null,
       sessionStates: new Map<string, InsightsSessionState>(),
       generatingSessionIds: new Map<string, string>(),
+      abortControllers: new Map<string, AbortController>(),
       status: initialStatus,
       pendingMessage: '',
       streamingContent: '',
