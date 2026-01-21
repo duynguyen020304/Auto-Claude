@@ -233,6 +233,9 @@ export interface TaskMetadata {
   phaseModels?: PhaseModelConfig;  // Per-phase model configuration
   phaseThinking?: PhaseThinkingConfig;  // Per-phase thinking configuration
 
+  // API configuration
+  apiProfileId?: string;  // API profile ID for per-task API profile selection
+
   // Git/Worktree configuration
   baseBranch?: string;  // Override base branch for this task's worktree
   prUrl?: string;  // GitHub PR URL if task has been submitted as a PR
