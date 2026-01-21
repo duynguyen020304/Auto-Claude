@@ -258,5 +258,13 @@
     "noTasksToSelect": "Aucune tâche disponible à sélectionner",
     "confirmBulkAction": "Confirmer l'action groupée pour {{count}} tâches",
     "processingTasks": "Traitement des tâches sélectionnées..."
+  },
+  "apiProfile": {
+    "label": "Profil API",
+    "placeholder": "Sélectionner un profil API",
+    "empty": "Aucun profil API disponible",
+    "errors": {
+      "profileNotFound": "Profil non trouvé"
+    }
   }
 }
