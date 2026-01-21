@@ -305,6 +305,34 @@ class GraphitiMemory:
 
         return result
 
+    async def record_usage(
+        self,
+        credential_id: str,
+        tokens: int,
+        metadata: dict | None = None,
+    ) -> bool:
+        """
+        Record credential usage (token consumption) to the knowledge graph.
+
+        Args:
+            credential_id: Unique identifier for the credential
+            tokens: Number of tokens used in the request
+            metadata: Optional additional context (model, agent_type, etc.)
+
+        Returns:
+            True if saved successfully
+        """
+        if not await self._ensure_initialized():
+            return False
+
+        result = await self._queries.add_credential_usage(credential_id, tokens, metadata)
+
+        if result and self.state:
+            self.state.episode_count += 1
+            self.state.save(self.spec_dir)
+
+        return result
+
     # Delegate methods to search module
 
     async def get_relevant_context(
@@ -370,6 +398,43 @@ class GraphitiMemory:
         return await self._search.get_patterns_and_gotchas(
             query, num_results, min_score
         )
+
+    async def get_credential_usage(self, credential_id: str) -> dict:
+        """
+        Get aggregated usage metrics for a specific credential.
+
+        Args:
+            credential_id: Unique identifier for the credential
+
+        Returns:
+            Dictionary with usage metrics:
+            {
+                "total_tokens": int,
+                "request_count": int,
+                "last_used": str (ISO timestamp),
+                "average_tokens_per_request": float
+            }
+            Returns empty dict if no usage found or on error.
+        """
+        if not await self._ensure_initialized():
+            return {}
+
+        return await self._search.get_credential_usage(credential_id)
+
+    async def get_least_used_credential(self, pool_ids: list[str]) -> str | None:
+        """
+        Find the least used credential from a pool of credential IDs.
+
+        Args:
+            pool_ids: List of credential IDs to compare
+
+        Returns:
+            Credential ID with lowest total token usage, or None if pool is empty
+        """
+        if not await self._ensure_initialized():
+            return None
+
+        return await self._search.get_least_used_credential(pool_ids)
 
     # Status and utility methods
 
