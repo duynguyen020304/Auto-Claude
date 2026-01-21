@@ -18,9 +18,11 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
+import { Switch } from './ui/switch';
 import { useTranslation } from 'react-i18next';
 import type { CustomMcpServer } from '../../shared/types';
 import { Terminal, Globe, X, Github, Loader2, ExternalLink } from 'lucide-react';
+import { JsonEditor } from './JsonEditor';
 
 interface CustomMcpDialogProps {
   open: boolean;
@@ -56,6 +58,9 @@ export function CustomMcpDialog({
   const [headerValue, setHeaderValue] = useState('');
   const [bearerToken, setBearerToken] = useState('');
   const [showAdvancedHeaders, setShowAdvancedHeaders] = useState(false);
+  const [jsonMode, setJsonMode] = useState(false);
+  const [jsonValue, setJsonValue] = useState('');
+  const [jsonError, setJsonError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Known provider patterns for helpful hints
@@ -118,6 +123,7 @@ export function CustomMcpDialog({
       );
       setShowAdvancedHeaders(hasOtherHeaders);
       setError(null);
+      setJsonError(null);
     } else if (open) {
       setFormData({
         id: '',
@@ -133,17 +139,188 @@ export function CustomMcpDialog({
       setBearerToken('');
       setShowAdvancedHeaders(false);
       setError(null);
+      setJsonError(null);
     }
     setHeaderKey('');
     setHeaderValue('');
   }, [open, server]);
+
+  // Sync formData to jsonValue when switching to jsonMode
+  useEffect(() => {
+    if (jsonMode && open) {
+      try {
+        const json = JSON.stringify(formData, null, 2);
+        setJsonValue(json);
+        setJsonError(null);
+      } catch (err) {
+        setJsonError(err instanceof Error ? err.message : 'Failed to serialize to JSON');
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jsonMode, open]); // Only sync on mode change, not on every formData change
+
+  // Sync derived form fields when switching back from jsonMode
+  useEffect(() => {
+    if (!jsonMode && open) {
+      // Update argsInput from formData
+      if (formData.type === 'command' && formData.args) {
+        setArgsInput(formData.args.join(' '));
+      } else if (formData.type === 'http') {
+        setArgsInput('');
+      }
+
+      // Update bearerToken from formData headers
+      const authHeader = formData.headers?.['Authorization'] || formData.headers?.['authorization'] || '';
+      if (authHeader.toLowerCase().startsWith('bearer ')) {
+        setBearerToken(authHeader.substring(7));
+      } else {
+        setBearerToken('');
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jsonMode, open]); // Only sync on mode change
 
   // Generate ID from name
   const generateId = (name: string): string => {
     return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   };
 
+  /**
+   * Parse JSON and extract detailed error information
+   * Returns user-friendly error message with line/column info
+   */
+  const parseJsonWithError = (jsonString: string): { data?: unknown; error?: string } => {
+    try {
+      const data = JSON.parse(jsonString);
+      return { data };
+    } catch (err) {
+      if (err instanceof Error) {
+        // Try to extract line and column from JSON.parse error
+        // Error message format: "Unexpected token } in JSON at position 42"
+        const message = err.message;
+
+        // Try to find line/column info
+        let line = 1;
+        let column = 1;
+        let position = 0;
+
+        // Match position in error message
+        const positionMatch = message.match(/position (\d+)/);
+        if (positionMatch) {
+          position = parseInt(positionMatch[1], 10);
+
+          // Calculate line and column from position
+          const textBefore = jsonString.substring(0, position);
+          const lines = textBefore.split('\n');
+          line = lines.length;
+          column = lines[lines.length - 1].length + 1;
+        }
+
+        // Create user-friendly error message
+        let friendlyMessage = message;
+
+        // Common error patterns
+        if (message.includes('Unexpected token')) {
+          const tokenMatch = message.match(/Unexpected token (.+?) in JSON/);
+          if (tokenMatch) {
+            const token = tokenMatch[1];
+            if (token === "'") {
+              friendlyMessage = 'Use double quotes (") instead of single quotes (\')';
+            } else if (token === '}' || token === ']') {
+              friendlyMessage = `Unexpected closing bracket ${token} - check for missing fields or commas`;
+            } else if (token === ',') {
+              friendlyMessage = 'Unexpected comma - check for trailing commas';
+            } else {
+              friendlyMessage = `Unexpected token: ${token}`;
+            }
+          }
+        } else if (message.includes('Unexpected end')) {
+          friendlyMessage = 'Incomplete JSON - check for missing closing brackets or quotes';
+        } else if (message.includes('Unexpected string')) {
+          friendlyMessage = 'Unexpected string value - check field types';
+        } else if (message.includes('Unexpected number')) {
+          friendlyMessage = 'Unexpected number value - check field types';
+        } else if (message.includes('Expected property name')) {
+          friendlyMessage = 'Invalid property name - check for unquoted keys or syntax errors';
+        } else if (message.includes('Expected')) {
+          friendlyMessage = `Syntax error: ${message}`;
+        }
+
+        // Add line/column info if available
+        if (positionMatch) {
+          friendlyMessage += `\n\nLine ${line}, Column ${column}`;
+        }
+
+        return { error: friendlyMessage };
+      }
+
+      return { error: 'Invalid JSON syntax' };
+    }
+  };
+
+  // Handle JSON value changes
+  const handleJsonChange = (value: string, parsed?: unknown) => {
+    setJsonValue(value);
+
+    if (parsed) {
+      // Validate against CustomMcpServer type
+      try {
+        const server = parsed as CustomMcpServer;
+
+        // Basic validation
+        if (!server.name || typeof server.name !== 'string') {
+          setJsonError(t('mcp.errorNameRequired'));
+          return;
+        }
+
+        if (!server.type || (server.type !== 'command' && server.type !== 'http')) {
+          setJsonError('Invalid server type. Must be "command" or "http"');
+          return;
+        }
+
+        if (server.type === 'command' && !server.command) {
+          setJsonError(t('mcp.errorCommandRequired'));
+          return;
+        }
+
+        if (server.type === 'http' && !server.url) {
+          setJsonError(t('mcp.errorUrlRequired'));
+          return;
+        }
+
+        // Valid JSON, update formData
+        setFormData(server);
+        setJsonError(null);
+
+        // Update args input if command type
+        if (server.type === 'command' && server.args) {
+          setArgsInput(server.args.join(' '));
+        }
+
+        // Update bearer token if Authorization header exists
+        if (server.type === 'http' && server.headers?.['Authorization']) {
+          const authHeader = server.headers['Authorization'];
+          if (authHeader.toLowerCase().startsWith('bearer ')) {
+            setBearerToken(authHeader.substring(7));
+          }
+        }
+      } catch (err) {
+        setJsonError(err instanceof Error ? err.message : 'Invalid server configuration');
+      }
+    } else {
+      // Re-parse to get detailed error information
+      const result = parseJsonWithError(value);
+      setJsonError(result.error || 'Invalid JSON syntax');
+    }
+  };
+
   const handleSave = () => {
+    // In JSON mode, validate JSON first
+    if (jsonMode && jsonError) {
+      setError(jsonError);
+      return;
+    }
+
     // Validate
     if (!formData.name.trim()) {
       setError(t('mcp.errorNameRequired'));
@@ -225,18 +402,28 @@ export function CustomMcpDialog({
     });
   };
 
-  const isValid = formData.name.trim() && (
+  const isValid = jsonMode ? !jsonError && !!formData.name : formData.name.trim() && (
     (formData.type === 'command' && formData.command?.trim()) ||
     (formData.type === 'http' && formData.url?.trim())
   );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className={jsonMode ? "sm:max-w-2xl" : "sm:max-w-lg"}>
         <DialogHeader>
           <DialogTitle>
             {isEditing ? t('mcp.editCustomServer') : t('mcp.addCustomServer')}
           </DialogTitle>
+          <div className="flex items-center gap-2 py-2">
+            <Label htmlFor="json-mode-toggle" className="text-sm cursor-pointer">
+              {jsonMode ? t('mcp.jsonMode') : t('mcp.formMode')}
+            </Label>
+            <Switch
+              id="json-mode-toggle"
+              checked={jsonMode}
+              onCheckedChange={setJsonMode}
+            />
+          </div>
           <DialogDescription>
             {t('mcp.customServerDescription')}
           </DialogDescription>
@@ -250,210 +437,223 @@ export function CustomMcpDialog({
             </div>
           )}
 
-          {/* Server Type */}
-          <div className="space-y-2">
-            <Label>{t('mcp.serverType')}</Label>
-            <RadioGroup
-              value={formData.type}
-              onValueChange={(value: 'command' | 'http') =>
-                setFormData(prev => ({ ...prev, type: value }))
-              }
-              className="flex gap-4"
-            >
-              <div className="flex items-center gap-2">
-                <RadioGroupItem value="command" id="type-command" />
-                <Label htmlFor="type-command" className="flex items-center gap-1.5 cursor-pointer">
-                  <Terminal className="h-3.5 w-3.5" />
-                  {t('mcp.typeCommand')}
-                </Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <RadioGroupItem value="http" id="type-http" />
-                <Label htmlFor="type-http" className="flex items-center gap-1.5 cursor-pointer">
-                  <Globe className="h-3.5 w-3.5" />
-                  {t('mcp.typeHttp')}
-                </Label>
-              </div>
-            </RadioGroup>
-          </div>
-
-          {/* Name */}
-          <div className="space-y-2">
-            <Label htmlFor="name">{t('mcp.serverName')}</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => {
-                setFormData(prev => ({ ...prev, name: e.target.value }));
-                setError(null);
-              }}
-              placeholder={t('mcp.serverNamePlaceholder')}
+          {/* JSON Mode */}
+          {jsonMode ? (
+            <JsonEditor
+              value={jsonValue}
+              onChange={handleJsonChange}
+              error={jsonError}
+              height="400px"
+              minHeight="300px"
             />
-            {!isEditing && formData.name && (
-              <p className="text-xs text-muted-foreground">
-                ID: {generateId(formData.name) || '...'}
-              </p>
-            )}
-          </div>
-
-          {/* Description (optional) */}
-          <div className="space-y-2">
-            <Label htmlFor="description">
-              {t('mcp.serverDescription')} <span className="text-muted-foreground">({t('common:optional')})</span>
-            </Label>
-            <Input
-              id="description"
-              value={formData.description || ''}
-              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-              placeholder={t('mcp.serverDescriptionPlaceholder')}
-            />
-          </div>
-
-          {/* Command-based fields */}
-          {formData.type === 'command' && (
+          ) : (
             <>
+              {/* Server Type */}
               <div className="space-y-2">
-                <Label htmlFor="command">{t('mcp.command')}</Label>
-                <Input
-                  id="command"
-                  value={formData.command || ''}
-                  onChange={(e) => {
-                    setFormData(prev => ({ ...prev, command: e.target.value }));
-                    setError(null);
-                  }}
-                  placeholder="npx"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="args">{t('mcp.args')}</Label>
-                <Input
-                  id="args"
-                  value={argsInput}
-                  onChange={(e) => setArgsInput(e.target.value)}
-                  placeholder="-y @myorg/my-mcp-server"
-                />
-                <p className="text-xs text-muted-foreground">{t('mcp.argsHint')}</p>
-              </div>
-            </>
-          )}
-
-          {/* HTTP-based fields */}
-          {formData.type === 'http' && (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="url">{t('mcp.url')}</Label>
-                <Input
-                  id="url"
-                  value={formData.url || ''}
-                  onChange={(e) => {
-                    setFormData(prev => ({ ...prev, url: e.target.value }));
-                    setError(null);
-                  }}
-                  placeholder="https://mcp.example.com/mcp"
-                />
-              </div>
-
-              {/* URL-based hint for known providers */}
-              {urlHint && (
-                <div className="flex items-start gap-2 p-3 bg-muted/50 rounded-lg border border-border">
-                  <urlHint.icon className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-muted-foreground">{urlHint.message}</p>
-                    <a
-                      href={urlHint.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-sm text-primary hover:underline mt-1"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        window.electronAPI?.openExternal(urlHint.link);
-                      }}
-                    >
-                      {urlHint.linkText}
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
+                <Label>{t('mcp.serverType')}</Label>
+                <RadioGroup
+                  value={formData.type}
+                  onValueChange={(value: 'command' | 'http') =>
+                    setFormData(prev => ({ ...prev, type: value }))
+                  }
+                  className="flex gap-4"
+                >
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="command" id="type-command" />
+                    <Label htmlFor="type-command" className="flex items-center gap-1.5 cursor-pointer">
+                      <Terminal className="h-3.5 w-3.5" />
+                      {t('mcp.typeCommand')}
+                    </Label>
                   </div>
-                </div>
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="http" id="type-http" />
+                    <Label htmlFor="type-http" className="flex items-center gap-1.5 cursor-pointer">
+                      <Globe className="h-3.5 w-3.5" />
+                      {t('mcp.typeHttp')}
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              {/* Name */}
+              <div className="space-y-2">
+                <Label htmlFor="name">{t('mcp.serverName')}</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => {
+                    setFormData(prev => ({ ...prev, name: e.target.value }));
+                    setError(null);
+                  }}
+                  placeholder={t('mcp.serverNamePlaceholder')}
+                />
+                {!isEditing && formData.name && (
+                  <p className="text-xs text-muted-foreground">
+                    ID: {generateId(formData.name) || '...'}
+                  </p>
+                )}
+              </div>
+
+              {/* Description (optional) */}
+              <div className="space-y-2">
+                <Label htmlFor="description">
+                  {t('mcp.serverDescription')} <span className="text-muted-foreground">({t('common:optional')})</span>
+                </Label>
+                <Input
+                  id="description"
+                  value={formData.description || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder={t('mcp.serverDescriptionPlaceholder')}
+                />
+              </div>
+
+              {/* Command-based fields */}
+              {formData.type === 'command' && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="command">{t('mcp.command')}</Label>
+                    <Input
+                      id="command"
+                      value={formData.command || ''}
+                      onChange={(e) => {
+                        setFormData(prev => ({ ...prev, command: e.target.value }));
+                        setError(null);
+                      }}
+                      placeholder="npx"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="args">{t('mcp.args')}</Label>
+                    <Input
+                      id="args"
+                      value={argsInput}
+                      onChange={(e) => setArgsInput(e.target.value)}
+                      placeholder="-y @myorg/my-mcp-server"
+                    />
+                    <p className="text-xs text-muted-foreground">{t('mcp.argsHint')}</p>
+                  </div>
+                </>
               )}
 
-              {/* Authentication Token (simplified) */}
-              <div className="space-y-2">
-                <Label htmlFor="bearerToken">
-                  {t('mcp.authToken')} <span className="text-muted-foreground">({t('common:optional')})</span>
-                </Label>
-                <Input
-                  id="bearerToken"
-                  value={bearerToken}
-                  onChange={(e) => setBearerToken(e.target.value)}
-                  placeholder={t('mcp.authTokenPlaceholder')}
-                  type="password"
-                />
-                <p className="text-xs text-muted-foreground">{t('mcp.authTokenHint')}</p>
-              </div>
+              {/* HTTP-based fields */}
+              {formData.type === 'http' && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="url">{t('mcp.url')}</Label>
+                    <Input
+                      id="url"
+                      value={formData.url || ''}
+                      onChange={(e) => {
+                        setFormData(prev => ({ ...prev, url: e.target.value }));
+                        setError(null);
+                      }}
+                      placeholder="https://mcp.example.com/mcp"
+                    />
+                  </div>
 
-              {/* Advanced Headers (collapsible) */}
-              <div className="space-y-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAdvancedHeaders(!showAdvancedHeaders)}
-                  className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <span className={`transition-transform ${showAdvancedHeaders ? 'rotate-90' : ''}`}>▶</span>
-                  {t('mcp.advancedHeaders')}
-                </button>
-
-                {showAdvancedHeaders && (
-                  <div className="pl-4 space-y-2">
-                    <div className="flex gap-2">
-                      <Input
-                        value={headerKey}
-                        onChange={(e) => setHeaderKey(e.target.value)}
-                        placeholder={t('mcp.headerName')}
-                        className="flex-1"
-                      />
-                      <Input
-                        value={headerValue}
-                        onChange={(e) => setHeaderValue(e.target.value)}
-                        placeholder={t('mcp.headerValue')}
-                        className="flex-1"
-                        type="password"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={addHeader}
-                        disabled={!headerKey.trim() || !headerValue.trim()}
-                      >
-                        {t('common:add')}
-                      </Button>
+                  {/* URL-based hint for known providers */}
+                  {urlHint && (
+                    <div className="flex items-start gap-2 p-3 bg-muted/50 rounded-lg border border-border">
+                      <urlHint.icon className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-muted-foreground">{urlHint.message}</p>
+                        <a
+                          href={urlHint.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-sm text-primary hover:underline mt-1"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            window.electronAPI?.openExternal(urlHint.link);
+                          }}
+                        >
+                          {urlHint.linkText}
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </div>
                     </div>
-                    {/* Show non-Authorization headers */}
-                    {Object.entries(formData.headers || {}).filter(([key]) => key.toLowerCase() !== 'authorization').length > 0 && (
-                      <div className="space-y-1 mt-2">
-                        {Object.entries(formData.headers || {})
-                          .filter(([key]) => key.toLowerCase() !== 'authorization')
-                          .map(([key, value]) => (
-                            <div key={key} className="flex items-center justify-between text-sm bg-muted px-2 py-1 rounded">
-                              <span>
-                                <span className="font-medium">{key}:</span>{' '}
-                                <span className="text-muted-foreground">
-                                  {value.length > 20 ? `${value.substring(0, 20)}...` : value}
-                                </span>
-                              </span>
-                              <button
-                                onClick={() => removeHeader(key)}
-                                className="text-muted-foreground hover:text-destructive transition-colors"
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
-                            </div>
-                          ))}
+                  )}
+
+                  {/* Authentication Token (simplified) */}
+                  <div className="space-y-2">
+                    <Label htmlFor="bearerToken">
+                      {t('mcp.authToken')} <span className="text-muted-foreground">({t('common:optional')})</span>
+                    </Label>
+                    <Input
+                      id="bearerToken"
+                      value={bearerToken}
+                      onChange={(e) => setBearerToken(e.target.value)}
+                      placeholder={t('mcp.authTokenPlaceholder')}
+                      type="password"
+                    />
+                    <p className="text-xs text-muted-foreground">{t('mcp.authTokenHint')}</p>
+                  </div>
+
+                  {/* Advanced Headers (collapsible) */}
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowAdvancedHeaders(!showAdvancedHeaders)}
+                      className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <span className={`transition-transform ${showAdvancedHeaders ? 'rotate-90' : ''}`}>▶</span>
+                      {t('mcp.advancedHeaders')}
+                    </button>
+
+                    {showAdvancedHeaders && (
+                      <div className="pl-4 space-y-2">
+                        <div className="flex gap-2">
+                          <Input
+                            value={headerKey}
+                            onChange={(e) => setHeaderKey(e.target.value)}
+                            placeholder={t('mcp.headerName')}
+                            className="flex-1"
+                          />
+                          <Input
+                            value={headerValue}
+                            onChange={(e) => setHeaderValue(e.target.value)}
+                            placeholder={t('mcp.headerValue')}
+                            className="flex-1"
+                            type="password"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={addHeader}
+                            disabled={!headerKey.trim() || !headerValue.trim()}
+                          >
+                            {t('common:add')}
+                          </Button>
+                        </div>
+                        {/* Show non-Authorization headers */}
+                        {Object.entries(formData.headers || {}).filter(([key]) => key.toLowerCase() !== 'authorization').length > 0 && (
+                          <div className="space-y-1 mt-2">
+                            {Object.entries(formData.headers || {})
+                              .filter(([key]) => key.toLowerCase() !== 'authorization')
+                              .map(([key, value]) => (
+                                <div key={key} className="flex items-center justify-between text-sm bg-muted px-2 py-1 rounded">
+                                  <span>
+                                    <span className="font-medium">{key}:</span>{' '}
+                                    <span className="text-muted-foreground">
+                                      {value.length > 20 ? `${value.substring(0, 20)}...` : value}
+                                    </span>
+                                  </span>
+                                  <button
+                                    onClick={() => removeHeader(key)}
+                                    className="text-muted-foreground hover:text-destructive transition-colors"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              ))}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
-                )}
-              </div>
+                </>
+              )}
             </>
           )}
         </div>

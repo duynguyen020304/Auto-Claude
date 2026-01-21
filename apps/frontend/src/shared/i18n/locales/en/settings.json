@@ -553,8 +553,15 @@
     },
     "customServers": "Custom Servers",
     "addCustomServer": "Add Custom Server",
+    "import": "Import",
+    "export": "Export",
+    "importServers": "Import servers from JSON file",
+    "exportServers": "Export servers to JSON file",
     "editCustomServer": "Edit Custom Server",
     "customServerDescription": "Add a command-based or HTTP-based MCP server",
+    "jsonMode": "JSON Mode",
+    "formMode": "Form Mode",
+    "jsonEditor": "JSON Editor",
     "serverType": "Server Type",
     "typeCommand": "Command (npx/npm)",
     "typeHttp": "HTTP",
@@ -596,6 +603,43 @@
       "createAnthropicKey": "Create Anthropic API Key",
       "openai": "This looks like an OpenAI API. You'll need an API key.",
       "createOpenaiKey": "Create OpenAI API Key"
-    }
+    },
+    "importError": {
+      "title": "Import Failed",
+      "invalidFormat": "Invalid format: expected an array of servers",
+      "missingFields": "Invalid server format: missing required fields (id, name, type)",
+      "invalidType": "Invalid server type: {{type}}. Must be one of: stdio, sse, command",
+      "filePicker": "Failed to open file picker",
+      "unknown": "An unknown error occurred"
+    },
+    "importSuccess": {
+      "title": "Imported {{count}} server",
+      "title_plural": "Imported {{count}} servers",
+      "descriptionMultiple": "Added {{count}} new servers to your configuration"
+    },
+    "importNoNew": {
+      "title": "No New Servers",
+      "description": "All servers in the file already exist in your configuration"
+    },
+    "duplicateDialog": {
+      "title": "Duplicate Server IDs",
+      "description": "{{duplicateCount}} server(s) with duplicate IDs detected. {{newCount}} new server(s) will be added.",
+      "duplicateServers": "Duplicate Servers",
+      "newServers": "New Servers",
+      "skip": "Skip Duplicates",
+      "merge": "Merge",
+      "replace": "Replace All"
+    },
+    "backupDialog": {
+      "title": "Backup Before Import?",
+      "description": "You are about to import {{count}} server(s). Would you like to create a backup of your current servers first?",
+      "serversToImport": "Servers to Import",
+      "andMore": "...and {{count}} more",
+      "currentServersWarning": "You have {{count}} custom server(s) that will be affected. We recommend creating a backup before importing.",
+      "skip": "Skip Backup",
+      "backupFirst": "Backup First"
+    },
+    "backupCreated": "Backup Created",
+    "backupFailed": "Backup Failed"
   }
 }

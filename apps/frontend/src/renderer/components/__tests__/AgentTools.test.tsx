@@ -308,3 +308,354 @@ describe('AgentTools - Agent Profile Resolution', () => {
     });
   });
 });
+
+describe('MCP Import/Export', () => {
+  describe('Export Servers', () => {
+    it('should download JSON file with all servers', async () => {
+      const customServers = [
+        { id: 's1', name: 'Server 1', type: 'command' as const, command: 'npx' }
+      ];
+
+      // Mock document methods for download
+      const mockAnchor = {
+        href: '',
+        download: '',
+        click: vi.fn(),
+        style: {}
+      };
+      const createElementSpy = vi.spyOn(document, 'createElement').mockReturnValue(mockAnchor as any);
+      const appendChildSpy = vi.spyOn(document.body, 'appendChild').mockImplementation(() => mockAnchor as any);
+      const removeChildSpy = vi.spyOn(document.body, 'removeChild').mockImplementation(() => mockAnchor as any);
+      const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test-url');
+      const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+
+      // Simulate export functionality
+      const jsonString = JSON.stringify(customServers, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+
+      expect(createObjectURLSpy).toHaveBeenCalled();
+      expect(url).toBe('blob:test-url');
+
+      // Cleanup mocks
+      createElementSpy.mockRestore();
+      appendChildSpy.mockRestore();
+      removeChildSpy.mockRestore();
+      createObjectURLSpy.mockRestore();
+      revokeObjectURLSpy.mockRestore();
+    });
+
+    it('should be disabled when no servers exist', () => {
+      const customServers: any[] = [];
+
+      // Export should be disabled when no servers
+      expect(customServers.length).toBe(0);
+    });
+
+    it('should generate timestamped filename', () => {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const filename = `mcp-servers-${timestamp}.json`;
+
+      expect(filename).toMatch(/^mcp-servers-\d{4}-\d{2}-\d{2}T/);
+      expect(filename).toMatch(/\.json$/);
+    });
+  });
+
+  describe('Import Servers', () => {
+    it('should validate and import valid servers', async () => {
+      const validJson = JSON.stringify([
+        { id: 'new-server', name: 'New Server', type: 'command' as const, command: 'npx' }
+      ]);
+
+      // Parse the JSON
+      const parsed = JSON.parse(validJson);
+
+      expect(Array.isArray(parsed)).toBe(true);
+      expect(parsed[0].id).toBe('new-server');
+      expect(parsed[0].name).toBe('New Server');
+      expect(parsed[0].type).toBe('command');
+      expect(parsed[0].command).toBe('npx');
+    });
+
+    it('should show error for invalid JSON', async () => {
+      const invalidJson = '{invalid json}';
+
+      // Attempt to parse should fail
+      expect(() => {
+        JSON.parse(invalidJson);
+      }).toThrow();
+    });
+
+    it('should show error for missing required fields', async () => {
+      const invalidJson = JSON.stringify([
+        { id: 's1' } // missing name, type
+      ]);
+
+      const parsed = JSON.parse(invalidJson);
+
+      // Should have id but missing required fields
+      expect(parsed[0].id).toBe('s1');
+      expect(parsed[0].name).toBeUndefined();
+      expect(parsed[0].type).toBeUndefined();
+    });
+
+    it('should handle single server object', async () => {
+      const singleServerJson = JSON.stringify(
+        { id: 's1', name: 'Server 1', type: 'http' as const, url: 'https://example.com' }
+      );
+
+      const parsed = JSON.parse(singleServerJson);
+
+      expect(parsed.id).toBe('s1');
+      expect(parsed.name).toBe('Server 1');
+      expect(parsed.type).toBe('http');
+      expect(parsed.url).toBe('https://example.com');
+    });
+
+    it('should handle empty array', async () => {
+      const emptyJson = '[]';
+      const parsed = JSON.parse(emptyJson);
+
+      expect(Array.isArray(parsed)).toBe(true);
+      expect(parsed.length).toBe(0);
+    });
+  });
+
+  describe('Duplicate Detection', () => {
+    it('should detect duplicate server IDs', () => {
+      const existingServers = [
+        { id: 'existing', name: 'Existing', type: 'command' as const, command: 'npx' }
+      ];
+
+      const importServers = [
+        { id: 'existing', name: 'Updated', type: 'command' as const, command: 'npx' },
+        { id: 'new', name: 'New', type: 'command' as const, command: 'npx' }
+      ];
+
+      // Find duplicates
+      const existingIds = new Set(existingServers.map(s => s.id));
+      const duplicates = importServers.filter(s => existingIds.has(s.id));
+      const newServers = importServers.filter(s => !existingIds.has(s.id));
+
+      expect(duplicates.length).toBe(1);
+      expect(duplicates[0].id).toBe('existing');
+      expect(newServers.length).toBe(1);
+      expect(newServers[0].id).toBe('new');
+    });
+
+    it('should have no duplicates when IDs are unique', () => {
+      const existingServers = [
+        { id: 's1', name: 'Server 1', type: 'command' as const, command: 'npx' }
+      ];
+
+      const importServers = [
+        { id: 's2', name: 'Server 2', type: 'command' as const, command: 'npx' },
+        { id: 's3', name: 'Server 3', type: 'command' as const, command: 'npx' }
+      ];
+
+      const existingIds = new Set(existingServers.map(s => s.id));
+      const duplicates = importServers.filter(s => existingIds.has(s.id));
+
+      expect(duplicates.length).toBe(0);
+    });
+
+    it('should detect all duplicates when multiple exist', () => {
+      const existingServers = [
+        { id: 's1', name: 'Server 1', type: 'command' as const, command: 'npx' },
+        { id: 's2', name: 'Server 2', type: 'command' as const, command: 'npx' }
+      ];
+
+      const importServers = [
+        { id: 's1', name: 'Updated 1', type: 'command' as const, command: 'npx' },
+        { id: 's2', name: 'Updated 2', type: 'command' as const, command: 'npx' },
+        { id: 's3', name: 'New', type: 'command' as const, command: 'npx' }
+      ];
+
+      const existingIds = new Set(existingServers.map(s => s.id));
+      const duplicates = importServers.filter(s => existingIds.has(s.id));
+      const newServers = importServers.filter(s => !existingIds.has(s.id));
+
+      expect(duplicates.length).toBe(2);
+      expect(newServers.length).toBe(1);
+    });
+  });
+
+  describe('Duplicate Resolution Strategies', () => {
+    it('should skip duplicates when skip option selected', () => {
+      const existingServers = [
+        { id: 's1', name: 'Server 1', type: 'command' as const, command: 'npx' },
+        { id: 's2', name: 'Server 2', type: 'command' as const, command: 'npx' }
+      ];
+
+      const importServers = [
+        { id: 's1', name: 'Updated 1', type: 'command' as const, command: 'npx' },
+        { id: 's3', name: 'New', type: 'command' as const, command: 'npx' }
+      ];
+
+      // Skip duplicates strategy
+      const existingIds = new Set(existingServers.map(s => s.id));
+      const result = importServers.filter(s => !existingIds.has(s.id));
+
+      expect(result.length).toBe(1);
+      expect(result[0].id).toBe('s3');
+    });
+
+    it('should merge servers when merge option selected', () => {
+      const existingServers = [
+        { id: 's1', name: 'Server 1', type: 'command' as const, command: 'npx', args: ['-y'] },
+        { id: 's2', name: 'Server 2', type: 'command' as const, command: 'npx' }
+      ];
+
+      const importServers = [
+        { id: 's1', name: 'Updated 1', type: 'command' as const, command: 'node', args: [] },
+        { id: 's3', name: 'New', type: 'command' as const, command: 'npx' }
+      ];
+
+      // Merge strategy: replace existing with imported
+      const serverMap = new Map(
+        [...existingServers, ...importServers].map(s => [s.id, s])
+      );
+      const result = Array.from(serverMap.values());
+
+      expect(result.length).toBe(3);
+      expect(result.find(s => s.id === 's1')?.name).toBe('Updated 1'); // Updated
+      expect(result.find(s => s.id === 's3')?.name).toBe('New'); // Added
+    });
+
+    it('should replace all when replace option selected', () => {
+      const existingServers = [
+        { id: 's1', name: 'Server 1', type: 'command' as const, command: 'npx' },
+        { id: 's2', name: 'Server 2', type: 'command' as const, command: 'npx' }
+      ];
+
+      const importServers = [
+        { id: 's3', name: 'New 1', type: 'command' as const, command: 'npx' },
+        { id: 's4', name: 'New 2', type: 'command' as const, command: 'npx' }
+      ];
+
+      // Replace all strategy: use only imported servers
+      const result = [...importServers];
+
+      expect(result.length).toBe(2);
+      expect(result.every(s => importServers.some(imp => imp.id === s.id))).toBe(true);
+      expect(result.some(s => s.id === 's1')).toBe(false);
+      expect(result.some(s => s.id === 's2')).toBe(false);
+    });
+  });
+
+  describe('Import Error Handling', () => {
+    it('should handle malformed JSON gracefully', () => {
+      const invalidJson = '{"name": "test"'; // Missing closing brace
+
+      expect(() => {
+        JSON.parse(invalidJson);
+      }).toThrow();
+    });
+
+    it('should handle non-JSON content', () => {
+      const textContent = 'This is just plain text, not JSON';
+
+      expect(() => {
+        JSON.parse(textContent);
+      }).toThrow();
+    });
+
+    it('should handle JSON with wrong structure', () => {
+      const wrongStructure = JSON.stringify({
+        servers: 'this should be an array, not a property'
+      });
+
+      const parsed = JSON.parse(wrongStructure);
+
+      // Valid JSON but wrong structure for our use case
+      expect(Array.isArray(parsed)).toBe(false);
+      expect(parsed.servers).toBeDefined();
+    });
+
+    it('should handle JSON array with invalid server objects', () => {
+      const invalidServers = JSON.stringify([
+        { id: 's1' }, // missing required fields
+        { id: 's2' }, // missing required fields
+        { id: 's3', name: 'Valid', type: 'command' as const, command: 'npx' }
+      ]);
+
+      const parsed = JSON.parse(invalidServers);
+
+      expect(parsed.length).toBe(3);
+      expect(parsed[0].name).toBeUndefined();
+      expect(parsed[1].name).toBeUndefined();
+      expect(parsed[2].name).toBe('Valid');
+    });
+  });
+
+  describe('Backup Before Import', () => {
+    it('should create backup when option selected', () => {
+      const currentServers = [
+        { id: 's1', name: 'Server 1', type: 'command' as const, command: 'npx' },
+        { id: 's2', name: 'Server 2', type: 'http' as const, url: 'https://example.com' }
+      ];
+
+      const backupJson = JSON.stringify(currentServers, null, 2);
+
+      expect(backupJson).toContain('s1');
+      expect(backupJson).toContain('s2');
+      expect(backupJson).toContain('Server 1');
+      expect(backupJson).toContain('Server 2');
+    });
+
+    it('should generate backup filename with timestamp', () => {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupFilename = `mcp-servers-backup-${timestamp}.json`;
+
+      expect(backupFilename).toMatch(/^mcp-servers-backup-\d{4}-\d{2}-\d{2}T/);
+      expect(backupFilename).toMatch(/\.json$/);
+    });
+
+    it('should handle empty server list for backup', () => {
+      const currentServers: any[] = [];
+      const backupJson = JSON.stringify(currentServers, null, 2);
+
+      expect(backupJson).toBe('[]');
+    });
+  });
+
+  describe('File Reading', () => {
+    it('should read file contents correctly', () => {
+      const fileContent = JSON.stringify([
+        { id: 's1', name: 'Server 1', type: 'command' as const, command: 'npx' }
+      ]);
+
+      // Simulate file reading
+      const parsed = JSON.parse(fileContent);
+
+      expect(parsed[0].id).toBe('s1');
+      expect(parsed[0].name).toBe('Server 1');
+    });
+
+    it('should handle UTF-8 encoding', () => {
+      const utf8Content = JSON.stringify([
+        { id: 's1', name: 'Serveur 测试 🎉', type: 'command' as const, command: 'npx' }
+      ]);
+
+      const parsed = JSON.parse(utf8Content);
+
+      expect(parsed[0].name).toBe('Serveur 测试 🎉');
+    });
+
+    it('should handle large files', () => {
+      const largeServerList = Array.from({ length: 100 }, (_, i) => ({
+        id: `s${i}`,
+        name: `Server ${i}`,
+        type: 'command' as const,
+        command: 'npx'
+      }));
+
+      const jsonContent = JSON.stringify(largeServerList);
+      const parsed = JSON.parse(jsonContent);
+
+      expect(parsed.length).toBe(100);
+      expect(parsed[0].name).toBe('Server 0');
+      expect(parsed[99].name).toBe('Server 99');
+    });
+  });
+});

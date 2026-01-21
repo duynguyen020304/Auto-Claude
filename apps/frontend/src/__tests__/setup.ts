@@ -5,6 +5,9 @@ import { vi, beforeEach, afterEach } from 'vitest';
 import { mkdirSync, rmSync, existsSync } from 'fs';
 import path from 'path';
 
+// Import and configure @testing-library/jest-dom matchers
+import '@testing-library/jest-dom';
+
 // Mock localStorage for tests that need it
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
