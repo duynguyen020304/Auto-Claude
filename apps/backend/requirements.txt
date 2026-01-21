@@ -29,5 +29,9 @@ google-generativeai>=0.8.0
 # Pydantic for structured output schemas
 pydantic>=2.0.0
 
+# File operations for insight chat - encoding detection and tokenization
+chardet>=5.0.0
+tiktoken>=0.5.0
+
 # Error tracking (optional - requires SENTRY_DSN environment variable)
 sentry-sdk>=2.0.0

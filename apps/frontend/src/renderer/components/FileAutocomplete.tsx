@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { File, Folder, ChevronRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useFileExplorerStore } from '../stores/file-explorer-store';
@@ -25,6 +26,7 @@ export function FileAutocomplete({
   onClose,
   maxResults = 10
 }: FileAutocompleteProps) {
+  const { t } = useTranslation('insights');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
   const { files, loadDirectory } = useFileExplorerStore();
@@ -174,62 +176,106 @@ export function FileAutocomplete({
   if (filteredFiles.length === 0) {
     return (
       <div
-        className="absolute z-50 bg-popover border border-border rounded-md shadow-lg p-3 text-sm text-muted-foreground"
+        role="listbox"
+        aria-label={t('fileMention.autocompleteLabel')}
+        className="absolute z-50 bg-popover border border-border rounded-md shadow-lg overflow-hidden"
         style={{
           top: position.top,
           left: position.left,
-          minWidth: '200px'
+          minWidth: '280px',
+          maxWidth: '400px'
         }}
       >
-        No files found
+        <div className="p-3 text-sm text-muted-foreground">
+          {t('fileMention.noFilesFound')}
+        </div>
+        <div
+          className="border-t border-border px-3 py-2 text-xs bg-muted/30 space-y-1"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="font-medium text-foreground">{t('fileMention.syntaxHelpTitle')}</div>
+          <div className="text-muted-foreground space-y-0.5">
+            <div><code className="px-1 py-0.5 rounded bg-background">@filename.js</code> {t('fileMention.syntaxHelpFile')}</div>
+            <div><code className="px-1 py-0.5 rounded bg-background">@filename.js:10-50</code> {t('fileMention.syntaxHelpLineRange')}</div>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
     <div
+      role="listbox"
+      id="file-mention-list"
+      aria-label={t('fileMention.autocompleteLabel')}
+      aria-activedescendant={filteredFiles[selectedIndex]?.path}
       className="absolute z-50 bg-popover border border-border rounded-md shadow-lg overflow-hidden"
       style={{
         top: position.top,
         left: position.left,
         minWidth: '280px',
         maxWidth: '400px',
-        maxHeight: '240px'
+        maxHeight: '280px'
       }}
     >
       <div
         ref={listRef}
-        className="overflow-y-auto max-h-[240px]"
+        className="overflow-y-auto"
+        style={{ maxHeight: '180px' }}
+        role="presentation"
       >
         {filteredFiles.map((file, index) => (
           <button
             key={file.path}
+            role="option"
+            id={file.path}
+            aria-selected={index === selectedIndex}
             className={cn(
               'w-full flex items-center gap-2 px-3 py-2 text-left text-sm',
               'hover:bg-accent hover:text-accent-foreground',
-              'focus:outline-none transition-colors',
+              'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+              'transition-colors',
               index === selectedIndex && 'bg-accent text-accent-foreground'
             )}
             onClick={() => onSelect(file.name, file.path)}
             onMouseEnter={() => setSelectedIndex(index)}
+            tabIndex={index === selectedIndex ? 0 : -1}
           >
             {file.isDirectory ? (
-              <Folder className="h-4 w-4 text-muted-foreground shrink-0" />
+              <Folder className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
             ) : (
-              <File className="h-4 w-4 text-muted-foreground shrink-0" />
+              <File className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
             )}
             <div className="flex-1 min-w-0">
               <div className="font-medium truncate">{file.name}</div>
               <div className="text-xs text-muted-foreground truncate flex items-center gap-1">
-                <ChevronRight className="h-3 w-3 shrink-0" />
+                <ChevronRight className="h-3 w-3 shrink-0" aria-hidden="true" />
                 {getRelativePath(file.path)}
               </div>
             </div>
           </button>
         ))}
       </div>
-      <div className="border-t border-border px-3 py-1.5 text-[10px] text-muted-foreground bg-muted/30">
-        <span className="font-medium">↑↓</span> navigate · <span className="font-medium">Enter</span> select · <span className="font-medium">Esc</span> close
+      <div className="border-t border-border bg-muted/30">
+        <div
+          className="px-3 py-2 text-xs space-y-1.5"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="font-medium text-foreground">{t('fileMention.syntaxHelpTitle')}</div>
+          <div className="text-muted-foreground space-y-0.5">
+            <div><code className="px-1 py-0.5 rounded bg-background">@filename.js</code> {t('fileMention.syntaxHelpFile')}</div>
+            <div><code className="px-1 py-0.5 rounded bg-background">@filename.js:10-50</code> {t('fileMention.syntaxHelpLineRange')}</div>
+          </div>
+        </div>
+        <div
+          className="border-t border-border/50 px-3 py-1.5 text-[10px] text-muted-foreground"
+        >
+          {t('fileMention.autocompleteCount', { count: filteredFiles.length })}
+          {' · '}
+          <span className="font-medium">↑↓</span> navigate · <span className="font-medium">Enter</span> select · <span className="font-medium">Esc</span> close
+        </div>
       </div>
     </div>
   );

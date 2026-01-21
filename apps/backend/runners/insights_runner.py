@@ -111,6 +111,115 @@ def load_project_context(project_dir: str) -> str:
     )
 
 
+def _is_binary_file(file_path: Path) -> bool:
+    """Check if a file is likely binary by reading a small sample."""
+    try:
+        with open(file_path, 'rb') as f:
+            chunk = f.read(8192)
+            if not chunk:
+                return False
+
+            # Check for null bytes (common in binary files)
+            if b'\x00' in chunk:
+                return True
+
+            # Check if the chunk has too many non-text characters
+            # Text files typically have mostly printable ASCII/UTF-8
+            text_characters = bytearray({7, 8, 9, 10, 12, 13, 27} | set(range(0x20, 0x100)) - {0x7f})
+            non_text = sum(1 for byte in chunk if byte not in text_characters)
+
+            # If more than 30% non-text characters, likely binary
+            return non_text / len(chunk) > 0.3
+    except Exception:
+        # If we can't read it at all, treat as binary
+        return True
+
+
+def load_mentioned_files(project_dir: str, mentions: list) -> str:
+    """Load contents of mentioned files with smart truncation for large files."""
+    if not mentions:
+        return ""
+
+    project_path = Path(project_dir).resolve()
+    file_contexts = []
+
+    for mention in mentions:
+        file_path = mention.get("filePath", "")
+        line_start = mention.get("lineStart")
+        line_end = mention.get("lineEnd")
+
+        # Resolve file path relative to project directory
+        full_path = project_path / file_path
+
+        # Check if file exists
+        if not full_path.exists():
+            file_contexts.append(f"## {file_path}\n⚠️ File not found")
+            continue
+
+        # Check if it's a directory
+        if full_path.is_dir():
+            file_contexts.append(f"## {file_path}\n⚠️ Path is a directory, not a file")
+            continue
+
+        # Check if file is readable (permission check)
+        if not full_path.is_file():
+            file_contexts.append(f"## {file_path}\n⚠️ Path is not a valid file")
+            continue
+
+        # Check for binary file
+        if _is_binary_file(full_path):
+            file_contexts.append(f"## {file_path}\n⚠️ Binary file - cannot display content")
+            continue
+
+        try:
+            with open(full_path, encoding="utf-8") as f:
+                lines = f.readlines()
+
+            total_lines = len(lines)
+
+            # Smart truncation logic
+            if line_start is not None and line_end is not None:
+                # Specific line range requested
+                start_idx = max(0, line_start - 1)
+                end_idx = min(total_lines, line_end)
+                selected_lines = lines[start_idx:end_idx]
+                header = f"## {file_path} (lines {line_start}-{line_end} of {total_lines})"
+            elif total_lines <= 500:
+                # Small file - include all
+                selected_lines = lines
+                header = f"## {file_path} ({total_lines} lines)"
+            elif total_lines <= 2000:
+                # Medium file - include first 1000 and last 500 lines
+                selected_lines = lines[:1000] + ["\n... (middle truncated) ...\n"] + lines[-500:]
+                header = f"## {file_path} (showing lines 1-1000 and {total_lines-499}-{total_lines} of {total_lines})"
+            else:
+                # Large file - include first 500, last 300 lines
+                selected_lines = lines[:500] + ["\n... (middle truncated) ...\n"] + lines[-300:]
+                header = f"## {file_path} (showing lines 1-500 and {total_lines-299}-{total_lines} of {total_lines})"
+
+            # Format line numbers
+            if line_start is not None and line_end is not None:
+                # Show line numbers for requested range
+                content = "".join(
+                    f"{line_start + i}: {line}" for i, line in enumerate(selected_lines)
+                )
+            else:
+                content = "".join(selected_lines)
+
+            file_contexts.append(f"{header}\n```\n{content}\n```")
+
+        except PermissionError:
+            file_contexts.append(f"## {file_path}\n⚠️ Permission denied - cannot read file")
+        except UnicodeDecodeError:
+            file_contexts.append(f"## {file_path}\n⚠️ File encoding error - cannot read as text")
+        except OSError as e:
+            file_contexts.append(f"## {file_path}\n⚠️ OS error reading file: {e}")
+        except Exception as e:
+            file_contexts.append(f"## {file_path}\n⚠️ Error reading file: {e}")
+
+    return "\n\n".join(file_contexts) if file_contexts else ""
+
+
 def build_system_prompt(project_dir: str) -> str:
     """Build the system prompt for the insights agent."""
     context = load_project_context(project_dir)
@@ -143,11 +252,12 @@ async def run_with_sdk(
     history: list,
     model: str = "sonnet",  # Shorthand - resolved via API Profile if configured
     thinking_level: str = "medium",
+    mentions: list = None,
 ) -> None:
     """Run the chat using Claude SDK with streaming."""
     if not SDK_AVAILABLE:
         print("Claude SDK not available, falling back to simple mode", file=sys.stderr)
-        run_simple(project_dir, message, history)
+        run_simple(project_dir, message, history, mentions)
         return
 
     if not get_auth_token():
@@ -155,7 +265,7 @@ async def run_with_sdk(
             "No authentication token found, falling back to simple mode",
             file=sys.stderr,
         )
-        run_simple(project_dir, message, history)
+        run_simple(project_dir, message, history, mentions)
         return
 
     # Ensure SDK can find the token
@@ -170,11 +280,33 @@ async def run_with_sdk(
         role = "User" if msg.get("role") == "user" else "Assistant"
         conversation_context += f"\n{role}: {msg['content']}\n"
 
-    # Build the full prompt with conversation history
+    # Load mentioned files contents
+    if mentions:
+        debug(
+            "insights_runner",
+            "Loading mentioned files",
+            mentions_count=len(mentions),
+        )
+    files_context = load_mentioned_files(project_dir, mentions or [])
+    if files_context:
+        debug_detailed(
+            "insights_runner",
+            "Loaded file contents",
+            context_length=len(files_context),
+        )
+
+    # Build the full prompt with conversation history and file contents
     full_prompt = message
-    if conversation_context.strip():
-        full_prompt = f"""Previous conversation:
-{conversation_context}
+    if conversation_context.strip() or files_context:
+        prompt_parts = []
+        if conversation_context.strip():
+            prompt_parts.append(f"""Previous conversation:
+{conversation_context}""")
+        if files_context:
+            prompt_parts.append(f"""Referenced files:
+{files_context}""")
+
+        full_prompt = f"""{chr(10).join(prompt_parts)}
 
 Current question: {message}"""
 
@@ -283,10 +415,10 @@ Current question: {message}"""
         import traceback
 
         traceback.print_exc(file=sys.stderr)
-        run_simple(project_dir, message, history)
+        run_simple(project_dir, message, history, mentions)
 
 
-def run_simple(project_dir: str, message: str, history: list) -> None:
+def run_simple(project_dir: str, message: str, history: list, mentions: list = None) -> None:
     """Simple fallback mode without SDK - uses subprocess to call claude CLI."""
     import subprocess
 
@@ -298,14 +430,33 @@ def run_simple(project_dir: str, message: str, history: list) -> None:
         role = "User" if msg.get("role") == "user" else "Assistant"
         conversation_context += f"\n{role}: {msg['content']}\n"
 
-    # Create the full prompt
-    full_prompt = f"""{system_prompt}
+    # Load mentioned files contents
+    if mentions:
+        debug(
+            "insights_runner",
+            "Loading mentioned files (simple mode)",
+            mentions_count=len(mentions),
+        )
+    files_context = load_mentioned_files(project_dir, mentions or [])
+    if files_context:
+        debug_detailed(
+            "insights_runner",
+            "Loaded file contents (simple mode)",
+            context_length=len(files_context),
+        )
 
-Previous conversation:
-{conversation_context}
+    # Create the full prompt with file contents
+    prompt_parts = [system_prompt]
+    if conversation_context.strip():
+        prompt_parts.append(f"""Previous conversation:
+{conversation_context}""")
+    if files_context:
+        prompt_parts.append(f"""Referenced files:
+{files_context}""")
 
-User: {message}
-Assistant:"""
+    prompt_parts.append(f"User: {message}\nAssistant:")
+
+    full_prompt = "\n\n".join(prompt_parts)
 
     try:
         # Try to use claude CLI with --print for simple output
@@ -359,6 +510,11 @@ def main():
         choices=["none", "low", "medium", "high", "ultrathink"],
         help="Thinking level for extended reasoning (default: medium)",
     )
+    parser.add_argument(
+        "--mentions",
+        default="[]",
+        help='JSON array of file mentions to include in context (e.g., \'[{"filePath": "src/App.tsx", "lineStart": 10, "lineEnd": 20}]\')',
+    )
     args = parser.parse_args()
 
     debug_section("insights_runner", "Starting Insights Chat")
@@ -399,9 +555,19 @@ def main():
         debug_error("insights_runner", f"Failed to load history: {e}")
         history = []
 
+    # Parse file mentions from JSON
+    try:
+        mentions = json.loads(args.mentions)
+        debug_detailed(
+            "insights_runner", "Parsed file mentions", mentions_count=len(mentions)
+        )
+    except json.JSONDecodeError as e:
+        debug_error("insights_runner", f"Failed to parse mentions: {e}")
+        mentions = []
+
     # Run the async SDK function
     debug("insights_runner", "Running SDK query")
-    asyncio.run(run_with_sdk(project_dir, user_message, history, model, thinking_level))
+    asyncio.run(run_with_sdk(project_dir, user_message, history, model, thinking_level, mentions))
     debug_success("insights_runner", "Query completed")
 
 

@@ -8,7 +8,8 @@ import type {
   InsightsChatStatus,
   InsightsStreamChunk,
   InsightsToolUsage,
-  InsightsModelConfig
+  InsightsModelConfig,
+  FileMention
 } from '../../shared/types';
 import { MODEL_ID_MAP } from '../../shared/constants';
 import { InsightsConfig } from './config';
@@ -63,7 +64,8 @@ export class InsightsExecutor extends EventEmitter {
     projectPath: string,
     message: string,
     conversationHistory: Array<{ role: string; content: string }>,
-    modelConfig?: InsightsModelConfig
+    modelConfig?: InsightsModelConfig,
+    fileMentions?: FileMention[]
   ): Promise<ProcessorResult> {
     // Cancel any existing session
     this.cancelSession(projectId);
@@ -102,6 +104,23 @@ export class InsightsExecutor extends EventEmitter {
       throw new Error('Failed to write conversation history to temp file');
     }
 
+    // Write file mentions to temp file if provided
+    const mentionsFile = path.join(
+      os.tmpdir(),
+      `insights-mentions-${projectId}-${Date.now()}.json`
+    );
+
+    let mentionsFileCreated = false;
+    if (fileMentions && fileMentions.length > 0) {
+      try {
+        writeFileSync(mentionsFile, JSON.stringify(fileMentions), 'utf-8');
+        mentionsFileCreated = true;
+      } catch (err) {
+        console.error('[Insights] Failed to write mentions file:', err);
+        throw new Error('Failed to write file mentions to temp file');
+      }
+    }
+
     // Build command arguments
     const args = [
       runnerPath,
@@ -109,6 +128,11 @@ export class InsightsExecutor extends EventEmitter {
       '--message', message,
       '--history-file', historyFile
     ];
+
+    // Add mentions file if provided
+    if (mentionsFileCreated) {
+      args.push('--mentions-file', mentionsFile);
+    }
 
     // Add model config if provided
     if (modelConfig) {
@@ -169,12 +193,20 @@ export class InsightsExecutor extends EventEmitter {
       proc.on('close', (code) => {
         this.activeSessions.delete(projectId);
 
-        // Cleanup temp file
+        // Cleanup temp files
         if (historyFileCreated && existsSync(historyFile)) {
           try {
             unlinkSync(historyFile);
           } catch (cleanupErr) {
             console.error('[Insights] Failed to cleanup history file:', cleanupErr);
+          }
+        }
+
+        if (mentionsFileCreated && existsSync(mentionsFile)) {
+          try {
+            unlinkSync(mentionsFile);
+          } catch (cleanupErr) {
+            console.error('[Insights] Failed to cleanup mentions file:', cleanupErr);
           }
         }
 
@@ -216,12 +248,20 @@ export class InsightsExecutor extends EventEmitter {
       proc.on('error', (err) => {
         this.activeSessions.delete(projectId);
 
-        // Cleanup temp file
+        // Cleanup temp files
         if (historyFileCreated && existsSync(historyFile)) {
           try {
             unlinkSync(historyFile);
           } catch (cleanupErr) {
             console.error('[Insights] Failed to cleanup history file:', cleanupErr);
+          }
+        }
+
+        if (mentionsFileCreated && existsSync(mentionsFile)) {
+          try {
+            unlinkSync(mentionsFile);
+          } catch (cleanupErr) {
+            console.error('[Insights] Failed to cleanup mentions file:', cleanupErr);
           }
         }
 
