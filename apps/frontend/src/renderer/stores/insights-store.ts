@@ -65,6 +65,7 @@ interface InsightsState {
   finalizeStreamingMessage: (suggestedTask?: InsightsChatMessage['suggestedTask']) => void;
   clearSession: () => void;
   setLoadingSessions: (loading: boolean) => void;
+  abortGeneration: (sessionId: string) => void;
 
   // Selectors
   getCurrentSessionState: () => InsightsSessionState | undefined;
@@ -591,6 +592,60 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
     });
   },
 
+  /**
+   * Aborts an ongoing generation for the specified session.
+   * Cleans up the abort controller, generating session tracking, and resets session status.
+   *
+   * @param sessionId - The ID of the session whose generation should be aborted
+   */
+  abortGeneration: (sessionId) =>
+    set((state) => {
+      // Abort the controller for this session
+      const abortController = state.abortControllers.get(sessionId);
+      if (abortController) {
+        abortController.abort();
+      }
+
+      // Remove the abort controller
+      const newAbortControllers = new Map(state.abortControllers);
+      newAbortControllers.delete(sessionId);
+
+      // Remove from generating session IDs
+      const newGeneratingSessionIds = new Map<string, string>();
+      for (const [projectId, generatingSessionId] of state.generatingSessionIds.entries()) {
+        if (generatingSessionId !== sessionId) {
+          newGeneratingSessionIds.set(projectId, generatingSessionId);
+        }
+      }
+
+      // Update status for the session
+      const sessionState = state.sessionStates.get(sessionId);
+      const updates: Partial<InsightsState> = {
+        abortControllers: newAbortControllers,
+        generatingSessionIds: newGeneratingSessionIds
+      };
+
+      if (sessionState) {
+        const newStatus: InsightsChatStatus = {
+          phase: 'idle',
+          message: ''
+        };
+
+        const newSessionStates = new Map(state.sessionStates);
+        newSessionStates.set(sessionId, {
+          ...sessionState,
+          status: newStatus
+        });
+        updates.sessionStates = newSessionStates;
+
+        if (state.currentSessionId === sessionId) {
+          updates.status = newStatus;
+        }
+      }
+
+      return updates;
+    }),
+
   // Selectors
   /**
    * Gets the state for the currently active session.
@@ -784,6 +839,10 @@ export async function createTaskFromSuggestion(
     return result.data;
   }
   return null;
+}
+
+export function abortGeneration(sessionId: string): void {
+  useInsightsStore.getState().abortGeneration(sessionId);
 }
 
 // IPC listener setup - call this once when the app initializes
