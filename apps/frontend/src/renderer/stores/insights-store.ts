@@ -63,6 +63,10 @@ interface InsightsState {
   finalizeStreamingMessage: (suggestedTask?: InsightsChatMessage['suggestedTask']) => void;
   clearSession: () => void;
   setLoadingSessions: (loading: boolean) => void;
+
+  // Selectors
+  getCurrentSessionState: () => InsightsSessionState | undefined;
+  getSessionState: (sessionId: string) => InsightsSessionState | undefined;
 }
 
 const initialStatus: InsightsChatStatus = {
@@ -583,6 +587,17 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       toolsUsed: [],
       fileMentions: []
     });
+  },
+
+  // Selectors
+  getCurrentSessionState: () => {
+    const state = _get();
+    if (!state.currentSessionId) return undefined;
+    return state.sessionStates.get(state.currentSessionId);
+  },
+
+  getSessionState: (sessionId: string) => {
+    return _get().sessionStates.get(sessionId);
   }
 }));
 
