@@ -225,7 +225,7 @@ describe('TaskOperationQueue', () => {
 
       const op2 = queue.enqueue(async () => {
         return 'should not execute';
-      }).catch((error) => {
+      }).catch((error: any) => {
         opError = error;
       });
 
@@ -237,7 +237,9 @@ describe('TaskOperationQueue', () => {
       await op2;
 
       expect(opError).not.toBeNull();
-      expect(opError?.message).toBe('Operation cancelled - queue cleared');
+      if (opError) {
+        expect((opError as Error).message).toBe('Operation cancelled - queue cleared');
+      }
     });
   });
 

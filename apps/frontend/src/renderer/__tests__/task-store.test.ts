@@ -61,6 +61,7 @@ describe('Task Store', () => {
         in_progress: [],
         ai_review: [],
         human_review: [],
+        pr_created: [],
         done: []
       }
     });
@@ -1449,23 +1450,23 @@ describe('Task Store', () => {
       const taskOrder = useTaskStore.getState().taskOrder;
 
       // Check backlog order
-      expect(taskOrder.backlog).toHaveLength(3);
-      expect(taskOrder.backlog?.[0]).toBe('backlog-3'); // Most recent
-      expect(taskOrder.backlog?.[1]).toBe('backlog-2');
-      expect(taskOrder.backlog?.[2]).toBe('backlog-1');
+      expect(taskOrder?.backlog).toHaveLength(3);
+      expect(taskOrder?.backlog?.[0]).toBe('backlog-3'); // Most recent
+      expect(taskOrder?.backlog?.[1]).toBe('backlog-2');
+      expect(taskOrder?.backlog?.[2]).toBe('backlog-1');
 
       // Check in_progress order
-      expect(taskOrder.in_progress).toHaveLength(2);
-      expect(taskOrder.in_progress?.[0]).toBe('progress-2'); // Most recent
-      expect(taskOrder.in_progress?.[1]).toBe('progress-1');
+      expect(taskOrder?.in_progress).toHaveLength(2);
+      expect(taskOrder?.in_progress?.[0]).toBe('progress-2'); // Most recent
+      expect(taskOrder?.in_progress?.[1]).toBe('progress-1');
 
       // Check ai_review order
-      expect(taskOrder.ai_review).toHaveLength(1);
-      expect(taskOrder.ai_review?.[0]).toBe('review-1');
+      expect(taskOrder?.ai_review).toHaveLength(1);
+      expect(taskOrder?.ai_review?.[0]).toBe('review-1');
 
       // Check done order
-      expect(taskOrder.done).toHaveLength(1);
-      expect(taskOrder.done?.[0]).toBe('done-1');
+      expect(taskOrder?.done).toHaveLength(1);
+      expect(taskOrder?.done?.[0]).toBe('done-1');
     });
 
     it('should handle adding same task multiple times (deduplication in taskOrder)', () => {
@@ -1489,7 +1490,7 @@ describe('Task Store', () => {
 
       // However, taskOrder handles duplicates correctly via safety check
       const taskOrder = useTaskStore.getState().taskOrder;
-      const backlogOrder = taskOrder.backlog || [];
+      const backlogOrder = taskOrder?.backlog || [];
       const duplicateInOrder = backlogOrder.filter(id => id === 'duplicate-test').length;
 
       // taskOrder should only have one instance (safety check in addTask)
@@ -1538,12 +1539,12 @@ describe('Task Store', () => {
       // Verify taskOrder consistency
       // Note: updateTaskStatus doesn't update taskOrder, so task-3 remains in backlog order
       const taskOrder = useTaskStore.getState().taskOrder;
-      expect(taskOrder.backlog).toHaveLength(7); // All tasks still in backlog order (including task-3)
-      expect(taskOrder.in_progress).toHaveLength(0); // in_progress order not updated by updateTaskStatus
+      expect(taskOrder?.backlog).toHaveLength(7); // All tasks still in backlog order (including task-3)
+      expect(taskOrder?.in_progress).toHaveLength(0); // in_progress order not updated by updateTaskStatus
 
       // task-3 remains in taskOrder.backlog even though its status is now in_progress
       // This is current behavior - taskOrder is only updated by drag-drop or addTask
-      expect(taskOrder.backlog).toContain('task-3');
+      expect(taskOrder?.backlog).toContain('task-3');
     });
 
     it('should handle very rapid task creation (10+ tasks in succession)', () => {

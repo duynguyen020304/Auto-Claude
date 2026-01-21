@@ -687,7 +687,7 @@ export async function loadTasks(projectId: string): Promise<void> {
       if (result.success && result.data) {
         // Use functional update to explicitly merge refreshed tasks with existing state
         // This preserves executionProgress for tasks that are actively running
-        store.setTasks(prevTasks => mergeTaskStates(result.data, prevTasks));
+        store.setTasks(prevTasks => mergeTaskStates(result.data ?? [], prevTasks));
       } else {
         store.setError(result.error || 'Failed to load tasks');
       }
