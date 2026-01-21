@@ -172,7 +172,36 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
     });
   },
 
-  setSessions: (sessions) => set({ sessions }),
+  setSessions: (sessions) =>
+    set((state) => {
+      // Get the set of current session IDs
+      const currentSessionIds = new Set(sessions.map((s) => s.id));
+
+      // Clean up sessionStates: remove entries for deleted sessions
+      const newSessionStates = new Map<string, InsightsSessionState>();
+      for (const [sessionId, sessionState] of state.sessionStates.entries()) {
+        // Keep session state if session still exists or is the current session
+        // (current session might be mid-creation and not yet in the sessions list)
+        if (currentSessionIds.has(sessionId) || sessionId === state.currentSessionId) {
+          newSessionStates.set(sessionId, sessionState);
+        }
+      }
+
+      // Clean up generatingSessionIds: remove entries for deleted sessions
+      const newGeneratingSessionIds = new Map<string, string>();
+      for (const [projectId, generatingSessionId] of state.generatingSessionIds.entries()) {
+        // Keep mapping if the generating session still exists
+        if (currentSessionIds.has(generatingSessionId)) {
+          newGeneratingSessionIds.set(projectId, generatingSessionId);
+        }
+      }
+
+      return {
+        sessions,
+        sessionStates: newSessionStates,
+        generatingSessionIds: newGeneratingSessionIds
+      };
+    }),
 
   setStatus: (status) => {
     const currentSessionId = _get().currentSessionId;
