@@ -1047,9 +1047,17 @@ export function App() {
         }}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{t('removeProject.title')}</DialogTitle>
+              <DialogTitle>
+                {projects.length === 1
+                  ? t('removeProject.lastProjectTitle')
+                  : t('removeProject.title')
+                }
+              </DialogTitle>
               <DialogDescription>
-                {t('removeProject.description', { projectName: projectToRemove?.name || '' })}
+                {projects.length === 1
+                  ? t('removeProject.lastProjectDescription', { projectName: projectToRemove?.name || '' })
+                  : t('removeProject.description', { projectName: projectToRemove?.name || '' })
+                }
               </DialogDescription>
             </DialogHeader>
             {removeProjectError && (
