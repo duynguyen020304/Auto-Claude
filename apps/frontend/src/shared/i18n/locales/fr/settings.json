@@ -628,6 +628,17 @@
       "skip": "Ignorer les doublons",
       "merge": "Fusionner",
       "replace": "Tout remplacer"
-    }
+    },
+    "backupDialog": {
+      "title": "Sauvegarder avant l'importation ?",
+      "description": "Vous êtes sur le point d'importer {{count}} serveur(s). Voulez-vous créer une sauvegarde de vos serveurs actuels d'abord ?",
+      "serversToImport": "Serveurs à importer",
+      "andMore": "...et {{count}} autres",
+      "currentServersWarning": "Vous avez {{count}} serveur(s) personnalisé(s) qui seront affectés. Nous recommandons de créer une sauvegarde avant d'importer.",
+      "skip": "Ignorer la sauvegarde",
+      "backupFirst": "Sauvegarder d'abord"
+    },
+    "backupCreated": "Sauvegarde créée",
+    "backupFailed": "Échec de la sauvegarde"
   }
 }

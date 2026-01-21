@@ -628,6 +628,17 @@
       "skip": "Skip Duplicates",
       "merge": "Merge",
       "replace": "Replace All"
-    }
+    },
+    "backupDialog": {
+      "title": "Backup Before Import?",
+      "description": "You are about to import {{count}} server(s). Would you like to create a backup of your current servers first?",
+      "serversToImport": "Servers to Import",
+      "andMore": "...and {{count}} more",
+      "currentServersWarning": "You have {{count}} custom server(s) that will be affected. We recommend creating a backup before importing.",
+      "skip": "Skip Backup",
+      "backupFirst": "Backup First"
+    },
+    "backupCreated": "Backup Created",
+    "backupFailed": "Backup Failed"
   }
 }

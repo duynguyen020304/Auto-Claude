@@ -49,6 +49,16 @@ import {
   DialogHeader,
   DialogTitle
 } from './ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from './ui/alert-dialog';
 import { useSettingsStore } from '../stores/settings-store';
 import { useProjectStore } from '../stores/project-store';
 import type { ProjectEnvConfig, AgentMcpOverrides, AgentMcpOverride, CustomMcpServer, McpHealthCheckResult, McpHealthStatus } from '../../shared/types';
@@ -665,6 +675,14 @@ export function AgentTools() {
     newServers: CustomMcpServer[];
   } | null>(null);
 
+  // Backup confirmation dialog state
+  const [showBackupConfirmDialog, setShowBackupConfirmDialog] = useState(false);
+  const [pendingBackupImport, setPendingBackupImport] = useState<{
+    servers: CustomMcpServer[];
+    duplicates: string[];
+    newServers: CustomMcpServer[];
+  } | null>(null);
+
   // Health status tracking for custom servers
   const [serverHealthStatus, setServerHealthStatus] = useState<Record<string, McpHealthCheckResult>>({});
   const [testingServers, setTestingServers] = useState<Set<string>>(new Set());
@@ -959,31 +977,16 @@ export function AgentTools() {
           const duplicates = importedServers.filter(s => existingIds.has(s.id));
           const newServers = importedServers.filter(s => !existingIds.has(s.id));
 
-          // If no duplicates or only duplicates, handle accordingly
-          if (duplicates.length === 0) {
-            // No duplicates, just import all
-            await performImport(existingServers, importedServers, newServers);
-            return;
-          }
-
-          if (newServers.length === 0) {
-            // Only duplicates, show duplicate dialog
-            setPendingImport({
-              servers: importedServers,
-              duplicates: duplicates.map(s => s.id),
-              newServers: [],
-            });
-            setShowDuplicateDialog(true);
-            return;
-          }
-
-          // Both duplicates and new servers, show duplicate dialog
-          setPendingImport({
+          // Store the validated import data
+          const validatedImport = {
             servers: importedServers,
             duplicates: duplicates.map(s => s.id),
             newServers,
-          });
-          setShowDuplicateDialog(true);
+          };
+
+          // Show backup confirmation dialog first
+          setPendingBackupImport(validatedImport);
+          setShowBackupConfirmDialog(true);
         } catch (error) {
           console.error('Failed to import custom MCP servers:', error);
           toast({
@@ -1070,6 +1073,97 @@ export function AgentTools() {
 
     await performImport(envConfig.customMcpServers || [], pendingImport.servers, pendingImport.servers);
   }, [pendingImport, selectedProjectId, envConfig, performImport]);
+
+  // Handle "Backup First" option - create backup, then proceed with import
+  const handleBackupFirst = useCallback(async () => {
+    if (!pendingBackupImport) return;
+
+    // Close backup dialog
+    setShowBackupConfirmDialog(false);
+
+    // Create backup by exporting current servers
+    if (envConfig?.customMcpServers && envConfig.customMcpServers.length > 0) {
+      try {
+        const jsonString = JSON.stringify(envConfig.customMcpServers, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+        const filename = `mcp-servers-backup-${timestamp}.json`;
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        toast({
+          title: t('settings:mcp.backupCreated'),
+          description: filename,
+          variant: 'default',
+        });
+      } catch (error) {
+        console.error('Failed to create backup:', error);
+        toast({
+          title: t('settings:mcp.backupFailed'),
+          description: error instanceof Error ? error.message : t('settings:mcp.importError.unknown'),
+          variant: 'destructive',
+        });
+        // Don't proceed with import if backup failed
+        setPendingBackupImport(null);
+        return;
+      }
+    }
+
+    // Proceed with import flow
+    await proceedWithImport(pendingBackupImport);
+  }, [pendingBackupImport, envConfig, t, proceedWithImport]);
+
+  // Handle "Skip Backup" option - proceed directly with import
+  const handleSkipBackup = useCallback(async () => {
+    if (!pendingBackupImport) return;
+
+    // Close backup dialog
+    setShowBackupConfirmDialog(false);
+
+    // Proceed with import flow
+    await proceedWithImport(pendingBackupImport);
+  }, [pendingBackupImport, proceedWithImport]);
+
+  // Proceed with import flow after backup decision
+  const proceedWithImport = useCallback(async (validatedImport: {
+    servers: CustomMcpServer[];
+    duplicates: string[];
+    newServers: CustomMcpServer[];
+  }) => {
+    const existingServers = envConfig?.customMcpServers || [];
+
+    // If no duplicates, just import all
+    if (validatedImport.duplicates.length === 0) {
+      await performImport(existingServers, validatedImport.servers, validatedImport.newServers);
+      setPendingBackupImport(null);
+      return;
+    }
+
+    // If only duplicates, show duplicate dialog
+    if (validatedImport.newServers.length === 0) {
+      setPendingImport({
+        servers: validatedImport.servers,
+        duplicates: validatedImport.duplicates,
+        newServers: [],
+      });
+      setShowDuplicateDialog(true);
+      setPendingBackupImport(null);
+      return;
+    }
+
+    // Both duplicates and new servers, show duplicate dialog
+    setPendingImport(validatedImport);
+    setShowDuplicateDialog(true);
+    setPendingBackupImport(null);
+  }, [envConfig, performImport]);
 
   // Check health of all custom MCP servers
   const checkAllServersHealth = useCallback(async () => {
@@ -1675,6 +1769,65 @@ export function AgentTools() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Backup Confirmation Dialog */}
+      <AlertDialog open={showBackupConfirmDialog} onOpenChange={setShowBackupConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('settings:mcp.backupDialog.title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingBackupImport && (
+                <span>
+                  {t('settings:mcp.backupDialog.description', {
+                    count: pendingBackupImport.servers.length
+                  })}
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {pendingBackupImport && (
+            <div className="py-4">
+              <div className="rounded-lg bg-muted/50 p-3 space-y-1">
+                <p className="text-xs font-medium text-foreground">
+                  {t('settings:mcp.backupDialog.serversToImport')} ({pendingBackupImport.servers.length})
+                </p>
+                <div className="space-y-1">
+                  {pendingBackupImport.servers.slice(0, 3).map(server => (
+                    <div key={server.id} className="text-xs text-muted-foreground flex items-center gap-2">
+                      <Plus className="h-3 w-3 text-primary" />
+                      <span>{server.name}</span>
+                    </div>
+                  ))}
+                  {pendingBackupImport.servers.length > 3 && (
+                    <p className="text-xs text-muted-foreground">
+                      {t('settings:mcp.backupDialog.andMore', { count: pendingBackupImport.servers.length - 3 })}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {envConfig?.customMcpServers && envConfig.customMcpServers.length > 0 && (
+                <div className="mt-3 flex items-start gap-2 text-xs text-muted-foreground">
+                  <Info className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                  <span>
+                    {t('settings:mcp.backupDialog.currentServersWarning', { count: envConfig.customMcpServers.length })}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleSkipBackup}>
+              {t('settings:mcp.backupDialog.skip')}
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleBackupFirst}>
+              {t('settings:mcp.backupDialog.backupFirst')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
