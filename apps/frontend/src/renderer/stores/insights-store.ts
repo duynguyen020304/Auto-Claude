@@ -125,13 +125,6 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
     }),
 
   setSession: (session) => {
-    console.log('[InsightsStore] setSession called', {
-      sessionId: session?.id || 'null',
-      previousSessionId: _get().session?.id || 'null',
-      currentStatus: _get().sessionStates.get(_get().currentSessionId || '')?.status,
-      isStreaming: (_get().sessionStates.get(_get().currentSessionId || '')?.streamingContent.length || 0) > 0
-    });
-
     const sessionId = session?.id || null;
 
     return set((state) => {
@@ -205,12 +198,6 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
 
   setStatus: (status) => {
     const currentSessionId = _get().currentSessionId;
-    console.log('[InsightsStore] setStatus called', {
-      newPhase: status.phase,
-      previousPhase: _get().status.phase,
-      hasStreamingContent: _get().streamingContent.length > 0,
-      streamingContentLength: _get().streamingContent.length
-    });
 
     return set((state) => {
       // Update top-level field
@@ -235,10 +222,6 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
 
   resetStatus: () => {
     const currentSessionId = _get().currentSessionId;
-    console.log('[InsightsStore] resetStatus called', {
-      previousPhase: _get().status.phase,
-      wasStreaming: _get().streamingContent.length > 0
-    });
 
     return set((state) => {
       // Update top-level field
@@ -337,12 +320,6 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       if (!sessionState) return state;
 
       const newContent = sessionState.streamingContent + content;
-      console.log('[InsightsStore] appendStreamingContent called', {
-        contentLength: content.length,
-        previousLength: sessionState.streamingContent.length,
-        newLength: newContent.length,
-        statusPhase: sessionState.status.phase
-      });
 
       const newSessionStates = new Map(state.sessionStates);
       newSessionStates.set(state.currentSessionId, {
@@ -358,10 +335,6 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
 
   clearStreamingContent: () => {
     const currentSessionId = _get().currentSessionId;
-    console.log('[InsightsStore] clearStreamingContent called', {
-      previousLength: _get().streamingContent.length,
-      statusPhase: _get().status.phase
-    });
 
     return set((state) => {
       if (!state.currentSessionId) return state;
@@ -522,16 +495,7 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       const content = sessionState.streamingContent;
       const toolsUsed = sessionState.toolsUsed.length > 0 ? [...sessionState.toolsUsed] : undefined;
 
-      console.log('[InsightsStore] finalizeStreamingMessage called', {
-        contentLength: content.length,
-        hasSuggestedTask: !!suggestedTask,
-        toolsUsedCount: sessionState.toolsUsed.length,
-        statusPhase: sessionState.status.phase,
-        sessionId: state.session?.id || 'null'
-      });
-
       if (!content && !suggestedTask && !toolsUsed) {
-        console.log('[InsightsStore] finalizeStreamingMessage - no content to finalize');
         const newSessionStates = new Map(state.sessionStates);
         newSessionStates.set(state.currentSessionId, {
           ...sessionState,
@@ -555,7 +519,6 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       };
 
       if (!state.session) {
-        console.log('[InsightsStore] finalizeStreamingMessage - creating new session');
         const newSessionStates = new Map(state.sessionStates);
         newSessionStates.set(state.currentSessionId, {
           ...sessionState,
@@ -575,11 +538,6 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
           }
         };
       }
-
-      console.log('[InsightsStore] finalizeStreamingMessage - adding message to session', {
-        sessionId: state.session.id,
-        messageCount: state.session.messages.length
-      });
 
       const newSessionStates = new Map(state.sessionStates);
       newSessionStates.set(state.currentSessionId, {
@@ -601,12 +559,6 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
     }),
 
   clearSession: () => {
-    console.log('[InsightsStore] clearSession called', {
-      previousSessionId: _get().session?.id || 'null',
-      statusPhase: _get().status.phase,
-      streamingContentLength: _get().streamingContent.length,
-      toolsUsedCount: _get().toolsUsed.length
-    });
     return set({
       session: null,
       currentSessionId: null,
@@ -663,13 +615,6 @@ export async function loadInsightsSession(projectId: string): Promise<void> {
 }
 
 export function sendMessage(projectId: string, message: string, modelConfig?: InsightsModelConfig): void {
-  console.log('[InsightsStore] sendMessage called', {
-    projectId,
-    messageLength: message.length,
-    hasSession: !!useInsightsStore.getState().session,
-    sessionId: useInsightsStore.getState().session?.id || 'null'
-  });
-
   const store = useInsightsStore.getState();
   const session = store.session;
 
@@ -713,17 +658,8 @@ export function sendMessage(projectId: string, message: string, modelConfig?: In
     generatingSessionIds: new Map(state.generatingSessionIds).set(projectId, session.id)
   }));
 
-  console.log('[InsightsStore] sendMessage - tracking generation', {
-    projectId,
-    sessionId: session.id
-  });
-
   // Use provided modelConfig, or fall back to session's config
   const configToUse = modelConfig || session?.modelConfig;
-
-  console.log('[InsightsStore] sendMessage - sending to main process', {
-    hasConfig: !!configToUse
-  });
 
   // Send to main process
   window.electronAPI.sendInsightsMessage(projectId, message, configToUse);
@@ -750,63 +686,14 @@ export async function newSession(projectId: string): Promise<void> {
 export async function switchSession(projectId: string, sessionId: string): Promise<void> {
   const store = useInsightsStore.getState();
 
-  console.log('[InsightsStore] ===== switchSession START =====', {
-    projectId,
-    targetSessionId: sessionId,
-    currentSessionId: store.session?.id || 'null',
-    currentStatusPhase: store.status.phase,
-    streamingContentLength: store.streamingContent.length,
-    toolsUsedCount: store.toolsUsed.length,
-    isGenerating: store.status.phase === 'thinking' || store.status.phase === 'streaming'
-  });
-
-  // Log the state that will be preserved for current session
-  if (store.currentSessionId) {
-    const currentState = store.sessionStates.get(store.currentSessionId);
-    console.log('[InsightsStore] switchSession - preserving state for current session', {
-      sessionId: store.currentSessionId,
-      statusPhase: currentState?.status.phase,
-      streamingContentLength: currentState?.streamingContent.length || 0,
-      hasStreamingContent: (currentState?.streamingContent.length || 0) > 0
-    });
-  }
-
   const result = await window.electronAPI.switchInsightsSession(projectId, sessionId);
 
-  console.log('[InsightsStore] switchSession - main process result', {
-    success: result.success,
-    hasData: !!result.data,
-    newSessionId: result.data?.id || 'null'
-  });
-
   if (result.success && result.data) {
-    // Before switching, log what state exists for target session
-    const storeBefore = useInsightsStore.getState();
-    const targetStateBefore = storeBefore.sessionStates.get(sessionId);
-    console.log('[InsightsStore] switchSession - target session state BEFORE setSession', {
-      sessionId,
-      hasState: !!targetStateBefore,
-      statusPhase: targetStateBefore?.status.phase,
-      streamingContentLength: targetStateBefore?.streamingContent.length || 0
-    });
-
     useInsightsStore.getState().setSession(result.data);
 
     // NOTE: No need to manually clear/restore streaming state anymore!
     // The setSession() action now automatically loads the session's state
     // from the sessionStates map into the top-level fields.
-
-    console.log('[InsightsStore] switchSession - switched to new session', {
-      newStatusPhase: useInsightsStore.getState().status.phase,
-      newStreamingContentLength: useInsightsStore.getState().streamingContent.length,
-      statePreserved: (useInsightsStore.getState().streamingContent.length > 0)
-    });
-
-    console.log('[InsightsStore] ===== switchSession END =====');
-  } else {
-    console.log('[InsightsStore] switchSession - failed', {
-      success: result.success
-    });
   }
 }
 
@@ -870,28 +757,16 @@ export async function createTaskFromSuggestion(
 
 // IPC listener setup - call this once when the app initializes
 export function setupInsightsListeners(): () => void {
-  console.log('[InsightsStore] setupInsightsListeners - setting up IPC listeners');
-
   // Listen for streaming chunks
   const unsubStreamChunk = window.electronAPI.onInsightsStreamChunk(
     (projectId, chunk: InsightsStreamChunk) => {
       const store = useInsightsStore.getState();
       const generatingSessionId = store.generatingSessionIds.get(projectId);
 
-      console.log('[InsightsStore] onInsightsStreamChunk received', {
-        projectId,
-        chunkType: chunk.type,
-        generatingSessionId: generatingSessionId || 'null',
-        currentSessionId: store.session?.id || 'null',
-        currentStatusPhase: store.status.phase,
-        streamingContentLength: store.streamingContent.length
-      });
-
       // If we don't have a tracked session for this project, it means the user
       // switched away from this project. Drop the chunk to prevent cross-project
       // data corruption.
       if (!generatingSessionId) {
-        console.log('[InsightsStore] Dropping stream chunk for untracked project:', projectId);
         return;
       }
 
@@ -900,10 +775,6 @@ export function setupInsightsListeners(): () => void {
       switch (chunk.type) {
         case 'text':
           if (chunk.content) {
-            console.log('[InsightsStore] stream chunk - text', {
-              contentLength: chunk.content.length,
-              targetSessionId
-            });
             // Update streaming content for the target session
             useInsightsStore.setState((state) => {
               const sessionState = state.sessionStates.get(targetSessionId);
@@ -975,10 +846,6 @@ export function setupInsightsListeners(): () => void {
           break;
         case 'tool_start':
           if (chunk.tool) {
-            console.log('[InsightsStore] stream chunk - tool_start', {
-              toolName: chunk.tool.name,
-              targetSessionId
-            });
             // Set current tool
             useInsightsStore.setState((state) => {
               const sessionState = state.sessionStates.get(targetSessionId);
@@ -1061,9 +928,6 @@ export function setupInsightsListeners(): () => void {
           }
           break;
         case 'tool_end':
-          console.log('[InsightsStore] stream chunk - tool_end', {
-            targetSessionId
-          });
           useInsightsStore.setState((state) => {
             const sessionState = state.sessionStates.get(targetSessionId);
             if (!sessionState) return state;
@@ -1085,10 +949,6 @@ export function setupInsightsListeners(): () => void {
           });
           break;
         case 'task_suggestion':
-          console.log('[InsightsStore] stream chunk - task_suggestion', {
-            hasSuggestedTask: !!chunk.suggestedTask,
-            targetSessionId
-          });
           // Clear current tool
           useInsightsStore.setState((state) => {
             const sessionState = state.sessionStates.get(targetSessionId);
@@ -1113,10 +973,6 @@ export function setupInsightsListeners(): () => void {
           store.finalizeStreamingMessage(chunk.suggestedTask);
           break;
         case 'done':
-          console.log('[InsightsStore] stream chunk - done', {
-            streamingContentLength: store.streamingContent.length,
-            targetSessionId
-          });
           // Clear current tool
           useInsightsStore.setState((state) => {
             const sessionState = state.sessionStates.get(targetSessionId);
@@ -1172,10 +1028,6 @@ export function setupInsightsListeners(): () => void {
           });
           break;
         case 'error':
-          console.log('[InsightsStore] stream chunk - error', {
-            error: chunk.error,
-            targetSessionId
-          });
           // Clear current tool
           useInsightsStore.setState((state) => {
             const sessionState = state.sessionStates.get(targetSessionId);
@@ -1237,18 +1089,10 @@ export function setupInsightsListeners(): () => void {
     const store = useInsightsStore.getState();
     const generatingSessionId = store.generatingSessionIds.get(projectId);
 
-    console.log('[InsightsStore] onInsightsStatus received', {
-      projectId,
-      statusPhase: status.phase,
-      generatingSessionId: generatingSessionId || 'null',
-      hasError: !!status.error
-    });
-
     // If we don't have a tracked session for this project, it means the user
     // switched away from this project. Drop the status update to prevent
     // cross-project data corruption.
     if (!generatingSessionId) {
-      console.log('[InsightsStore] Dropping status update for untracked project:', projectId);
       return;
     }
 
@@ -1280,17 +1124,10 @@ export function setupInsightsListeners(): () => void {
     const store = useInsightsStore.getState();
     const generatingSessionId = store.generatingSessionIds.get(projectId);
 
-    console.log('[InsightsStore] onInsightsError received', {
-      projectId,
-      error,
-      generatingSessionId: generatingSessionId || 'null'
-    });
-
     // If we don't have a tracked session for this project, it means the user
     // switched away from this project. Drop the error to prevent cross-project
     // data corruption.
     if (!generatingSessionId) {
-      console.log('[InsightsStore] Dropping error for untracked project:', projectId);
       return;
     }
 
@@ -1331,7 +1168,6 @@ export function setupInsightsListeners(): () => void {
 
   // Return cleanup function
   return () => {
-    console.log('[InsightsStore] cleanup - removing IPC listeners');
     unsubStreamChunk();
     unsubStatus();
     unsubError();
