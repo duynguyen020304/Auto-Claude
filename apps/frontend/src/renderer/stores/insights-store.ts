@@ -887,13 +887,15 @@ export function setupInsightsListeners(): () => void {
         streamingContentLength: store.streamingContent.length
       });
 
-      // If we don't have a tracked session for this project, fall back to current session
-      const targetSessionId = generatingSessionId || store.currentSessionId;
-
-      if (!targetSessionId) {
-        console.warn('[InsightsStore] stream chunk - no target session ID, skipping');
+      // If we don't have a tracked session for this project, it means the user
+      // switched away from this project. Drop the chunk to prevent cross-project
+      // data corruption.
+      if (!generatingSessionId) {
+        console.log('[InsightsStore] Dropping stream chunk for untracked project:', projectId);
         return;
       }
+
+      const targetSessionId = generatingSessionId;
 
       switch (chunk.type) {
         case 'text':
@@ -1242,13 +1244,15 @@ export function setupInsightsListeners(): () => void {
       hasError: !!status.error
     });
 
-    // If we don't have a tracked session for this project, fall back to current session
-    const targetSessionId = generatingSessionId || store.currentSessionId;
-
-    if (!targetSessionId) {
-      console.warn('[InsightsStore] status update - no target session ID, skipping');
+    // If we don't have a tracked session for this project, it means the user
+    // switched away from this project. Drop the status update to prevent
+    // cross-project data corruption.
+    if (!generatingSessionId) {
+      console.log('[InsightsStore] Dropping status update for untracked project:', projectId);
       return;
     }
+
+    const targetSessionId = generatingSessionId;
 
     useInsightsStore.setState((state) => {
       const sessionState = state.sessionStates.get(targetSessionId);
@@ -1282,13 +1286,15 @@ export function setupInsightsListeners(): () => void {
       generatingSessionId: generatingSessionId || 'null'
     });
 
-    // If we don't have a tracked session for this project, fall back to current session
-    const targetSessionId = generatingSessionId || store.currentSessionId;
-
-    if (!targetSessionId) {
-      console.warn('[InsightsStore] error - no target session ID, skipping');
+    // If we don't have a tracked session for this project, it means the user
+    // switched away from this project. Drop the error to prevent cross-project
+    // data corruption.
+    if (!generatingSessionId) {
+      console.log('[InsightsStore] Dropping error for untracked project:', projectId);
       return;
     }
+
+    const targetSessionId = generatingSessionId;
 
     useInsightsStore.setState((state) => {
       const sessionState = state.sessionStates.get(targetSessionId);
