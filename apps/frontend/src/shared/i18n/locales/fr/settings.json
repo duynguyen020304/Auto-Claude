@@ -619,6 +619,15 @@
     "importNoNew": {
       "title": "Aucun nouveau serveur",
       "description": "Tous les serveurs du fichier existent déjà dans votre configuration"
+    },
+    "duplicateDialog": {
+      "title": "ID de serveurs en double",
+      "description": "{{duplicateCount}} serveur(s) avec des ID en double détecté(s). {{newCount}} nouveau(x) serveur(s) sera(ont) ajouté(s).",
+      "duplicateServers": "Serveurs en double",
+      "newServers": "Nouveaux serveurs",
+      "skip": "Ignorer les doublons",
+      "merge": "Fusionner",
+      "replace": "Tout remplacer"
     }
   }
 }

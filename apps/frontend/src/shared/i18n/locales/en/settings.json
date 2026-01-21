@@ -619,6 +619,15 @@
     "importNoNew": {
       "title": "No New Servers",
       "description": "All servers in the file already exist in your configuration"
+    },
+    "duplicateDialog": {
+      "title": "Duplicate Server IDs",
+      "description": "{{duplicateCount}} server(s) with duplicate IDs detected. {{newCount}} new server(s) will be added.",
+      "duplicateServers": "Duplicate Servers",
+      "newServers": "New Servers",
+      "skip": "Skip Duplicates",
+      "merge": "Merge",
+      "replace": "Replace All"
     }
   }
 }
