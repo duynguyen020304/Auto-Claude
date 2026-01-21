@@ -913,8 +913,10 @@ export function cleanupSessionState(sessionId: string): void {
 // IPC listener setup - call this once when the app initializes
 export function setupInsightsListeners(): () => void {
   // Listen for streaming chunks
+  // Drop chunks for aborted sessions to prevent state pollution
   const unsubStreamChunk = window.electronAPI.onInsightsStreamChunk(
     (projectId, chunk: InsightsStreamChunk) => {
+      // Check if session was aborted and drop chunks accordingly
       const store = useInsightsStore.getState();
       const generatingSessionId = store.generatingSessionIds.get(projectId);
 
@@ -926,6 +928,13 @@ export function setupInsightsListeners(): () => void {
       }
 
       const targetSessionId = generatingSessionId;
+
+      // Check if the session has been aborted (no abort controller means it was aborted)
+      const abortController = store.abortControllers.get(targetSessionId);
+      if (!abortController) {
+        // Session was aborted, drop the chunk
+        return;
+      }
 
       switch (chunk.type) {
         case 'text':
@@ -1253,6 +1262,13 @@ export function setupInsightsListeners(): () => void {
 
     const targetSessionId = generatingSessionId;
 
+    // Check if the session has been aborted (no abort controller means it was aborted)
+    const abortController = store.abortControllers.get(targetSessionId);
+    if (!abortController) {
+      // Session was aborted, drop the status update
+      return;
+    }
+
     useInsightsStore.setState((state) => {
       const sessionState = state.sessionStates.get(targetSessionId);
       if (!sessionState) return state;
@@ -1287,6 +1303,13 @@ export function setupInsightsListeners(): () => void {
     }
 
     const targetSessionId = generatingSessionId;
+
+    // Check if the session has been aborted (no abort controller means it was aborted)
+    const abortController = store.abortControllers.get(targetSessionId);
+    if (!abortController) {
+      // Session was aborted, drop the error
+      return;
+    }
 
     useInsightsStore.setState((state) => {
       const sessionState = state.sessionStates.get(targetSessionId);
