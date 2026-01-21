@@ -185,6 +185,79 @@ export function CustomMcpDialog({
     return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   };
 
+  /**
+   * Parse JSON and extract detailed error information
+   * Returns user-friendly error message with line/column info
+   */
+  const parseJsonWithError = (jsonString: string): { data?: unknown; error?: string } => {
+    try {
+      const data = JSON.parse(jsonString);
+      return { data };
+    } catch (err) {
+      if (err instanceof Error) {
+        // Try to extract line and column from JSON.parse error
+        // Error message format: "Unexpected token } in JSON at position 42"
+        const message = err.message;
+
+        // Try to find line/column info
+        let line = 1;
+        let column = 1;
+        let position = 0;
+
+        // Match position in error message
+        const positionMatch = message.match(/position (\d+)/);
+        if (positionMatch) {
+          position = parseInt(positionMatch[1], 10);
+
+          // Calculate line and column from position
+          const textBefore = jsonString.substring(0, position);
+          const lines = textBefore.split('\n');
+          line = lines.length;
+          column = lines[lines.length - 1].length + 1;
+        }
+
+        // Create user-friendly error message
+        let friendlyMessage = message;
+
+        // Common error patterns
+        if (message.includes('Unexpected token')) {
+          const tokenMatch = message.match(/Unexpected token (.+?) in JSON/);
+          if (tokenMatch) {
+            const token = tokenMatch[1];
+            if (token === "'") {
+              friendlyMessage = 'Use double quotes (") instead of single quotes (\')';
+            } else if (token === '}' || token === ']') {
+              friendlyMessage = `Unexpected closing bracket ${token} - check for missing fields or commas`;
+            } else if (token === ',') {
+              friendlyMessage = 'Unexpected comma - check for trailing commas';
+            } else {
+              friendlyMessage = `Unexpected token: ${token}`;
+            }
+          }
+        } else if (message.includes('Unexpected end')) {
+          friendlyMessage = 'Incomplete JSON - check for missing closing brackets or quotes';
+        } else if (message.includes('Unexpected string')) {
+          friendlyMessage = 'Unexpected string value - check field types';
+        } else if (message.includes('Unexpected number')) {
+          friendlyMessage = 'Unexpected number value - check field types';
+        } else if (message.includes('Expected property name')) {
+          friendlyMessage = 'Invalid property name - check for unquoted keys or syntax errors';
+        } else if (message.includes('Expected')) {
+          friendlyMessage = `Syntax error: ${message}`;
+        }
+
+        // Add line/column info if available
+        if (positionMatch) {
+          friendlyMessage += `\n\nLine ${line}, Column ${column}`;
+        }
+
+        return { error: friendlyMessage };
+      }
+
+      return { error: 'Invalid JSON syntax' };
+    }
+  };
+
   // Handle JSON value changes
   const handleJsonChange = (value: string, parsed?: unknown) => {
     setJsonValue(value);
@@ -235,7 +308,9 @@ export function CustomMcpDialog({
         setJsonError(err instanceof Error ? err.message : 'Invalid server configuration');
       }
     } else {
-      setJsonError('Invalid JSON syntax');
+      // Re-parse to get detailed error information
+      const result = parseJsonWithError(value);
+      setJsonError(result.error || 'Invalid JSON syntax');
     }
   };
 
