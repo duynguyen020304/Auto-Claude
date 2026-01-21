@@ -896,7 +896,7 @@ export function AgentTools() {
 
       // Trigger download
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-      const filename = `custom-mcp-servers-${timestamp}.json`;
+      const filename = `mcp-servers-${timestamp}.json`;
 
       const a = document.createElement('a');
       a.href = url;
