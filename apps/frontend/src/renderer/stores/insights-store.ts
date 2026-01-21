@@ -66,6 +66,7 @@ interface InsightsState {
   clearSession: () => void;
   setLoadingSessions: (loading: boolean) => void;
   abortGeneration: (sessionId: string) => void;
+  cleanupSessionState: (sessionId: string) => void;
 
   // Selectors
   getCurrentSessionState: () => InsightsSessionState | undefined;
@@ -646,6 +647,39 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       return updates;
     }),
 
+  /**
+   * Cleans up the state for a specific session.
+   * Resets the session's streaming state to initial values.
+   * If the session is the current session, also resets the top-level fields.
+   *
+   * @param sessionId - The ID of the session to clean up
+   */
+  cleanupSessionState: (sessionId) =>
+    set((state) => {
+      // Get fresh initial state
+      const initialState = createInitialSessionState();
+
+      // Update the session in the sessionStates map
+      const newSessionStates = new Map(state.sessionStates);
+      newSessionStates.set(sessionId, initialState);
+
+      const updates: Partial<InsightsState> = {
+        sessionStates: newSessionStates
+      };
+
+      // If this is the current session, also reset top-level fields
+      if (state.currentSessionId === sessionId) {
+        updates.status = initialState.status;
+        updates.pendingMessage = initialState.pendingMessage;
+        updates.streamingContent = initialState.streamingContent;
+        updates.currentTool = initialState.currentTool;
+        updates.toolsUsed = initialState.toolsUsed;
+        updates.fileMentions = initialState.fileMentions;
+      }
+
+      return updates;
+    }),
+
   // Selectors
   /**
    * Gets the state for the currently active session.
@@ -861,6 +895,10 @@ export async function createTaskFromSuggestion(
 
 export function abortGeneration(sessionId: string): void {
   useInsightsStore.getState().abortGeneration(sessionId);
+}
+
+export function cleanupSessionState(sessionId: string): void {
+  useInsightsStore.getState().cleanupSessionState(sessionId);
 }
 
 // IPC listener setup - call this once when the app initializes
