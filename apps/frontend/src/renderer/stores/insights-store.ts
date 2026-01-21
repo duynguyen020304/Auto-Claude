@@ -33,6 +33,7 @@ interface InsightsState {
   setSession: (session: InsightsSession | null) => void;
   setSessions: (sessions: InsightsSessionSummary[]) => void;
   setStatus: (status: InsightsChatStatus) => void;
+  resetStatus: () => void;
   setPendingMessage: (message: string) => void;
   addMessage: (message: InsightsChatMessage) => void;
   updateLastAssistantMessage: (content: string) => void;
@@ -72,6 +73,8 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
   setSessions: (sessions) => set({ sessions }),
 
   setStatus: (status) => set({ status }),
+
+  resetStatus: () => set({ status: initialStatus }),
 
   setLoadingSessions: (loading) => set({ isLoadingSessions: loading }),
 
@@ -447,4 +450,8 @@ export function setupInsightsListeners(): () => void {
     unsubStatus();
     unsubError();
   };
+}
+
+export function resetStatus(): void {
+  useInsightsStore.getState().resetStatus();
 }

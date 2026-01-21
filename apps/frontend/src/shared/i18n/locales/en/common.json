@@ -38,8 +38,6 @@
     "addMoreAriaLabel": "Add more",
     "dismissAllAriaLabel": "Dismiss all ideas",
     "regenerateIdeasAriaLabel": "Regenerate ideas",
-    "refreshIdeasAriaLabel": "Add more ideas to existing set",
-    "replaceIdeasAriaLabel": "Replace all ideas with fresh batch",
     "dismissAriaLabel": "Dismiss",
     "browseFilesAriaLabel": "Browse files",
     "renameAriaLabel": "Rename",
@@ -121,7 +119,9 @@
     "taskNotFoundForWorktree": "Task not found for worktree: {{specName}}",
     "failedToDeleteTaskWorktree": "Failed to delete task worktree: {{specName}}",
     "terminalWorktreeNotFound": "Terminal worktree not found: {{name}}",
-    "failedToDeleteTerminalWorktree": "Failed to delete terminal worktree: {{name}}"
+    "failedToDeleteTerminalWorktree": "Failed to delete terminal worktree: {{name}}",
+    "taskCreationFailed": "Failed to create task",
+    "taskCreationFailedDescription": "Could not create task from suggestion. Please try again."
   },
   "notification": {
     "accountSwitched": "Account Switched",

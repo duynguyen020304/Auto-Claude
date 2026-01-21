@@ -75,12 +75,12 @@ export class TaskOperationQueue {
       const queuedOp: QueuedOperation<T> = {
         id: operationId,
         operation,
-        resolve: resolve as (value: unknown) => void,
+        resolve: resolve,
         reject: (error: Error) => reject(error),
         timestamp: Date.now(),
       };
 
-      this.queue.push(queuedOp);
+      this.queue.push(queuedOp as QueuedOperation<unknown>);
       this.stats.totalOperations++;
 
       // Start processing if not already running
