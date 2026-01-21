@@ -561,6 +561,7 @@
     "customServerDescription": "Ajouter un serveur MCP basé sur une commande ou HTTP",
     "jsonMode": "Mode JSON",
     "formMode": "Mode Formulaire",
+    "jsonEditor": "Éditeur JSON",
     "serverType": "Type de serveur",
     "typeCommand": "Commande (npx/npm)",
     "typeHttp": "HTTP",
