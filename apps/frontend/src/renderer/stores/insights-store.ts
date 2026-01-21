@@ -34,6 +34,7 @@ interface InsightsState {
   sessions: InsightsSessionSummary[]; // List of all sessions
   sessionStates: Map<string, InsightsSessionState>; // Per-session streaming state
   isLoadingSessions: boolean;
+  generatingSessionIds: Map<string, string>; // projectId -> sessionId mapping for active generations
 
   // Current session state (mirrored from sessionStates for easy access)
   status: InsightsChatStatus;
@@ -93,6 +94,7 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
   sessions: [],
   sessionStates: new Map<string, InsightsSessionState>(),
   isLoadingSessions: false,
+  generatingSessionIds: new Map<string, string>(),
   status: initialStatus,
   pendingMessage: '',
   streamingContent: '',
@@ -580,6 +582,7 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       session: null,
       currentSessionId: null,
       sessionStates: new Map<string, InsightsSessionState>(),
+      generatingSessionIds: new Map<string, string>(),
       status: initialStatus,
       pendingMessage: '',
       streamingContent: '',
@@ -641,6 +644,11 @@ export function sendMessage(projectId: string, message: string, modelConfig?: In
   const store = useInsightsStore.getState();
   const session = store.session;
 
+  if (!session?.id) {
+    console.error('[InsightsStore] sendMessage - no active session');
+    return;
+  }
+
   // Add user message to session
   const userMessage: InsightsChatMessage = {
     id: `msg-${Date.now()}`,
@@ -657,6 +665,16 @@ export function sendMessage(projectId: string, message: string, modelConfig?: In
   store.setStatus({
     phase: 'thinking',
     message: 'Processing your message...'
+  });
+
+  // Store the projectId -> sessionId mapping so IPC chunks know which session to update
+  useInsightsStore.setState((state) => ({
+    generatingSessionIds: new Map(state.generatingSessionIds).set(projectId, session.id)
+  }));
+
+  console.log('[InsightsStore] sendMessage - tracking generation', {
+    projectId,
+    sessionId: session.id
   });
 
   // Use provided modelConfig, or fall back to session's config
@@ -811,86 +829,360 @@ export async function createTaskFromSuggestion(
 
 // IPC listener setup - call this once when the app initializes
 export function setupInsightsListeners(): () => void {
-  const store = useInsightsStore.getState;
-
   console.log('[InsightsStore] setupInsightsListeners - setting up IPC listeners');
 
   // Listen for streaming chunks
   const unsubStreamChunk = window.electronAPI.onInsightsStreamChunk(
-    (_projectId, chunk: InsightsStreamChunk) => {
+    (projectId, chunk: InsightsStreamChunk) => {
+      const store = useInsightsStore.getState();
+      const generatingSessionId = store.generatingSessionIds.get(projectId);
+
       console.log('[InsightsStore] onInsightsStreamChunk received', {
+        projectId,
         chunkType: chunk.type,
-        currentSessionId: store().session?.id || 'null',
-        currentStatusPhase: store().status.phase,
-        streamingContentLength: store().streamingContent.length
+        generatingSessionId: generatingSessionId || 'null',
+        currentSessionId: store.session?.id || 'null',
+        currentStatusPhase: store.status.phase,
+        streamingContentLength: store.streamingContent.length
       });
+
+      // If we don't have a tracked session for this project, fall back to current session
+      const targetSessionId = generatingSessionId || store.currentSessionId;
+
+      if (!targetSessionId) {
+        console.warn('[InsightsStore] stream chunk - no target session ID, skipping');
+        return;
+      }
 
       switch (chunk.type) {
         case 'text':
           if (chunk.content) {
             console.log('[InsightsStore] stream chunk - text', {
-              contentLength: chunk.content.length
+              contentLength: chunk.content.length,
+              targetSessionId
             });
-            store().appendStreamingContent(chunk.content);
-            store().setCurrentTool(null); // Clear tool when receiving text
-            store().setStatus({
-              phase: 'streaming',
-              message: 'Receiving response...'
+            // Update streaming content for the target session
+            useInsightsStore.setState((state) => {
+              const sessionState = state.sessionStates.get(targetSessionId);
+              if (!sessionState) return state;
+
+              const newContent = sessionState.streamingContent + chunk.content!;
+              const newSessionStates = new Map(state.sessionStates);
+              newSessionStates.set(targetSessionId, {
+                ...sessionState,
+                streamingContent: newContent
+              });
+
+              // Update top-level fields if this is the current session
+              const updates: Partial<InsightsState> = {
+                sessionStates: newSessionStates
+              };
+              if (state.currentSessionId === targetSessionId) {
+                updates.streamingContent = newContent;
+              }
+
+              return updates;
+            });
+            // Clear tool when receiving text
+            useInsightsStore.setState((state) => {
+              const sessionState = state.sessionStates.get(targetSessionId);
+              if (!sessionState) return state;
+
+              const newSessionStates = new Map(state.sessionStates);
+              newSessionStates.set(targetSessionId, {
+                ...sessionState,
+                currentTool: null
+              });
+
+              const updates: Partial<InsightsState> = {
+                sessionStates: newSessionStates
+              };
+              if (state.currentSessionId === targetSessionId) {
+                updates.currentTool = null;
+              }
+
+              return updates;
+            });
+            // Update status
+            useInsightsStore.setState((state) => {
+              const sessionState = state.sessionStates.get(targetSessionId);
+              if (!sessionState) return state;
+
+              const newStatus: InsightsChatStatus = {
+                phase: 'streaming',
+                message: 'Receiving response...'
+              };
+
+              const newSessionStates = new Map(state.sessionStates);
+              newSessionStates.set(targetSessionId, {
+                ...sessionState,
+                status: newStatus
+              });
+
+              const updates: Partial<InsightsState> = {
+                sessionStates: newSessionStates
+              };
+              if (state.currentSessionId === targetSessionId) {
+                updates.status = newStatus;
+              }
+
+              return updates;
             });
           }
           break;
         case 'tool_start':
           if (chunk.tool) {
             console.log('[InsightsStore] stream chunk - tool_start', {
-              toolName: chunk.tool.name
+              toolName: chunk.tool.name,
+              targetSessionId
             });
-            store().setCurrentTool({
-              name: chunk.tool.name,
-              input: chunk.tool.input
+            // Set current tool
+            useInsightsStore.setState((state) => {
+              const sessionState = state.sessionStates.get(targetSessionId);
+              if (!sessionState) return state;
+
+              const newTool: ToolUsage = {
+                name: chunk.tool!.name,
+                input: chunk.tool!.input
+              };
+
+              const newSessionStates = new Map(state.sessionStates);
+              newSessionStates.set(targetSessionId, {
+                ...sessionState,
+                currentTool: newTool
+              });
+
+              const updates: Partial<InsightsState> = {
+                sessionStates: newSessionStates
+              };
+              if (state.currentSessionId === targetSessionId) {
+                updates.currentTool = newTool;
+              }
+
+              return updates;
             });
             // Record this tool usage for history
-            store().addToolUsage({
-              name: chunk.tool.name,
-              input: chunk.tool.input
+            useInsightsStore.setState((state) => {
+              const sessionState = state.sessionStates.get(targetSessionId);
+              if (!sessionState) return state;
+
+              const newToolsUsed = [
+                ...sessionState.toolsUsed,
+                {
+                  name: chunk.tool!.name,
+                  input: chunk.tool!.input,
+                  timestamp: new Date()
+                }
+              ];
+
+              const newSessionStates = new Map(state.sessionStates);
+              newSessionStates.set(targetSessionId, {
+                ...sessionState,
+                toolsUsed: newToolsUsed
+              });
+
+              const updates: Partial<InsightsState> = {
+                sessionStates: newSessionStates
+              };
+              if (state.currentSessionId === targetSessionId) {
+                updates.toolsUsed = newToolsUsed;
+              }
+
+              return updates;
             });
-            store().setStatus({
-              phase: 'streaming',
-              message: `Using ${chunk.tool.name}...`
+            // Update status
+            useInsightsStore.setState((state) => {
+              const sessionState = state.sessionStates.get(targetSessionId);
+              if (!sessionState) return state;
+
+              const newStatus: InsightsChatStatus = {
+                phase: 'streaming',
+                message: `Using ${chunk.tool!.name}...`
+              };
+
+              const newSessionStates = new Map(state.sessionStates);
+              newSessionStates.set(targetSessionId, {
+                ...sessionState,
+                status: newStatus
+              });
+
+              const updates: Partial<InsightsState> = {
+                sessionStates: newSessionStates
+              };
+              if (state.currentSessionId === targetSessionId) {
+                updates.status = newStatus;
+              }
+
+              return updates;
             });
           }
           break;
         case 'tool_end':
-          console.log('[InsightsStore] stream chunk - tool_end');
-          store().setCurrentTool(null);
+          console.log('[InsightsStore] stream chunk - tool_end', {
+            targetSessionId
+          });
+          useInsightsStore.setState((state) => {
+            const sessionState = state.sessionStates.get(targetSessionId);
+            if (!sessionState) return state;
+
+            const newSessionStates = new Map(state.sessionStates);
+            newSessionStates.set(targetSessionId, {
+              ...sessionState,
+              currentTool: null
+            });
+
+            const updates: Partial<InsightsState> = {
+              sessionStates: newSessionStates
+            };
+            if (state.currentSessionId === targetSessionId) {
+              updates.currentTool = null;
+            }
+
+            return updates;
+          });
           break;
         case 'task_suggestion':
           console.log('[InsightsStore] stream chunk - task_suggestion', {
-            hasSuggestedTask: !!chunk.suggestedTask
+            hasSuggestedTask: !!chunk.suggestedTask,
+            targetSessionId
+          });
+          // Clear current tool
+          useInsightsStore.setState((state) => {
+            const sessionState = state.sessionStates.get(targetSessionId);
+            if (!sessionState) return state;
+
+            const newSessionStates = new Map(state.sessionStates);
+            newSessionStates.set(targetSessionId, {
+              ...sessionState,
+              currentTool: null
+            });
+
+            const updates: Partial<InsightsState> = {
+              sessionStates: newSessionStates
+            };
+            if (state.currentSessionId === targetSessionId) {
+              updates.currentTool = null;
+            }
+
+            return updates;
           });
           // Finalize the message with task suggestion
-          store().setCurrentTool(null);
-          store().finalizeStreamingMessage(chunk.suggestedTask);
+          store.finalizeStreamingMessage(chunk.suggestedTask);
           break;
         case 'done':
           console.log('[InsightsStore] stream chunk - done', {
-            streamingContentLength: store().streamingContent.length
+            streamingContentLength: store.streamingContent.length,
+            targetSessionId
+          });
+          // Clear current tool
+          useInsightsStore.setState((state) => {
+            const sessionState = state.sessionStates.get(targetSessionId);
+            if (!sessionState) return state;
+
+            const newSessionStates = new Map(state.sessionStates);
+            newSessionStates.set(targetSessionId, {
+              ...sessionState,
+              currentTool: null
+            });
+
+            const updates: Partial<InsightsState> = {
+              sessionStates: newSessionStates
+            };
+            if (state.currentSessionId === targetSessionId) {
+              updates.currentTool = null;
+            }
+
+            return updates;
           });
           // Finalize any remaining content
-          store().setCurrentTool(null);
-          store().finalizeStreamingMessage();
-          store().setStatus({
-            phase: 'complete',
-            message: ''
+          store.finalizeStreamingMessage();
+          // Clear the generating session tracking since generation is complete
+          useInsightsStore.setState((state) => {
+            const newGeneratingSessionIds = new Map(state.generatingSessionIds);
+            newGeneratingSessionIds.delete(projectId);
+            return { generatingSessionIds: newGeneratingSessionIds };
+          });
+          // Update status to complete
+          useInsightsStore.setState((state) => {
+            const sessionState = state.sessionStates.get(targetSessionId);
+            if (!sessionState) return state;
+
+            const newStatus: InsightsChatStatus = {
+              phase: 'complete',
+              message: ''
+            };
+
+            const newSessionStates = new Map(state.sessionStates);
+            newSessionStates.set(targetSessionId, {
+              ...sessionState,
+              status: newStatus
+            });
+
+            const updates: Partial<InsightsState> = {
+              sessionStates: newSessionStates
+            };
+            if (state.currentSessionId === targetSessionId) {
+              updates.status = newStatus;
+            }
+
+            return updates;
           });
           break;
         case 'error':
           console.log('[InsightsStore] stream chunk - error', {
-            error: chunk.error
+            error: chunk.error,
+            targetSessionId
           });
-          store().setCurrentTool(null);
-          store().setStatus({
-            phase: 'error',
-            error: chunk.error
+          // Clear current tool
+          useInsightsStore.setState((state) => {
+            const sessionState = state.sessionStates.get(targetSessionId);
+            if (!sessionState) return state;
+
+            const newSessionStates = new Map(state.sessionStates);
+            newSessionStates.set(targetSessionId, {
+              ...sessionState,
+              currentTool: null
+            });
+
+            const updates: Partial<InsightsState> = {
+              sessionStates: newSessionStates
+            };
+            if (state.currentSessionId === targetSessionId) {
+              updates.currentTool = null;
+            }
+
+            return updates;
+          });
+          // Clear the generating session tracking since generation failed
+          useInsightsStore.setState((state) => {
+            const newGeneratingSessionIds = new Map(state.generatingSessionIds);
+            newGeneratingSessionIds.delete(projectId);
+            return { generatingSessionIds: newGeneratingSessionIds };
+          });
+          // Update status to error
+          useInsightsStore.setState((state) => {
+            const sessionState = state.sessionStates.get(targetSessionId);
+            if (!sessionState) return state;
+
+            const newStatus: InsightsChatStatus = {
+              phase: 'error',
+              error: chunk.error
+            };
+
+            const newSessionStates = new Map(state.sessionStates);
+            newSessionStates.set(targetSessionId, {
+              ...sessionState,
+              status: newStatus
+            });
+
+            const updates: Partial<InsightsState> = {
+              sessionStates: newSessionStates
+            };
+            if (state.currentSessionId === targetSessionId) {
+              updates.status = newStatus;
+            }
+
+            return updates;
           });
           break;
       }
@@ -898,22 +1190,95 @@ export function setupInsightsListeners(): () => void {
   );
 
   // Listen for status updates
-  const unsubStatus = window.electronAPI.onInsightsStatus((_projectId, status) => {
+  const unsubStatus = window.electronAPI.onInsightsStatus((projectId, status) => {
+    const store = useInsightsStore.getState();
+    const generatingSessionId = store.generatingSessionIds.get(projectId);
+
     console.log('[InsightsStore] onInsightsStatus received', {
+      projectId,
       statusPhase: status.phase,
+      generatingSessionId: generatingSessionId || 'null',
       hasError: !!status.error
     });
-    store().setStatus(status);
+
+    // If we don't have a tracked session for this project, fall back to current session
+    const targetSessionId = generatingSessionId || store.currentSessionId;
+
+    if (!targetSessionId) {
+      console.warn('[InsightsStore] status update - no target session ID, skipping');
+      return;
+    }
+
+    useInsightsStore.setState((state) => {
+      const sessionState = state.sessionStates.get(targetSessionId);
+      if (!sessionState) return state;
+
+      const newSessionStates = new Map(state.sessionStates);
+      newSessionStates.set(targetSessionId, {
+        ...sessionState,
+        status
+      });
+
+      const updates: Partial<InsightsState> = {
+        sessionStates: newSessionStates
+      };
+      if (state.currentSessionId === targetSessionId) {
+        updates.status = status;
+      }
+
+      return updates;
+    });
   });
 
   // Listen for errors
-  const unsubError = window.electronAPI.onInsightsError((_projectId, error) => {
+  const unsubError = window.electronAPI.onInsightsError((projectId, error) => {
+    const store = useInsightsStore.getState();
+    const generatingSessionId = store.generatingSessionIds.get(projectId);
+
     console.log('[InsightsStore] onInsightsError received', {
-      error
+      projectId,
+      error,
+      generatingSessionId: generatingSessionId || 'null'
     });
-    store().setStatus({
-      phase: 'error',
-      error
+
+    // If we don't have a tracked session for this project, fall back to current session
+    const targetSessionId = generatingSessionId || store.currentSessionId;
+
+    if (!targetSessionId) {
+      console.warn('[InsightsStore] error - no target session ID, skipping');
+      return;
+    }
+
+    useInsightsStore.setState((state) => {
+      const sessionState = state.sessionStates.get(targetSessionId);
+      if (!sessionState) return state;
+
+      const newStatus: InsightsChatStatus = {
+        phase: 'error',
+        error
+      };
+
+      const newSessionStates = new Map(state.sessionStates);
+      newSessionStates.set(targetSessionId, {
+        ...sessionState,
+        status: newStatus
+      });
+
+      const updates: Partial<InsightsState> = {
+        sessionStates: newSessionStates
+      };
+      if (state.currentSessionId === targetSessionId) {
+        updates.status = newStatus;
+      }
+
+      return updates;
+    });
+
+    // Clear the generating session tracking since generation failed
+    useInsightsStore.setState((state) => {
+      const newGeneratingSessionIds = new Map(state.generatingSessionIds);
+      newGeneratingSessionIds.delete(projectId);
+      return { generatingSessionIds: newGeneratingSessionIds };
     });
   });
 
