@@ -451,3 +451,7 @@ export function setupInsightsListeners(): () => void {
     unsubError();
   };
 }
+
+export function resetStatus(): void {
+  useInsightsStore.getState().resetStatus();
+}

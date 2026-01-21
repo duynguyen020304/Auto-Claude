@@ -34,7 +34,8 @@ import {
   renameSession,
   updateModelConfig,
   createTaskFromSuggestion,
-  setupInsightsListeners
+  setupInsightsListeners,
+  resetStatus
 } from '../stores/insights-store';
 import { useTaskStore } from '../stores/task-store';
 import { ChatHistorySidebar } from './ChatHistorySidebar';
@@ -114,6 +115,7 @@ export function Insights({ projectId }: InsightsProps) {
   // Load session and set up listeners on mount
   useEffect(() => {
     loadInsightsSession(projectId);
+    resetStatus();
     const cleanup = setupInsightsListeners();
     return cleanup;
   }, [projectId]);
