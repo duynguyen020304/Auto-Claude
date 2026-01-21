@@ -151,6 +151,7 @@ export interface TaskDraft {
   // Auto profile - per-phase configuration
   phaseModels?: PhaseModelConfig;
   phaseThinking?: PhaseThinkingConfig;
+  apiProfileId?: string;  // API profile ID for per-task API profile selection
   images: ImageAttachment[];
   referencedFiles: ReferencedFile[];
   requireReviewBeforeCoding?: boolean;
