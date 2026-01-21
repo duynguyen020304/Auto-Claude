@@ -68,13 +68,35 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
   fileMentions: [],
 
   // Actions
-  setSession: (session) => set({ session }),
+  setSession: (session) => {
+    console.log('[InsightsStore] setSession called', {
+      sessionId: session?.id || 'null',
+      previousSessionId: _get().session?.id || 'null',
+      currentStatus: _get().status,
+      isStreaming: _get().streamingContent.length > 0
+    });
+    return set({ session });
+  },
 
   setSessions: (sessions) => set({ sessions }),
 
-  setStatus: (status) => set({ status }),
+  setStatus: (status) => {
+    console.log('[InsightsStore] setStatus called', {
+      newPhase: status.phase,
+      previousPhase: _get().status.phase,
+      hasStreamingContent: _get().streamingContent.length > 0,
+      streamingContentLength: _get().streamingContent.length
+    });
+    return set({ status });
+  },
 
-  resetStatus: () => set({ status: initialStatus }),
+  resetStatus: () => {
+    console.log('[InsightsStore] resetStatus called', {
+      previousPhase: _get().status.phase,
+      wasStreaming: _get().streamingContent.length > 0
+    });
+    return set({ status: initialStatus });
+  },
 
   setLoadingSessions: (loading) => set({ isLoadingSessions: loading }),
 
@@ -126,11 +148,24 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
     }),
 
   appendStreamingContent: (content) =>
-    set((state) => ({
-      streamingContent: state.streamingContent + content
-    })),
+    set((state) => {
+      const newContent = state.streamingContent + content;
+      console.log('[InsightsStore] appendStreamingContent called', {
+        contentLength: content.length,
+        previousLength: state.streamingContent.length,
+        newLength: newContent.length,
+        statusPhase: state.status.phase
+      });
+      return { streamingContent: newContent };
+    }),
 
-  clearStreamingContent: () => set({ streamingContent: '' }),
+  clearStreamingContent: () => {
+    console.log('[InsightsStore] clearStreamingContent called', {
+      previousLength: _get().streamingContent.length,
+      statusPhase: _get().status.phase
+    });
+    return set({ streamingContent: '' });
+  },
 
   setCurrentTool: (tool) => set({ currentTool: tool }),
 
@@ -171,7 +206,16 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       const content = state.streamingContent;
       const toolsUsed = state.toolsUsed.length > 0 ? [...state.toolsUsed] : undefined;
 
+      console.log('[InsightsStore] finalizeStreamingMessage called', {
+        contentLength: content.length,
+        hasSuggestedTask: !!suggestedTask,
+        toolsUsedCount: state.toolsUsed.length,
+        statusPhase: state.status.phase,
+        sessionId: state.session?.id || 'null'
+      });
+
       if (!content && !suggestedTask && !toolsUsed) {
+        console.log('[InsightsStore] finalizeStreamingMessage - no content to finalize');
         return { streamingContent: '', toolsUsed: [] };
       }
 
@@ -185,6 +229,7 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       };
 
       if (!state.session) {
+        console.log('[InsightsStore] finalizeStreamingMessage - creating new session');
         return {
           streamingContent: '',
           toolsUsed: [],
@@ -198,6 +243,11 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
         };
       }
 
+      console.log('[InsightsStore] finalizeStreamingMessage - adding message to session', {
+        sessionId: state.session.id,
+        messageCount: state.session.messages.length
+      });
+
       return {
         streamingContent: '',
         toolsUsed: [],
@@ -209,8 +259,14 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       };
     }),
 
-  clearSession: () =>
-    set({
+  clearSession: () => {
+    console.log('[InsightsStore] clearSession called', {
+      previousSessionId: _get().session?.id || 'null',
+      statusPhase: _get().status.phase,
+      streamingContentLength: _get().streamingContent.length,
+      toolsUsedCount: _get().toolsUsed.length
+    });
+    return set({
       session: null,
       status: initialStatus,
       pendingMessage: '',
@@ -218,7 +274,8 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       currentTool: null,
       toolsUsed: [],
       fileMentions: []
-    })
+    });
+  }
 }));
 
 // Helper functions
@@ -251,6 +308,13 @@ export async function loadInsightsSession(projectId: string): Promise<void> {
 }
 
 export function sendMessage(projectId: string, message: string, modelConfig?: InsightsModelConfig): void {
+  console.log('[InsightsStore] sendMessage called', {
+    projectId,
+    messageLength: message.length,
+    hasSession: !!useInsightsStore.getState().session,
+    sessionId: useInsightsStore.getState().session?.id || 'null'
+  });
+
   const store = useInsightsStore.getState();
   const session = store.session;
 
@@ -275,6 +339,10 @@ export function sendMessage(projectId: string, message: string, modelConfig?: In
   // Use provided modelConfig, or fall back to session's config
   const configToUse = modelConfig || session?.modelConfig;
 
+  console.log('[InsightsStore] sendMessage - sending to main process', {
+    hasConfig: !!configToUse
+  });
+
   // Send to main process
   window.electronAPI.sendInsightsMessage(projectId, message, configToUse);
 }
@@ -298,15 +366,49 @@ export async function newSession(projectId: string): Promise<void> {
 }
 
 export async function switchSession(projectId: string, sessionId: string): Promise<void> {
+  const store = useInsightsStore.getState();
+
+  console.log('[InsightsStore] switchSession called', {
+    projectId,
+    targetSessionId: sessionId,
+    currentSessionId: store.session?.id || 'null',
+    currentStatusPhase: store.status.phase,
+    streamingContentLength: store.streamingContent.length,
+    toolsUsedCount: store.toolsUsed.length,
+    isGenerating: store.status.phase === 'thinking' || store.status.phase === 'streaming'
+  });
+
   const result = await window.electronAPI.switchInsightsSession(projectId, sessionId);
+
+  console.log('[InsightsStore] switchSession - main process result', {
+    success: result.success,
+    hasData: !!result.data,
+    newSessionId: result.data?.id || 'null'
+  });
+
   if (result.success && result.data) {
     useInsightsStore.getState().setSession(result.data);
+
+    console.log('[InsightsStore] switchSession - CLEARING streaming state', {
+      streamingContentLength: useInsightsStore.getState().streamingContent.length,
+      wasStreaming: useInsightsStore.getState().streamingContent.length > 0
+    });
+
     // Reset streaming state when switching sessions
     useInsightsStore.getState().clearStreamingContent();
     useInsightsStore.getState().clearToolsUsed();
     useInsightsStore.getState().clearFileMentions();
     useInsightsStore.getState().setCurrentTool(null);
     useInsightsStore.getState().setStatus({ phase: 'idle', message: '' });
+
+    console.log('[InsightsStore] switchSession - state cleared', {
+      newStatusPhase: useInsightsStore.getState().status.phase,
+      newStreamingContentLength: useInsightsStore.getState().streamingContent.length
+    });
+  } else {
+    console.log('[InsightsStore] switchSession - failed', {
+      success: result.success
+    });
   }
 }
 
@@ -372,12 +474,24 @@ export async function createTaskFromSuggestion(
 export function setupInsightsListeners(): () => void {
   const store = useInsightsStore.getState;
 
+  console.log('[InsightsStore] setupInsightsListeners - setting up IPC listeners');
+
   // Listen for streaming chunks
   const unsubStreamChunk = window.electronAPI.onInsightsStreamChunk(
     (_projectId, chunk: InsightsStreamChunk) => {
+      console.log('[InsightsStore] onInsightsStreamChunk received', {
+        chunkType: chunk.type,
+        currentSessionId: store().session?.id || 'null',
+        currentStatusPhase: store().status.phase,
+        streamingContentLength: store().streamingContent.length
+      });
+
       switch (chunk.type) {
         case 'text':
           if (chunk.content) {
+            console.log('[InsightsStore] stream chunk - text', {
+              contentLength: chunk.content.length
+            });
             store().appendStreamingContent(chunk.content);
             store().setCurrentTool(null); // Clear tool when receiving text
             store().setStatus({
@@ -388,6 +502,9 @@ export function setupInsightsListeners(): () => void {
           break;
         case 'tool_start':
           if (chunk.tool) {
+            console.log('[InsightsStore] stream chunk - tool_start', {
+              toolName: chunk.tool.name
+            });
             store().setCurrentTool({
               name: chunk.tool.name,
               input: chunk.tool.input
@@ -404,14 +521,21 @@ export function setupInsightsListeners(): () => void {
           }
           break;
         case 'tool_end':
+          console.log('[InsightsStore] stream chunk - tool_end');
           store().setCurrentTool(null);
           break;
         case 'task_suggestion':
+          console.log('[InsightsStore] stream chunk - task_suggestion', {
+            hasSuggestedTask: !!chunk.suggestedTask
+          });
           // Finalize the message with task suggestion
           store().setCurrentTool(null);
           store().finalizeStreamingMessage(chunk.suggestedTask);
           break;
         case 'done':
+          console.log('[InsightsStore] stream chunk - done', {
+            streamingContentLength: store().streamingContent.length
+          });
           // Finalize any remaining content
           store().setCurrentTool(null);
           store().finalizeStreamingMessage();
@@ -421,6 +545,9 @@ export function setupInsightsListeners(): () => void {
           });
           break;
         case 'error':
+          console.log('[InsightsStore] stream chunk - error', {
+            error: chunk.error
+          });
           store().setCurrentTool(null);
           store().setStatus({
             phase: 'error',
@@ -433,11 +560,18 @@ export function setupInsightsListeners(): () => void {
 
   // Listen for status updates
   const unsubStatus = window.electronAPI.onInsightsStatus((_projectId, status) => {
+    console.log('[InsightsStore] onInsightsStatus received', {
+      statusPhase: status.phase,
+      hasError: !!status.error
+    });
     store().setStatus(status);
   });
 
   // Listen for errors
   const unsubError = window.electronAPI.onInsightsError((_projectId, error) => {
+    console.log('[InsightsStore] onInsightsError received', {
+      error
+    });
     store().setStatus({
       phase: 'error',
       error
@@ -446,6 +580,7 @@ export function setupInsightsListeners(): () => void {
 
   // Return cleanup function
   return () => {
+    console.log('[InsightsStore] cleanup - removing IPC listeners');
     unsubStreamChunk();
     unsubStatus();
     unsubError();
