@@ -175,5 +175,16 @@
     "generating": "Génération...",
     "errorTitle": "Échec de la génération",
     "errorDescription": "Échec de la génération de nouvelles idées. Veuillez réessayer."
+  },
+  "versionWarning": {
+    "title": "Action requise",
+    "subtitle": "Mise à jour version 2.7.5",
+    "description": "En raison de changements d'authentification dans cette version, vous devez réauthentifier votre profil Claude.",
+    "instructions": "Pour vous réauthentifier :",
+    "step1": "Allez dans Paramètres",
+    "step2": "Naviguez vers Paramètres de l'app > Intégrations",
+    "step3": "Cliquez sur « Réauthentifier » sur votre profil",
+    "gotIt": "Compris",
+    "goToSettings": "Aller aux paramètres"
   }
 }
