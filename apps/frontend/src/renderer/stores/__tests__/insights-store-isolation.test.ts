@@ -157,12 +157,12 @@ describe('insights-store - session state isolation', () => {
     // Setup session A with file mentions
     const sessionAId = 'session-a';
     store.setCurrentSessionId(sessionAId);
-    store.addFileMention({ id: 'file-1', path: '/path/to/file1.ts', language: 'typescript' });
+    store.addFileMention({ id: 'file-1', filePath: '/path/to/file1.ts' });
 
     // Setup session B with different file mentions
     const sessionBId = 'session-b';
     store.setCurrentSessionId(sessionBId);
-    store.addFileMention({ id: 'file-2', path: '/path/to/file2.ts', language: 'typescript' });
+    store.addFileMention({ id: 'file-2', filePath: '/path/to/file2.ts' });
 
     // Get session states
     const stateA = store.getSessionState(sessionAId);

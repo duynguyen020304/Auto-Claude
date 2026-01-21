@@ -199,7 +199,7 @@ describe('insights-store - rapid session switching', () => {
     store.setPendingMessage('Pending A', sessionAId);
     store.appendStreamingContent('Content A', sessionAId);
     store.addToolUsage({ name: 'tool-a', input: 'input-a' }, sessionAId);
-    store.addFileMention({ id: 'file-1', path: '/path/to/file' }, sessionAId);
+    store.addFileMention({ id: 'file-1', filePath: '/path/to/file' }, sessionAId);
 
     // Set up session B with active state
     store.setCurrentSessionId(sessionBId);
@@ -238,8 +238,8 @@ describe('insights-store - rapid session switching', () => {
 
     // Add file mentions to session A
     store.setCurrentSessionId(sessionAId);
-    store.addFileMention({ id: 'file-1', path: '/path/to/file1.ts' }, sessionAId);
-    store.addFileMention({ id: 'file-2', path: '/path/to/file2.ts' }, sessionAId);
+    store.addFileMention({ id: 'file-1', filePath: '/path/to/file1.ts' }, sessionAId);
+    store.addFileMention({ id: 'file-2', filePath: '/path/to/file2.ts' }, sessionAId);
 
     let state = useInsightsStore.getState();
     expect(state.fileMentions.length).toBe(2);
@@ -252,8 +252,8 @@ describe('insights-store - rapid session switching', () => {
 
     // Switch to session B and add different file mentions
     store.setCurrentSessionId(sessionBId);
-    store.addFileMention({ id: 'file-3', path: '/path/to/file3.ts' }, sessionBId);
-    store.addFileMention({ id: 'file-4', path: '/path/to/file4.ts' }, sessionBId);
+    store.addFileMention({ id: 'file-3', filePath: '/path/to/file3.ts' }, sessionBId);
+    store.addFileMention({ id: 'file-4', filePath: '/path/to/file4.ts' }, sessionBId);
 
     state = useInsightsStore.getState();
     expect(state.fileMentions.length).toBe(2);
