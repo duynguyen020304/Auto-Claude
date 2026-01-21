@@ -17,19 +17,34 @@ interface ToolUsage {
   input?: string;
 }
 
-interface InsightsState {
-  // Data
-  session: InsightsSession | null;
-  sessions: InsightsSessionSummary[]; // List of all sessions
+// Per-session streaming state
+interface InsightsSessionState {
   status: InsightsChatStatus;
   pendingMessage: string;
-  streamingContent: string; // Accumulates streaming response
-  currentTool: ToolUsage | null; // Currently executing tool
-  toolsUsed: InsightsToolUsage[]; // Tools used during current response
+  streamingContent: string;
+  currentTool: ToolUsage | null;
+  toolsUsed: InsightsToolUsage[];
+  fileMentions: FileMention[];
+}
+
+interface InsightsState {
+  // Data
+  currentSessionId: string | null; // Current session ID
+  session: InsightsSession | null;
+  sessions: InsightsSessionSummary[]; // List of all sessions
+  sessionStates: Map<string, InsightsSessionState>; // Per-session streaming state
   isLoadingSessions: boolean;
-  fileMentions: FileMention[]; // File mentions for current message
+
+  // Current session state (mirrored from sessionStates for easy access)
+  status: InsightsChatStatus;
+  pendingMessage: string;
+  streamingContent: string;
+  currentTool: ToolUsage | null;
+  toolsUsed: InsightsToolUsage[];
+  fileMentions: FileMention[];
 
   // Actions
+  setCurrentSessionId: (sessionId: string | null) => void;
   setSession: (session: InsightsSession | null) => void;
   setSessions: (sessions: InsightsSessionSummary[]) => void;
   setStatus: (status: InsightsChatStatus) => void;
@@ -55,52 +70,184 @@ const initialStatus: InsightsChatStatus = {
   message: ''
 };
 
+// Helper function to create initial session state
+function createInitialSessionState(): InsightsSessionState {
+  return {
+    status: initialStatus,
+    pendingMessage: '',
+    streamingContent: '',
+    currentTool: null,
+    toolsUsed: [],
+    fileMentions: []
+  };
+}
+
 export const useInsightsStore = create<InsightsState>((set, _get) => ({
   // Initial state
+  currentSessionId: null,
   session: null,
   sessions: [],
+  sessionStates: new Map<string, InsightsSessionState>(),
+  isLoadingSessions: false,
   status: initialStatus,
   pendingMessage: '',
   streamingContent: '',
   currentTool: null,
   toolsUsed: [],
-  isLoadingSessions: false,
   fileMentions: [],
 
   // Actions
+  setCurrentSessionId: (sessionId) =>
+    set((state) => {
+      // Ensure session state exists for the given session ID
+      if (sessionId && !state.sessionStates.has(sessionId)) {
+        const newSessionStates = new Map(state.sessionStates);
+        const newSessionState = createInitialSessionState();
+        newSessionStates.set(sessionId, newSessionState);
+        return {
+          currentSessionId: sessionId,
+          sessionStates: newSessionStates,
+          status: newSessionState.status,
+          pendingMessage: newSessionState.pendingMessage,
+          streamingContent: newSessionState.streamingContent,
+          currentTool: newSessionState.currentTool,
+          toolsUsed: newSessionState.toolsUsed,
+          fileMentions: newSessionState.fileMentions
+        };
+      }
+      return { currentSessionId: sessionId };
+    }),
+
   setSession: (session) => {
     console.log('[InsightsStore] setSession called', {
       sessionId: session?.id || 'null',
       previousSessionId: _get().session?.id || 'null',
-      currentStatus: _get().status,
-      isStreaming: _get().streamingContent.length > 0
+      currentStatus: _get().sessionStates.get(_get().currentSessionId || '')?.status,
+      isStreaming: (_get().sessionStates.get(_get().currentSessionId || '')?.streamingContent.length || 0) > 0
     });
-    return set({ session });
+
+    const sessionId = session?.id || null;
+
+    return set((state) => {
+      // Ensure session state exists for the given session ID
+      if (sessionId && !state.sessionStates.has(sessionId)) {
+        const newSessionStates = new Map(state.sessionStates);
+        const newSessionState = createInitialSessionState();
+        newSessionStates.set(sessionId, newSessionState);
+        return {
+          currentSessionId: sessionId,
+          session,
+          sessionStates: newSessionStates,
+          status: newSessionState.status,
+          pendingMessage: newSessionState.pendingMessage,
+          streamingContent: newSessionState.streamingContent,
+          currentTool: newSessionState.currentTool,
+          toolsUsed: newSessionState.toolsUsed,
+          fileMentions: newSessionState.fileMentions
+        };
+      }
+
+      // Restore session state from sessionStates map
+      const sessionState = sessionId ? state.sessionStates.get(sessionId) : null;
+      if (sessionState) {
+        return {
+          currentSessionId: sessionId,
+          session,
+          status: sessionState.status,
+          pendingMessage: sessionState.pendingMessage,
+          streamingContent: sessionState.streamingContent,
+          currentTool: sessionState.currentTool,
+          toolsUsed: sessionState.toolsUsed,
+          fileMentions: sessionState.fileMentions
+        };
+      }
+
+      return { currentSessionId: sessionId, session };
+    });
   },
 
   setSessions: (sessions) => set({ sessions }),
 
   setStatus: (status) => {
+    const currentSessionId = _get().currentSessionId;
     console.log('[InsightsStore] setStatus called', {
       newPhase: status.phase,
       previousPhase: _get().status.phase,
       hasStreamingContent: _get().streamingContent.length > 0,
       streamingContentLength: _get().streamingContent.length
     });
-    return set({ status });
+
+    return set((state) => {
+      // Update top-level field
+      const updates: Partial<InsightsState> = { status };
+
+      // Also update in sessionStates map
+      if (currentSessionId && state.sessionStates.has(currentSessionId)) {
+        const sessionState = state.sessionStates.get(currentSessionId);
+        if (sessionState) {
+          const newSessionStates = new Map(state.sessionStates);
+          newSessionStates.set(currentSessionId, {
+            ...sessionState,
+            status
+          });
+          updates.sessionStates = newSessionStates;
+        }
+      }
+
+      return updates;
+    });
   },
 
   resetStatus: () => {
+    const currentSessionId = _get().currentSessionId;
     console.log('[InsightsStore] resetStatus called', {
       previousPhase: _get().status.phase,
       wasStreaming: _get().streamingContent.length > 0
     });
-    return set({ status: initialStatus });
+
+    return set((state) => {
+      // Update top-level field
+      const updates: Partial<InsightsState> = { status: initialStatus };
+
+      // Also update in sessionStates map
+      if (currentSessionId && state.sessionStates.has(currentSessionId)) {
+        const sessionState = state.sessionStates.get(currentSessionId);
+        if (sessionState) {
+          const newSessionStates = new Map(state.sessionStates);
+          newSessionStates.set(currentSessionId, {
+            ...sessionState,
+            status: initialStatus
+          });
+          updates.sessionStates = newSessionStates;
+        }
+      }
+
+      return updates;
+    });
   },
 
   setLoadingSessions: (loading) => set({ isLoadingSessions: loading }),
 
-  setPendingMessage: (message) => set({ pendingMessage: message }),
+  setPendingMessage: (message) =>
+    set((state) => {
+      // Update top-level field
+      const updates: Partial<InsightsState> = { pendingMessage: message };
+
+      // Also update in sessionStates map
+      if (state.currentSessionId && state.sessionStates.has(state.currentSessionId)) {
+        const sessionState = state.sessionStates.get(state.currentSessionId);
+        if (sessionState) {
+          const newSessionStates = new Map(state.sessionStates);
+          newSessionStates.set(state.currentSessionId, {
+            ...sessionState,
+            pendingMessage: message
+          });
+          updates.sessionStates = newSessionStates;
+        }
+      }
+
+      return updates;
+    }),
 
   addMessage: (message) =>
     set((state) => {
@@ -149,74 +296,218 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
 
   appendStreamingContent: (content) =>
     set((state) => {
-      const newContent = state.streamingContent + content;
+      if (!state.currentSessionId) return state;
+
+      const sessionState = state.sessionStates.get(state.currentSessionId);
+      if (!sessionState) return state;
+
+      const newContent = sessionState.streamingContent + content;
       console.log('[InsightsStore] appendStreamingContent called', {
         contentLength: content.length,
-        previousLength: state.streamingContent.length,
+        previousLength: sessionState.streamingContent.length,
         newLength: newContent.length,
-        statusPhase: state.status.phase
+        statusPhase: sessionState.status.phase
       });
-      return { streamingContent: newContent };
+
+      const newSessionStates = new Map(state.sessionStates);
+      newSessionStates.set(state.currentSessionId, {
+        ...sessionState,
+        streamingContent: newContent
+      });
+
+      return {
+        streamingContent: newContent,
+        sessionStates: newSessionStates
+      };
     }),
 
   clearStreamingContent: () => {
+    const currentSessionId = _get().currentSessionId;
     console.log('[InsightsStore] clearStreamingContent called', {
       previousLength: _get().streamingContent.length,
       statusPhase: _get().status.phase
     });
-    return set({ streamingContent: '' });
+
+    return set((state) => {
+      if (!state.currentSessionId) return state;
+
+      const sessionState = state.sessionStates.get(state.currentSessionId);
+      if (!sessionState) return state;
+
+      const newSessionStates = new Map(state.sessionStates);
+      newSessionStates.set(state.currentSessionId, {
+        ...sessionState,
+        streamingContent: ''
+      });
+
+      return {
+        streamingContent: '',
+        sessionStates: newSessionStates
+      };
+    });
   },
 
-  setCurrentTool: (tool) => set({ currentTool: tool }),
+  setCurrentTool: (tool) =>
+    set((state) => {
+      if (!state.currentSessionId) return state;
+
+      const sessionState = state.sessionStates.get(state.currentSessionId);
+      if (!sessionState) return state;
+
+      const newSessionStates = new Map(state.sessionStates);
+      newSessionStates.set(state.currentSessionId, {
+        ...sessionState,
+        currentTool: tool
+      });
+
+      return {
+        currentTool: tool,
+        sessionStates: newSessionStates
+      };
+    }),
 
   addToolUsage: (tool) =>
-    set((state) => ({
-      toolsUsed: [
-        ...state.toolsUsed,
+    set((state) => {
+      if (!state.currentSessionId) return state;
+
+      const sessionState = state.sessionStates.get(state.currentSessionId);
+      if (!sessionState) return state;
+
+      const newToolsUsed = [
+        ...sessionState.toolsUsed,
         {
           name: tool.name,
           input: tool.input,
           timestamp: new Date()
         }
-      ]
-    })),
+      ];
 
-  clearToolsUsed: () => set({ toolsUsed: [] }),
+      const newSessionStates = new Map(state.sessionStates);
+      newSessionStates.set(state.currentSessionId, {
+        ...sessionState,
+        toolsUsed: newToolsUsed
+      });
+
+      return {
+        toolsUsed: newToolsUsed,
+        sessionStates: newSessionStates
+      };
+    }),
+
+  clearToolsUsed: () =>
+    set((state) => {
+      if (!state.currentSessionId) return state;
+
+      const sessionState = state.sessionStates.get(state.currentSessionId);
+      if (!sessionState) return state;
+
+      const newSessionStates = new Map(state.sessionStates);
+      newSessionStates.set(state.currentSessionId, {
+        ...sessionState,
+        toolsUsed: []
+      });
+
+      return {
+        toolsUsed: [],
+        sessionStates: newSessionStates
+      };
+    }),
 
   addFileMention: (mention) =>
     set((state) => {
+      if (!state.currentSessionId) return state;
+
+      const sessionState = state.sessionStates.get(state.currentSessionId);
+      if (!sessionState) return state;
+
       // Check if mention with same ID already exists
-      if (state.fileMentions.some((m) => m.id === mention.id)) {
+      if (sessionState.fileMentions.some((m) => m.id === mention.id)) {
         return state;
       }
+
+      const newFileMentions = [...sessionState.fileMentions, mention];
+      const newSessionStates = new Map(state.sessionStates);
+      newSessionStates.set(state.currentSessionId, {
+        ...sessionState,
+        fileMentions: newFileMentions
+      });
+
       return {
-        fileMentions: [...state.fileMentions, mention]
+        fileMentions: newFileMentions,
+        sessionStates: newSessionStates
       };
     }),
 
   removeFileMention: (id) =>
-    set((state) => ({
-      fileMentions: state.fileMentions.filter((m) => m.id !== id)
-    })),
+    set((state) => {
+      if (!state.currentSessionId) return state;
 
-  clearFileMentions: () => set({ fileMentions: [] }),
+      const sessionState = state.sessionStates.get(state.currentSessionId);
+      if (!sessionState) return state;
+
+      const newFileMentions = sessionState.fileMentions.filter((m) => m.id !== id);
+      const newSessionStates = new Map(state.sessionStates);
+      newSessionStates.set(state.currentSessionId, {
+        ...sessionState,
+        fileMentions: newFileMentions
+      });
+
+      return {
+        fileMentions: newFileMentions,
+        sessionStates: newSessionStates
+      };
+    }),
+
+  clearFileMentions: () =>
+    set((state) => {
+      if (!state.currentSessionId) return state;
+
+      const sessionState = state.sessionStates.get(state.currentSessionId);
+      if (!sessionState) return state;
+
+      const newSessionStates = new Map(state.sessionStates);
+      newSessionStates.set(state.currentSessionId, {
+        ...sessionState,
+        fileMentions: []
+      });
+
+      return {
+        fileMentions: [],
+        sessionStates: newSessionStates
+      };
+    }),
 
   finalizeStreamingMessage: (suggestedTask) =>
     set((state) => {
-      const content = state.streamingContent;
-      const toolsUsed = state.toolsUsed.length > 0 ? [...state.toolsUsed] : undefined;
+      if (!state.currentSessionId) return state;
+
+      const sessionState = state.sessionStates.get(state.currentSessionId);
+      if (!sessionState) return state;
+
+      const content = sessionState.streamingContent;
+      const toolsUsed = sessionState.toolsUsed.length > 0 ? [...sessionState.toolsUsed] : undefined;
 
       console.log('[InsightsStore] finalizeStreamingMessage called', {
         contentLength: content.length,
         hasSuggestedTask: !!suggestedTask,
-        toolsUsedCount: state.toolsUsed.length,
-        statusPhase: state.status.phase,
+        toolsUsedCount: sessionState.toolsUsed.length,
+        statusPhase: sessionState.status.phase,
         sessionId: state.session?.id || 'null'
       });
 
       if (!content && !suggestedTask && !toolsUsed) {
         console.log('[InsightsStore] finalizeStreamingMessage - no content to finalize');
-        return { streamingContent: '', toolsUsed: [] };
+        const newSessionStates = new Map(state.sessionStates);
+        newSessionStates.set(state.currentSessionId, {
+          ...sessionState,
+          streamingContent: '',
+          toolsUsed: []
+        });
+        return {
+          streamingContent: '',
+          toolsUsed: [],
+          sessionStates: newSessionStates
+        };
       }
 
       const newMessage: InsightsChatMessage = {
@@ -230,9 +521,16 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
 
       if (!state.session) {
         console.log('[InsightsStore] finalizeStreamingMessage - creating new session');
+        const newSessionStates = new Map(state.sessionStates);
+        newSessionStates.set(state.currentSessionId, {
+          ...sessionState,
+          streamingContent: '',
+          toolsUsed: []
+        });
         return {
           streamingContent: '',
           toolsUsed: [],
+          sessionStates: newSessionStates,
           session: {
             id: `session-${Date.now()}`,
             projectId: '',
@@ -248,9 +546,17 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
         messageCount: state.session.messages.length
       });
 
+      const newSessionStates = new Map(state.sessionStates);
+      newSessionStates.set(state.currentSessionId, {
+        ...sessionState,
+        streamingContent: '',
+        toolsUsed: []
+      });
+
       return {
         streamingContent: '',
         toolsUsed: [],
+        sessionStates: newSessionStates,
         session: {
           ...state.session,
           messages: [...state.session.messages, newMessage],
@@ -268,6 +574,8 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
     });
     return set({
       session: null,
+      currentSessionId: null,
+      sessionStates: new Map<string, InsightsSessionState>(),
       status: initialStatus,
       pendingMessage: '',
       streamingContent: '',
@@ -389,19 +697,11 @@ export async function switchSession(projectId: string, sessionId: string): Promi
   if (result.success && result.data) {
     useInsightsStore.getState().setSession(result.data);
 
-    console.log('[InsightsStore] switchSession - CLEARING streaming state', {
-      streamingContentLength: useInsightsStore.getState().streamingContent.length,
-      wasStreaming: useInsightsStore.getState().streamingContent.length > 0
-    });
+    // NOTE: No need to manually clear/restore streaming state anymore!
+    // The setSession() action now automatically loads the session's state
+    // from the sessionStates map into the top-level fields.
 
-    // Reset streaming state when switching sessions
-    useInsightsStore.getState().clearStreamingContent();
-    useInsightsStore.getState().clearToolsUsed();
-    useInsightsStore.getState().clearFileMentions();
-    useInsightsStore.getState().setCurrentTool(null);
-    useInsightsStore.getState().setStatus({ phase: 'idle', message: '' });
-
-    console.log('[InsightsStore] switchSession - state cleared', {
+    console.log('[InsightsStore] switchSession - switched to new session', {
       newStatusPhase: useInsightsStore.getState().status.phase,
       newStreamingContentLength: useInsightsStore.getState().streamingContent.length
     });
