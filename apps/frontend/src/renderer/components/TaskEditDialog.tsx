@@ -107,6 +107,9 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
   // Image attachments
   const [images, setImages] = useState<ImageAttachment[]>(task.metadata?.attachedImages || []);
 
+  // API profile selection
+  const [apiProfileId, setApiProfileId] = useState<string>(task.metadata?.apiProfileId || '');
+
   // Review setting
   const [requireReviewBeforeCoding, setRequireReviewBeforeCoding] = useState(
     task.metadata?.requireReviewBeforeCoding ?? false
@@ -151,6 +154,7 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
       }
 
       setImages(task.metadata?.attachedImages || []);
+      setApiProfileId(task.metadata?.apiProfileId || '');
       setRequireReviewBeforeCoding(task.metadata?.requireReviewBeforeCoding ?? false);
       setError(null);
 
@@ -195,6 +199,7 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
       impact !== (task.metadata?.impact || '') ||
       model !== (task.metadata?.model || '') ||
       thinkingLevel !== (task.metadata?.thinkingLevel || '') ||
+      apiProfileId !== (task.metadata?.apiProfileId || '') ||
       requireReviewBeforeCoding !== (task.metadata?.requireReviewBeforeCoding ?? false) ||
       JSON.stringify(images) !== JSON.stringify(task.metadata?.attachedImages || []) ||
       JSON.stringify(phaseModels) !== JSON.stringify(task.metadata?.phaseModels || DEFAULT_PHASE_MODELS) ||
@@ -221,6 +226,7 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
       metadataUpdates.phaseModels = phaseModels;
       metadataUpdates.phaseThinking = phaseThinking;
     }
+    if (apiProfileId) metadataUpdates.apiProfileId = apiProfileId;
     // Always set attachedImages to persist removal when all images are deleted
     metadataUpdates.attachedImages = images.length > 0 ? images : [];
     metadataUpdates.requireReviewBeforeCoding = requireReviewBeforeCoding;
@@ -287,6 +293,8 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
         onThinkingLevelChange={setThinkingLevel}
         onPhaseModelsChange={setPhaseModels}
         onPhaseThinkingChange={setPhaseThinking}
+        apiProfileId={apiProfileId}
+        onApiProfileChange={setApiProfileId}
         category={category}
         priority={priority}
         complexity={complexity}
