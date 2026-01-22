@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { AppSettings } from '../../shared/types';
 import type { APIProfile, ProfileFormData, TestConnectionResult, DiscoverModelsResult, ModelInfo } from '../../shared/types/profile';
-import type { CredentialProfile, Pool, CredentialProfileFormData } from '../../shared/types/credential-profile';
+import type { CredentialProfile, Pool, CredentialProfileFormData, PoolFormData } from '../../shared/types/credential-profile';
 import { DEFAULT_APP_SETTINGS } from '../../shared/constants';
 import { toast } from '../hooks/use-toast';
 import { markSettingsLoaded } from '../lib/sentry';
@@ -368,7 +368,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       if (result.success && result.data) {
         // Re-fetch profiles from backend to get authoritative data
         try {
-          const profilesResult = await window.electronAPI.getCredentialProfiles();
+          const profilesResult = await window.electronAPI.listCredentialProfiles();
           if (profilesResult.success && profilesResult.data) {
             set({
               credentialProfiles: profilesResult.data,
@@ -407,7 +407,19 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   updateCredentialProfileAsync: async (profile: CredentialProfile): Promise<boolean> => {
     set({ credentialProfilesLoading: true, credentialProfilesError: null });
     try {
-      const result = await window.electronAPI.updateCredentialProfile(profile);
+      // Convert CredentialProfile to CredentialProfileFormData for the API
+      const formData: CredentialProfileFormData & { id: string } = {
+        id: profile.id,
+        type: profile.type,
+        name: profile.name,
+        credential_value: profile.credential_value,
+        usage_limit: profile.metadata?.usage_limit ? Number(profile.metadata.usage_limit) : undefined,
+        rotation_mode: profile.metadata?.rotation_mode as any,
+        rate_limit_threshold: profile.metadata?.rate_limit_threshold ? Number(profile.metadata.rate_limit_threshold) : undefined,
+        metadata: profile.metadata || undefined
+      };
+
+      const result = await window.electronAPI.saveCredentialProfile(formData);
       if (result.success && result.data) {
         set((state) => ({
           credentialProfiles: state.credentialProfiles.map((p) =>
@@ -483,11 +495,11 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   savePool: async (pool: Pool): Promise<boolean> => {
     set({ poolsLoading: true, poolsError: null });
     try {
-      const result = await window.electronAPI.savePool(pool);
+      const result = await window.electronAPI.saveCredentialPool(pool);
       if (result.success && result.data) {
         // Re-fetch pools from backend to get authoritative data
         try {
-          const poolsResult = await window.electronAPI.getPools();
+          const poolsResult = await window.electronAPI.listCredentialPools();
           if (poolsResult.success && poolsResult.data) {
             set({
               pools: poolsResult.data,
@@ -526,7 +538,16 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   updatePoolAsync: async (pool: Pool): Promise<boolean> => {
     set({ poolsLoading: true, poolsError: null });
     try {
-      const result = await window.electronAPI.updatePool(pool);
+      // Convert Pool to PoolFormData for the API (they have the same structure)
+      const formData: PoolFormData & { id: string } = {
+        id: pool.id,
+        name: pool.name,
+        profile_ids: pool.profile_ids,
+        limit: pool.limit,
+        rotation_config: pool.rotation_config
+      };
+
+      const result = await window.electronAPI.saveCredentialPool(formData);
       if (result.success && result.data) {
         set((state) => ({
           pools: state.pools.map((p) =>
@@ -553,7 +574,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   deletePool: async (poolId: string): Promise<boolean> => {
     set({ poolsLoading: true, poolsError: null });
     try {
-      const result = await window.electronAPI.deletePool(poolId);
+      const result = await window.electronAPI.deleteCredentialPool(poolId);
       if (result.success) {
         set((state) => ({
           pools: state.pools.filter((p) => p.id !== poolId),
