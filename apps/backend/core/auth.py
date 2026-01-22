@@ -2559,3 +2559,207 @@ def _get_pool_linux(pool_id: str) -> dict[str, str | int | list[str] | dict | No
     ) as e:
         logger.warning(f"Failed to get pool '{pool_id}' from Linux Secret Service: {e}")
         return None
+
+
+def delete_pool(pool_id: str) -> bool:
+    """
+    Delete a credential pool from platform-specific storage.
+
+    Removes the pool from:
+    - macOS: Keychain (service: "auto-claude-pool-{pool_id}")
+    - Windows: .pool-auto-claude-{pool_id}.json file
+    - Linux: Secret Service API (application: "auto-claude-pool-{pool_id}")
+
+    Args:
+        pool_id: Unique pool identifier (e.g., "production-claude")
+
+    Returns:
+        True if pool was deleted successfully, False otherwise
+
+    Example:
+        >>> success = delete_pool("production-claude")
+        >>> if success:
+        ...     print("Pool deleted")
+    """
+    if is_macos():
+        return _delete_pool_macos(pool_id)
+    elif is_windows():
+        return _delete_pool_windows(pool_id)
+    else:
+        # Linux: use secret-service API via DBus
+        return _delete_pool_linux(pool_id)
+
+
+def _delete_pool_macos(pool_id: str) -> bool:
+    """
+    Delete a credential pool from macOS Keychain.
+
+    Args:
+        pool_id: Unique pool identifier
+
+    Returns:
+        True if pool was deleted, False otherwise
+    """
+    try:
+        # Construct service name for this pool
+        service_name = f"auto-claude-pool-{pool_id}"
+
+        # Use 'security' command to delete generic password
+        result = subprocess.run(
+            [
+                "/usr/bin/security",
+                "delete-generic-password",
+                "-s", service_name,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+
+        # returncode 0 means success, 44 means item not found (considered success)
+        if result.returncode in (0, 44):
+            logger.info(f"Pool '{pool_id}' deleted from macOS Keychain")
+            return True
+        else:
+            logger.warning(f"Failed to delete pool '{pool_id}' from macOS Keychain: {result.stderr}")
+            return False
+
+    except subprocess.TimeoutExpired:
+        logger.warning(f"Timeout while deleting pool '{pool_id}' from macOS Keychain")
+        return False
+    except Exception as e:
+        logger.warning(f"Failed to delete pool '{pool_id}' from macOS Keychain: {e}")
+        return False
+
+
+def _delete_pool_windows(pool_id: str) -> bool:
+    """
+    Delete a credential pool from Windows credential storage.
+
+    Deletes the pool file from ~/.claude directory.
+
+    Args:
+        pool_id: Unique pool identifier
+
+    Returns:
+        True if pool was deleted, False otherwise
+    """
+    try:
+        # Check for pool file in ~/.claude directory
+        claude_dir = os.path.expandvars(r"%USERPROFILE%\.claude")
+        pool_filename = f".pool-auto-claude-{pool_id}.json"
+        pool_path = os.path.join(claude_dir, pool_filename)
+
+        if not os.path.exists(pool_path):
+            logger.debug(f"Pool '{pool_id}' not found in Windows pool files")
+            return False
+
+        # Delete the pool file
+        os.remove(pool_path)
+
+        logger.info(f"Pool '{pool_id}' deleted from Windows pool files")
+        return True
+
+    except (IOError, Exception) as e:
+        logger.warning(f"Failed to delete pool '{pool_id}' from Windows storage: {e}")
+        return False
+
+
+def _delete_pool_linux(pool_id: str) -> bool:
+    """
+    Delete a credential pool from Linux Secret Service API.
+
+    Args:
+        pool_id: Unique pool identifier
+
+    Returns:
+        True if pool was deleted, False otherwise
+    """
+    if secretstorage is None:
+        logger.debug("secretstorage not available for pool deletion")
+        return False
+
+    try:
+        # Get the default collection
+        try:
+            collection = secretstorage.get_default_collection(None)
+        except (
+            AttributeError,
+            secretstorage.exceptions.SecretServiceNotAvailableException,
+        ):
+            logger.debug("Secret Service not available")
+            return False
+
+        if collection.is_locked():
+            # Try to unlock the collection
+            try:
+                collection.unlock()
+            except secretstorage.exceptions.SecretStorageException:
+                logger.debug("Failed to unlock Secret Service collection")
+                return False
+
+        # Search for items with our application attribute
+        items = collection.search_items({"application": f"auto-claude-pool-{pool_id}"})
+
+        # Delete all matching items (should be only one)
+        deleted = False
+        for item in items:
+            item.delete()
+            deleted = True
+
+        if deleted:
+            logger.info(f"Pool '{pool_id}' deleted from Linux Secret Service")
+            return True
+        else:
+            logger.debug(f"Pool '{pool_id}' not found in Linux Secret Service")
+            return False
+
+    except (
+        secretstorage.exceptions.SecretStorageException,
+        AttributeError,
+        TypeError,
+    ) as e:
+        logger.warning(f"Failed to delete pool '{pool_id}' from Linux Secret Service: {e}")
+        return False
+
+
+def update_pool_limits(pool_id: str, limit: int) -> bool:
+    """
+    Update the limit for a credential pool in platform-specific storage.
+
+    Modifies the maximum number of profiles to use from a pool while preserving
+    all other pool configuration.
+
+    Args:
+        pool_id: Unique pool identifier (e.g., "production-claude")
+        limit: New limit value (0 = no limit, >0 = max profiles)
+
+    Returns:
+        True if update was successful, False otherwise
+
+    Example:
+        >>> success = update_pool_limits("production-claude", 5)
+        >>> if success:
+        ...     print("Pool limit updated")
+    """
+    # Validate limit
+    if not isinstance(limit, int) or limit < 0:
+        logger.error("limit must be a non-negative integer")
+        return False
+
+    # Get current pool configuration
+    pool = get_pool(pool_id)
+    if pool is None:
+        logger.error(f"Pool '{pool_id}' not found")
+        return False
+
+    # Update the limit field
+    pool["limit"] = limit
+
+    # Save updated pool configuration
+    return save_pool(
+        name=pool["name"],
+        profile_ids=pool["profile_ids"],
+        limit=pool["limit"],
+        rotation_config=pool["rotation_config"],
+    )
