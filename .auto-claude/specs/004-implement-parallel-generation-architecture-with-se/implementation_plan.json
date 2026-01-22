@@ -510,7 +510,8 @@
             "command": "cd apps/frontend && npm run test -- -- --run src/renderer/stores/__tests__/insights-store-listeners.test.ts",
             "expected": "IPC listeners route correctly by sessionId"
           },
-          "status": "pending"
+          "status": "completed",
+          "notes": "Created comprehensive test suite with 17 tests verifying IPC event listeners correctly route by sessionId. The insights-store.ts already has proper sessionId-aware routing implemented - it uses generatingSessionIds map (projectId -> sessionId) to route events to the correct session. Tests verify: stream chunk routing, aborted session filtering, unknown project filtering, concurrent updates, top-level field updates, tool chunks, done/error chunks, status updates, error routing, and cross-session isolation. All 17 tests pass successfully."
         },
         {
           "id": "subtask-6-4",
