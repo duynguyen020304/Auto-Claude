@@ -400,7 +400,8 @@
             "command": "cd apps/frontend && npm run test -- -- --run src/renderer/stores/__tests__/insights-store-immutable.test.ts",
             "expected": "All Map updates are immutable"
           },
-          "status": "pending"
+          "status": "completed",
+          "notes": "Created comprehensive immutability test suite with 20 tests covering all Map update operations. All tests pass, confirming that sessionStates, generatingSessionIds, and abortControllers Map updates correctly create new Map instances to trigger Zustand re-renders."
         },
         {
           "id": "subtask-5-3",

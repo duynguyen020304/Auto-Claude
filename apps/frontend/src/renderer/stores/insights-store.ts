@@ -67,6 +67,7 @@ interface InsightsState {
   setLoadingSessions: (loading: boolean) => void;
   abortGeneration: (sessionId: string) => void;
   cleanupSessionState: (sessionId: string) => void;
+  removeSession: (sessionId: string) => void;
 
   // Selectors
   getCurrentSessionState: () => InsightsSessionState | undefined;
@@ -771,6 +772,61 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       return updates;
     }),
 
+  /**
+   * Removes a session from the store completely.
+   * This includes:
+   * - Aborting any active generation for the session
+   * - Removing the session state from sessionStates
+   * - Removing the session from generatingSessionIds
+   * - Removing the session from abortControllers
+   * - Clearing the current session if it's the one being removed
+   *
+   * @param sessionId - The ID of the session to remove
+   */
+  removeSession: (sessionId) =>
+    set((state) => {
+      const updates: Partial<InsightsState> = {};
+
+      // Abort any active generation for this session
+      const abortController = state.abortControllers.get(sessionId);
+      if (abortController) {
+        abortController.abort();
+      }
+
+      // Remove from sessionStates
+      const newSessionStates = new Map(state.sessionStates);
+      newSessionStates.delete(sessionId);
+      updates.sessionStates = newSessionStates;
+
+      // Remove from generatingSessionIds (where sessionId is the value)
+      const newGeneratingSessionIds = new Map<string, string>();
+      for (const [projectId, generatingSessionId] of state.generatingSessionIds.entries()) {
+        if (generatingSessionId !== sessionId) {
+          newGeneratingSessionIds.set(projectId, generatingSessionId);
+        }
+      }
+      updates.generatingSessionIds = newGeneratingSessionIds;
+
+      // Remove from abortControllers
+      const newAbortControllers = new Map(state.abortControllers);
+      newAbortControllers.delete(sessionId);
+      updates.abortControllers = newAbortControllers;
+
+      // If this is the current session, clear it
+      if (state.currentSessionId === sessionId) {
+        updates.currentSessionId = null;
+        updates.session = null;
+        updates.status = initialStatus;
+        updates.pendingMessage = '';
+        updates.streamingContent = '';
+        updates.currentTool = null;
+        updates.toolsUsed = [];
+        updates.fileMentions = [];
+      }
+
+      return updates;
+    }),
+
   // Selectors
   /**
    * Gets the state for the currently active session.
@@ -987,6 +1043,10 @@ export function abortGeneration(sessionId: string): void {
 
 export function cleanupSessionState(sessionId: string): void {
   useInsightsStore.getState().cleanupSessionState(sessionId);
+}
+
+export function removeSession(sessionId: string): void {
+  useInsightsStore.getState().removeSession(sessionId);
 }
 
 // IPC listener setup - call this once when the app initializes
