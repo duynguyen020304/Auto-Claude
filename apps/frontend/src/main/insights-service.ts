@@ -40,11 +40,8 @@ export class InsightsService extends EventEmitter {
     this.paths = new InsightsPaths();
     this.storage = new SessionStorage(this.paths);
     this.sessionManager = new SessionManager(this.storage, this.paths);
-    // Initialize session queue with default config (start with maxConcurrentSessions=1 for non-breaking behavior)
-    this.sessionQueue = new SessionQueue({
-      maxConcurrentSessions: 1,
-      maxSessionsPerProject: 2
-    });
+    // Initialize session queue with config from InsightsConfig
+    this.sessionQueue = new SessionQueue(this.config.getSessionQueueConfig());
     this.executor = new InsightsExecutor(this.config, this.sessionQueue);
 
     // Forward executor events with both sessionId and projectId for proper routing

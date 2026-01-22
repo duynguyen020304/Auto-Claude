@@ -7,6 +7,7 @@ import { pythonEnvManager, getConfiguredPythonPath } from '../python-env-manager
 import { getValidatedPythonPath } from '../python-detector';
 import { getAugmentedEnv } from '../env-utils';
 import { getEffectiveSourcePath } from '../updater/path-resolver';
+import type { SessionQueueConfig } from './session-queue';
 
 /**
  * Configuration manager for insights service
@@ -151,6 +152,17 @@ export class InsightsConfig {
       PYTHONIOENCODING: 'utf-8',
       PYTHONUTF8: '1',
       ...(combinedPythonPath ? { PYTHONPATH: combinedPythonPath } : {})
+    };
+  }
+
+  /**
+   * Get session queue configuration
+   * Returns configuration for concurrent session management
+   */
+  getSessionQueueConfig(): SessionQueueConfig {
+    return {
+      maxConcurrentSessions: 3,
+      maxSessionsPerProject: 2
     };
   }
 }

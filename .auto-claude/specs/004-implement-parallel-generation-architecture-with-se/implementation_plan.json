@@ -560,7 +560,8 @@
             "command": "cd apps/frontend && npm run test -- -- --run src/main/__tests__/integration/concurrent-generation.integration.test.ts",
             "expected": "End-to-end concurrent flow works"
           },
-          "status": "pending"
+          "status": "completed",
+          "notes": "Created integration test suite with 21 tests. All tests pass in 182ms."
         },
         {
           "id": "subtask-7-2",
