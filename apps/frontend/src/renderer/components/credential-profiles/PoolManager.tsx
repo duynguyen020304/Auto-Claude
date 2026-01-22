@@ -25,8 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '../ui/alert-dialog';
-// TODO: Import PoolFormDialog in subtask-6-2
-// import { PoolFormDialog } from './PoolFormDialog';
+import { PoolFormDialog } from './PoolFormDialog';
 
 interface PoolManagerProps {
   /** Optional callback when a pool is saved */
@@ -318,8 +317,7 @@ export function PoolManager({ onPoolSaved }: PoolManagerProps) {
       </AlertDialog>
 
       {/* Pool Form Dialog (Create/Edit) */}
-      {/* TODO: Uncomment in subtask-6-2 when PoolFormDialog is created */}
-      {/* <PoolFormDialog
+      <PoolFormDialog
         open={editPool !== null}
         onOpenChange={(open) => {
           if (!open) setEditPool(null);
@@ -330,7 +328,7 @@ export function PoolManager({ onPoolSaved }: PoolManagerProps) {
             onPoolSaved();
           }
         }}
-      /> */}
+      />
     </div>
   );
 }

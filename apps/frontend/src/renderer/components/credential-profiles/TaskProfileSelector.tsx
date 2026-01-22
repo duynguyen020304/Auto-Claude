@@ -10,15 +10,15 @@
  */
 import { Key, Layers } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Label } from './ui/label';
+import { Label } from '../ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue
-} from './ui/select';
-import { useSettingsStore } from '../stores/settings-store';
+} from '../ui/select';
+import { useSettingsStore } from '../../stores/settings-store';
 import type { CredentialProfile, Pool } from '../../shared/types/credential-profile';
 
 interface TaskProfileSelectorProps {

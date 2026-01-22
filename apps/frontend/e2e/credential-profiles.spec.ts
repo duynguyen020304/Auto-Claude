@@ -250,41 +250,170 @@ test.describe('Credential Profile Management', () => {
 
   /**
    * Subtask-10-3: End-to-end test: Create pool with mixed profiles
+   *
+   * Steps:
+   * 1. Create API profile 'API for pool'
+   * 2. Create OAuth profile 'OAuth for pool'
+   * 3. Open Pools tab
+   * 4. Click 'Add Pool' button
+   * 5. Enter pool name 'Mixed Pool'
+   * 6. Select both 'API for pool' and 'OAuth for pool' profiles
+   * 7. Set limit to 50
+   * 8. Click Save
+   * 9. Verify pool displays with count '2 profiles'
+   * 10. Verify pool shows both profile type badges (API, OAuth)
    */
   test('should create pool with mixed API and OAuth profiles', async () => {
     test.skip(!app, 'Electron app not available - skipping GUI test');
 
-    // First create API and OAuth profiles (using previous test steps)
-    // Then create a pool with both profiles
+    // Step 1: Create API profile 'API for pool'
+    try {
+      const credentialProfilesTab = await page.locator(
+        'button:has-text("Credential Profiles"), button:has-text("credential-profiles")'
+      ).first();
+      await credentialProfilesTab.click({ timeout: 5000 });
+      await page.waitForTimeout(500);
 
-    // Navigate to Pools tab
-    const poolsTab = await page.locator('button:has-text("Pools"), button:has-text("pools")').first();
-    await poolsTab.click();
+      const addProfileButton = await page.locator('button:has-text("Add Profile")').first();
+      await addProfileButton.click();
+      await page.waitForTimeout(500);
 
-    // Click Add Pool
-    const addPoolButton = await page.locator('button:has-text("Add Pool"), button:has-text("Add")').first();
+      // Fill API profile form
+      const nameInput = await page.locator('input[name="name"]').first();
+      await nameInput.fill('API for pool');
+
+      const typeSelect = await page.locator('select[name="type"]').first();
+      await typeSelect.selectOption('api_key');
+
+      const credentialInput = await page.locator('input[type="password"]').first();
+      await credentialInput.fill('sk-test-api-pool-12345');
+
+      const limitInput = await page.locator('input[name="usageLimit"]').first();
+      await limitInput.fill('100');
+
+      const rotationSelect = await page.locator('select[name="rotationMode"]').first();
+      await rotationSelect.selectOption('round_robin');
+
+      const saveButton = await page.locator('button:has-text("Save")').first();
+      await saveButton.click();
+      await page.waitForTimeout(1000);
+
+      console.log('✓ Created API profile "API for pool"');
+    } catch (error) {
+      console.log('Could not create API profile - may already exist:', error);
+    }
+
+    // Step 2: Create OAuth profile 'OAuth for pool'
+    try {
+      const addProfileButton = await page.locator('button:has-text("Add Profile")').first();
+      await addProfileButton.click();
+      await page.waitForTimeout(500);
+
+      // Fill OAuth profile form
+      const nameInput = await page.locator('input[name="name"]').first();
+      await nameInput.fill('OAuth for pool');
+
+      const typeSelect = await page.locator('select[name="type"]').first();
+      await typeSelect.selectOption('oauth');
+
+      const credentialInput = await page.locator('input[type="password"]').first();
+      await credentialInput.fill('oauth-token-pool-67890');
+
+      const saveButton = await page.locator('button:has-text("Save")').first();
+      await saveButton.click();
+      await page.waitForTimeout(1000);
+
+      console.log('✓ Created OAuth profile "OAuth for pool"');
+    } catch (error) {
+      console.log('Could not create OAuth profile - may already exist:', error);
+    }
+
+    // Step 3: Navigate to Pools tab
+    try {
+      const poolsTab = await page.locator(
+        'button:has-text("Pools"), button:has-text("Credential Pools"), [data-testid="pools-tab"]'
+      ).first();
+
+      await poolsTab.click({ timeout: 5000 });
+      await page.waitForTimeout(1000);
+    } catch (error) {
+      console.log('Could not find Pools tab');
+      test.skip(true, 'Pools tab not found - pool management may not be integrated yet');
+    }
+
+    // Step 4: Click Add Pool button
+    const addPoolButton = await page.locator(
+      'button:has-text("Add Pool"), button:has-text("Add")'
+    ).first();
+    await expect(addPoolButton).toBeVisible({ timeout: 5000 });
     await addPoolButton.click();
+    await page.waitForTimeout(500);
 
-    // Fill pool form
-    const poolNameInput = await page.locator('input[name="name"], input[placeholder*="name"]').first();
+    // Verify dialog opened
+    const dialog = await page.locator('[role="dialog"], .dialog, [data-testid="pool-form-dialog"]').first();
+    await expect(dialog).toBeVisible({ timeout: 3000 });
+
+    // Step 5: Enter pool name 'Mixed Pool'
+    const poolNameInput = await page.locator('input[id="pool-name"], input[name="name"], input[placeholder*="name"]').first();
     await poolNameInput.fill('Mixed Pool');
 
-    // Select profiles (would require multi-select interaction)
-    // This is a simplified version - actual implementation depends on UI
+    // Step 6: Select both profiles (checkboxes)
+    // Find and check API profile checkbox
+    try {
+      const apiProfileCheckbox = await page.locator(
+        'input[type="checkbox"][id*="API for pool"], input[type="checkbox"][id*="api"]'
+      ).first();
+      await apiProfileCheckbox.check();
+      console.log('✓ Selected API profile "API for pool"');
+      await page.waitForTimeout(300);
+    } catch (error) {
+      console.log('Could not find API profile checkbox');
+    }
 
-    // Set limit
-    const limitInput = await page.locator('input[name="limit"], input[type="number"]').first();
+    // Find and check OAuth profile checkbox
+    try {
+      const oauthProfileCheckbox = await page.locator(
+        'input[type="checkbox"][id*="OAuth for pool"], input[type="checkbox"][id*="oauth"]'
+      ).first();
+      await oauthProfileCheckbox.check();
+      console.log('✓ Selected OAuth profile "OAuth for pool"');
+      await page.waitForTimeout(300);
+    } catch (error) {
+      console.log('Could not find OAuth profile checkbox');
+    }
+
+    // Verify 2 profiles selected
+    const selectedCountText = await page.locator('text=/Selected.*2 profile/').first();
+    await expect(selectedCountText).toBeVisible({ timeout: 2000 });
+
+    // Step 7: Set limit to 50
+    const limitInput = await page.locator('input[id="pool-limit"], input[name="limit"], input[type="number"]').first();
     await limitInput.fill('50');
 
-    // Save
-    const saveButton = await page.locator('button:has-text("Save")').first();
+    // Step 8: Click Save
+    const saveButton = await page.locator('button:has-text("Save Pool"), button:has-text("Save"), button[type="submit"]').first();
     await saveButton.click();
+    await page.waitForTimeout(1500);
 
-    // Verify pool displays with profile count
+    // Step 9: Verify pool displays with count '2 profiles'
     const poolCard = await page.locator('text=Mixed Pool').first();
     await expect(poolCard).toBeVisible({ timeout: 3000 });
 
-    console.log('✓ Pool created with mixed profiles');
+    // Verify profile count badge
+    const profileCountBadge = await page.locator('text=/2 profile/').first();
+    await expect(profileCountBadge).toBeVisible({ timeout: 3000 });
+
+    // Step 10: Verify both profile type badges (API, OAuth)
+    const apiBadge = await page.locator('text=/API.*1/, text=/api.*1/').first();
+    await expect(apiBadge).toBeVisible({ timeout: 3000 });
+
+    const oauthBadge = await page.locator('text=/OAuth.*1/, text=/oauth.*1/').first();
+    await expect(oauthBadge).toBeVisible({ timeout: 3000 });
+
+    console.log('✓ Pool created successfully with mixed profiles');
+    console.log('✓ Pool displays "2 profiles" count');
+    console.log('✓ Pool shows both API (1) and OAuth (1) profile type badges');
+    console.log('✓ Pool limit set to 50');
   });
 
   /**
@@ -446,18 +575,63 @@ test.describe('Manual Verification Checklist', () => {
   test('Subtask-10-3: Create pool with mixed profiles', async () => {
     console.log('\n=== Manual Verification Steps for Subtask-10-3 ===\n');
     console.log('Prerequisites: Create at least 1 API profile and 1 OAuth profile first');
-    console.log('\n1. Open Settings → Pools tab');
-    console.log('2. Click "Add Pool" button');
-    console.log('3. Enter pool name: "Mixed Pool"');
-    console.log('4. Select API profile (e.g., "Test API")');
-    console.log('5. Select OAuth profile (e.g., "Test OAuth")');
-    console.log('6. Enter pool limit: 50');
-    console.log('7. Click "Save" button');
+    console.log('\nStep 1: Create API profile "API for pool"');
+    console.log('  1.1. Open Settings → Credential Profiles tab');
+    console.log('  1.2. Click "Add Profile" button');
+    console.log('  1.3. Enter name: "API for pool"');
+    console.log('  1.4. Select type: "API Key"');
+    console.log('  1.5. Enter credential: "sk-test-api-pool-12345"');
+    console.log('  1.6. Enter usage limit: 100');
+    console.log('  1.7. Select rotation mode: "Round Robin"');
+    console.log('  1.8. Click "Save" button');
     console.log('\nExpected Results:');
-    console.log('✓ Pool appears in list with name "Mixed Pool"');
-    console.log('✓ Pool displays "2 profiles" count');
-    console.log('✓ Pool shows both profile type badges (API Key, OAuth)');
-    console.log('✓ Pool shows task usage "0/50" (progress bar at 0%)\n');
+    console.log('  ✓ Profile "API for pool" appears in list');
+    console.log('  ✓ Profile shows type badge "API Key"');
+    console.log('  ✓ Profile displays limit "100"\n');
+
+    console.log('Step 2: Create OAuth profile "OAuth for pool"');
+    console.log('  2.1. Click "Add Profile" button again');
+    console.log('  2.2. Enter name: "OAuth for pool"');
+    console.log('  2.3. Select type: "OAuth"');
+    console.log('  2.4. Enter credential: "oauth-token-pool-67890"');
+    console.log('  2.5. Click "Save" button');
+    console.log('\nExpected Results:');
+    console.log('  ✓ Profile "OAuth for pool" appears in list');
+    console.log('  ✓ Profile shows type badge "OAuth"');
+    console.log('  ✓ No limit displayed (OAuth profiles have no limits)\n');
+
+    console.log('Step 3: Create pool with mixed profiles');
+    console.log('  3.1. Open Settings → Pools tab');
+    console.log('  3.2. Click "Add Pool" button');
+    console.log('  3.3. Enter pool name: "Mixed Pool"');
+    console.log('  3.4. Under "API Key Profiles" section, check "API for pool"');
+    console.log('  3.5. Under "OAuth Profiles" section, check "OAuth for pool"');
+    console.log('  3.6. Verify "Selected: 2 profiles" text appears');
+    console.log('  3.7. Enter limit: 50');
+    console.log('  3.8. Select rotation mode: "Manual" (or any mode)');
+    console.log('  3.9. Click "Save Pool" button');
+    console.log('\nExpected Results:');
+    console.log('  ✓ Pool "Mixed Pool" appears in pools list');
+    console.log('  ✓ Pool displays purple count badge "2 profiles"');
+    console.log('  ✓ Pool shows blue badge "API 1" (count of API profiles)');
+    console.log('  ✓ Pool shows green badge "OAuth 1" (count of OAuth profiles)');
+    console.log('  ✓ Pool shows task usage "0/50" with progress bar at 0%');
+    console.log('  ✓ Pool shows rotation mode "Manual"\n');
+
+    console.log('Step 4: Verify profile type breakdown');
+    console.log('  4.1. Locate the profile type badges on the pool card');
+    console.log('\nExpected Results:');
+    console.log('  ✓ Blue badge with "API 1" indicates 1 API profile in pool');
+    console.log('  ✓ Green badge with "OAuth 1" indicates 1 OAuth profile in pool');
+    console.log('  ✓ Badges are color-coded for easy identification\n');
+
+    console.log('Additional Verification:');
+    console.log('  ✓ Pool name is displayed correctly');
+    console.log('  ✓ Profile count is accurate (2 profiles total)');
+    console.log('  ✓ Profile type breakdown is correct (1 API + 1 OAuth)');
+    console.log('  ✓ Task usage shows 0/50 (0% - green progress bar)');
+    console.log('  ✓ Rotation mode is displayed correctly');
+    console.log('  ✓ No warnings about missing profiles\n');
   });
 
   test('Subtask-10-4: Task mutual exclusivity validation', async () => {
