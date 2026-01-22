@@ -20,6 +20,7 @@ import type {
   TaskMetadata,
   AppSettings,
   FileMention,
+  ActiveSession,
 } from "../../shared/types";
 import { projectStore } from "../project-store";
 import { insightsService } from "../insights-service";
@@ -358,6 +359,27 @@ export function registerInsightsHandlers(getMainWindow: () => BrowserWindow | nu
         return { success: true };
       }
       return { success: false, error: "Failed to update model configuration" };
+    }
+  );
+
+  // Cancel a session (works for both queued and active sessions)
+  ipcMain.handle(
+    IPC_CHANNELS.INSIGHTS_CANCEL_SESSION,
+    async (_, sessionId: string): Promise<IPCResult> => {
+      const success = insightsService.cancelSession(sessionId);
+      if (success) {
+        return { success: true };
+      }
+      return { success: false, error: "Session not found or could not be cancelled" };
+    }
+  );
+
+  // Get all currently active (running) sessions
+  ipcMain.handle(
+    IPC_CHANNELS.INSIGHTS_GET_ACTIVE_SESSIONS,
+    async (): Promise<IPCResult<ActiveSession[]>> => {
+      const activeSessions = insightsService.getActiveSessions();
+      return { success: true, data: activeSessions };
     }
   );
 
