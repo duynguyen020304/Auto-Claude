@@ -469,6 +469,8 @@ export const IPC_CHANNELS = {
   INSIGHTS_DELETE_SESSION: 'insights:deleteSession',
   INSIGHTS_RENAME_SESSION: 'insights:renameSession',
   INSIGHTS_UPDATE_MODEL_CONFIG: 'insights:updateModelConfig',
+  INSIGHTS_CANCEL_SESSION: 'insights:cancelSession',
+  INSIGHTS_GET_ACTIVE_SESSIONS: 'insights:getActiveSessions',
 
   // Insights events (main -> renderer)
   INSIGHTS_STREAM_CHUNK: 'insights:streamChunk',
