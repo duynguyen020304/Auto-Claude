@@ -36,13 +36,13 @@ export interface InsightsAPI {
 
   // Event Listeners
   onInsightsStreamChunk: (
-    callback: (projectId: string, chunk: InsightsStreamChunk) => void
+    callback: (sessionId: string, projectId: string, chunk: InsightsStreamChunk) => void
   ) => IpcListenerCleanup;
   onInsightsStatus: (
-    callback: (projectId: string, status: InsightsChatStatus) => void
+    callback: (sessionId: string, projectId: string, status: InsightsChatStatus) => void
   ) => IpcListenerCleanup;
   onInsightsError: (
-    callback: (projectId: string, error: string) => void
+    callback: (sessionId: string, projectId: string, error: string) => void
   ) => IpcListenerCleanup;
 }
 
@@ -94,17 +94,17 @@ export const createInsightsAPI = (): InsightsAPI => ({
 
   // Event Listeners
   onInsightsStreamChunk: (
-    callback: (projectId: string, chunk: InsightsStreamChunk) => void
+    callback: (sessionId: string, projectId: string, chunk: InsightsStreamChunk) => void
   ): IpcListenerCleanup =>
     createIpcListener(IPC_CHANNELS.INSIGHTS_STREAM_CHUNK, callback),
 
   onInsightsStatus: (
-    callback: (projectId: string, status: InsightsChatStatus) => void
+    callback: (sessionId: string, projectId: string, status: InsightsChatStatus) => void
   ): IpcListenerCleanup =>
     createIpcListener(IPC_CHANNELS.INSIGHTS_STATUS, callback),
 
   onInsightsError: (
-    callback: (projectId: string, error: string) => void
+    callback: (sessionId: string, projectId: string, error: string) => void
   ): IpcListenerCleanup =>
     createIpcListener(IPC_CHANNELS.INSIGHTS_ERROR, callback)
 });
