@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { AppSettings } from '../../shared/types';
-import type { APIProfile, ProfileFormData, TestConnectionResult, DiscoverModelsResult, ModelInfo } from '@shared/types/profile';
+import type { APIProfile, ProfileFormData, TestConnectionResult, DiscoverModelsResult, ModelInfo } from '../../shared/types/profile';
+import type { CredentialProfile, Pool } from '../../shared/types/credential-profile';
 import { DEFAULT_APP_SETTINGS } from '../../shared/constants';
 import { toast } from '../hooks/use-toast';
 import { markSettingsLoaded } from '../lib/sentry';
@@ -15,6 +16,16 @@ interface SettingsState {
   activeProfileId: string | null;
   profilesLoading: boolean;
   profilesError: string | null;
+
+  // Credential Profile state
+  credentialProfiles: CredentialProfile[];
+  credentialProfilesLoading: boolean;
+  credentialProfilesError: string | null;
+
+  // Pool state
+  pools: Pool[];
+  poolsLoading: boolean;
+  poolsError: string | null;
 
   // Test connection state
   isTestingConnection: boolean;
@@ -41,6 +52,22 @@ interface SettingsState {
   setActiveProfile: (profileId: string | null) => Promise<boolean>;
   testConnection: (baseUrl: string, apiKey: string, signal?: AbortSignal) => Promise<TestConnectionResult | null>;
   discoverModels: (baseUrl: string, apiKey: string, signal?: AbortSignal) => Promise<ModelInfo[] | null>;
+
+  // Credential Profile actions
+  setCredentialProfiles: (profiles: CredentialProfile[]) => void;
+  addCredentialProfile: (profile: CredentialProfile) => void;
+  updateCredentialProfile: (profile: CredentialProfile) => void;
+  removeCredentialProfile: (profileId: string) => void;
+  setCredentialProfilesLoading: (loading: boolean) => void;
+  setCredentialProfilesError: (error: string | null) => void;
+
+  // Pool actions
+  setPools: (pools: Pool[]) => void;
+  addPool: (pool: Pool) => void;
+  updatePool: (pool: Pool) => void;
+  removePool: (poolId: string) => void;
+  setPoolsLoading: (loading: boolean) => void;
+  setPoolsError: (error: string | null) => void;
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
@@ -53,6 +80,16 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   activeProfileId: null,
   profilesLoading: false,
   profilesError: null,
+
+  // Credential Profile state
+  credentialProfiles: [],
+  credentialProfilesLoading: false,
+  credentialProfilesError: null,
+
+  // Pool state
+  pools: [],
+  poolsLoading: false,
+  poolsError: null,
 
   // Test connection state
   isTestingConnection: false,
@@ -292,7 +329,55 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       });
       return null;
     }
-  }
+  },
+
+  // Credential Profile actions
+  setCredentialProfiles: (credentialProfiles) => set({ credentialProfiles }),
+
+  addCredentialProfile: (profile) =>
+    set((state) => ({
+      credentialProfiles: [...state.credentialProfiles, profile]
+    })),
+
+  updateCredentialProfile: (profile) =>
+    set((state) => ({
+      credentialProfiles: state.credentialProfiles.map((p) =>
+        p.id === profile.id ? profile : p
+      )
+    })),
+
+  removeCredentialProfile: (profileId) =>
+    set((state) => ({
+      credentialProfiles: state.credentialProfiles.filter((p) => p.id !== profileId)
+    })),
+
+  setCredentialProfilesLoading: (credentialProfilesLoading) => set({ credentialProfilesLoading }),
+
+  setCredentialProfilesError: (credentialProfilesError) => set({ credentialProfilesError }),
+
+  // Pool actions
+  setPools: (pools) => set({ pools }),
+
+  addPool: (pool) =>
+    set((state) => ({
+      pools: [...state.pools, pool]
+    })),
+
+  updatePool: (pool) =>
+    set((state) => ({
+      pools: state.pools.map((p) =>
+        p.id === pool.id ? pool : p
+      )
+    })),
+
+  removePool: (poolId) =>
+    set((state) => ({
+      pools: state.pools.filter((p) => p.id !== poolId)
+    })),
+
+  setPoolsLoading: (poolsLoading) => set({ poolsLoading }),
+
+  setPoolsError: (poolsError) => set({ poolsError }),
 }));
 
 /**
