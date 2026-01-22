@@ -3,7 +3,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { InsightsService } from '../insights-service';
-import { SessionQueue, SessionPriority } from '../insights/session-queue';
+import { SessionQueue, SessionPriority, type ActiveSession } from '../insights/session-queue';
 
 // Mock all dependencies
 vi.mock('../insights/config');
@@ -160,6 +160,100 @@ describe('InsightsService', () => {
       expect(result).toBe(true);
       expect(mockSessionQueue.isQueued(sessionId)).toBe(false);
       expect(mockExecutor.cancelSession).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getActiveSessions', () => {
+    it('should return empty array when no active sessions', () => {
+      const activeSessions = service.getActiveSessions();
+
+      expect(activeSessions).toEqual([]);
+      expect(Array.isArray(activeSessions)).toBe(true);
+      expect(activeSessions.length).toBe(0);
+    });
+
+    it('should return list of active sessions', () => {
+      const sessionId1 = 'active-session-1';
+      const sessionId2 = 'active-session-2';
+      const projectId1 = 'project-1';
+      const projectId2 = 'project-2';
+
+      // Mark sessions as active
+      mockSessionQueue.markSessionActive(sessionId1, projectId1);
+      mockSessionQueue.markSessionActive(sessionId2, projectId2);
+
+      // Get active sessions
+      const activeSessions = service.getActiveSessions();
+
+      // Verify result
+      expect(activeSessions.length).toBe(2);
+      expect(activeSessions).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            sessionId: sessionId1,
+            projectId: projectId1
+          }),
+          expect.objectContaining({
+            sessionId: sessionId2,
+            projectId: projectId2
+          })
+        ])
+      );
+    });
+
+    it('should return only active sessions, not queued ones', () => {
+      const activeSessionId = 'active-session-1';
+      const queuedSessionId = 'queued-session-1';
+      const projectId = 'project-1';
+
+      // Mark one session as active
+      mockSessionQueue.markSessionActive(activeSessionId, projectId);
+
+      // Enqueue another session
+      mockSessionQueue.enqueue({
+        sessionId: queuedSessionId,
+        projectId,
+        priority: SessionPriority.NORMAL,
+        queuedAt: Date.now()
+      });
+
+      // Get active sessions
+      const activeSessions = service.getActiveSessions();
+
+      // Verify only active session is returned
+      expect(activeSessions.length).toBe(1);
+      expect(activeSessions[0].sessionId).toBe(activeSessionId);
+      expect(activeSessions[0].projectId).toBe(projectId);
+
+      // Verify queued session is not included
+      expect(activeSessions.find(s => s.sessionId === queuedSessionId)).toBeUndefined();
+    });
+
+    it('should return sessions with metadata', () => {
+      const sessionId = 'active-session-1';
+      const projectId = 'project-1';
+
+      // Mark session as active
+      const beforeMark = Date.now();
+      mockSessionQueue.markSessionActive(sessionId, projectId);
+      const afterMark = Date.now();
+
+      // Get active sessions
+      const activeSessions = service.getActiveSessions();
+
+      // Verify structure
+      expect(activeSessions.length).toBe(1);
+      const session = activeSessions[0];
+
+      // Verify it's a proper ActiveSession object
+      expect(session).toHaveProperty('sessionId');
+      expect(session).toHaveProperty('projectId');
+      expect(session).toHaveProperty('startedAt');
+
+      expect(session.sessionId).toBe(sessionId);
+      expect(session.projectId).toBe(projectId);
+      expect(session.startedAt).toBeGreaterThanOrEqual(beforeMark);
+      expect(session.startedAt).toBeLessThanOrEqual(afterMark);
     });
   });
 });

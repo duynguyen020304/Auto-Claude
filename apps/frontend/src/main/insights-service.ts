@@ -12,6 +12,7 @@ import { SessionStorage } from './insights/session-storage';
 import { SessionManager } from './insights/session-manager';
 import { InsightsExecutor } from './insights/insights-executor';
 import { SessionQueue } from './insights/session-queue';
+import type { ActiveSession } from './insights/session-queue';
 
 /**
  * Service for AI-powered codebase insights chat
@@ -275,6 +276,14 @@ export class InsightsService extends EventEmitter {
 
     // Session not found in queue or active
     return false;
+  }
+
+  /**
+   * Get list of currently active (running) sessions
+   * @returns Array of active sessions with metadata
+   */
+  getActiveSessions(): ActiveSession[] {
+    return this.sessionQueue.getActiveSessions();
   }
 }
 
