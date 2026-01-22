@@ -11,6 +11,7 @@ import { InsightsPaths } from './insights/paths';
 import { SessionStorage } from './insights/session-storage';
 import { SessionManager } from './insights/session-manager';
 import { InsightsExecutor } from './insights/insights-executor';
+import { SessionQueue } from './insights/session-queue';
 
 /**
  * Service for AI-powered codebase insights chat
@@ -28,6 +29,7 @@ export class InsightsService extends EventEmitter {
   private storage: SessionStorage;
   private sessionManager: SessionManager;
   private executor: InsightsExecutor;
+  private sessionQueue: SessionQueue;
 
   constructor() {
     super();
@@ -37,7 +39,12 @@ export class InsightsService extends EventEmitter {
     this.paths = new InsightsPaths();
     this.storage = new SessionStorage(this.paths);
     this.sessionManager = new SessionManager(this.storage, this.paths);
-    this.executor = new InsightsExecutor(this.config);
+    // Initialize session queue with default config (start with maxConcurrentSessions=1 for non-breaking behavior)
+    this.sessionQueue = new SessionQueue({
+      maxConcurrentSessions: 1,
+      maxSessionsPerProject: 2
+    });
+    this.executor = new InsightsExecutor(this.config, this.sessionQueue);
 
     // Forward executor events
     this.executor.on('status', (projectId, status) => {
@@ -120,20 +127,20 @@ export class InsightsService extends EventEmitter {
     modelConfig?: InsightsModelConfig,
     fileMentions?: FileMention[]
   ): Promise<void> {
-    // Cancel any existing session
-    this.executor.cancelSession(projectId);
+    // Load or create session
+    let session = this.sessionManager.loadSession(projectId, projectPath);
+    if (!session) {
+      session = this.sessionManager.createNewSession(projectId, projectPath);
+    }
+
+    // Cancel any existing session for this sessionId
+    this.executor.cancelSession(session.id, projectId);
 
     // Validate auto-claude source
     const autoBuildSource = this.config.getAutoBuildSourcePath();
     if (!autoBuildSource) {
       this.emit('error', projectId, 'Auto Claude source not found');
       return;
-    }
-
-    // Load or create session
-    let session = this.sessionManager.loadSession(projectId, projectPath);
-    if (!session) {
-      session = this.sessionManager.createNewSession(projectId, projectPath);
     }
 
     // Auto-generate title from first user message if still default
@@ -165,6 +172,7 @@ export class InsightsService extends EventEmitter {
     try {
       // Execute insights query
       const result = await this.executor.execute(
+        session.id,
         projectId,
         projectPath,
         message,
