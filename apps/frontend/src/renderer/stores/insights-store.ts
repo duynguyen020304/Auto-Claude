@@ -35,6 +35,7 @@ interface InsightsState {
   sessionStates: Map<string, InsightsSessionState>; // Per-session streaming state
   isLoadingSessions: boolean;
   generatingSessionIds: Map<string, string>; // projectId -> sessionId mapping for active generations
+  abortControllers: Map<string, AbortController>; // sessionId -> AbortController mapping for active generations
 
   // Current session state (mirrored from sessionStates for easy access)
   status: InsightsChatStatus;
@@ -48,22 +49,24 @@ interface InsightsState {
   setCurrentSessionId: (sessionId: string | null) => void;
   setSession: (session: InsightsSession | null) => void;
   setSessions: (sessions: InsightsSessionSummary[]) => void;
-  setStatus: (status: InsightsChatStatus) => void;
+  setStatus: (status: InsightsChatStatus, sessionId?: string) => void;
   resetStatus: () => void;
-  setPendingMessage: (message: string) => void;
+  setPendingMessage: (message: string, sessionId?: string) => void;
   addMessage: (message: InsightsChatMessage) => void;
   updateLastAssistantMessage: (content: string) => void;
-  appendStreamingContent: (content: string) => void;
-  clearStreamingContent: () => void;
-  setCurrentTool: (tool: ToolUsage | null) => void;
-  addToolUsage: (tool: ToolUsage) => void;
-  clearToolsUsed: () => void;
-  addFileMention: (mention: FileMention) => void;
-  removeFileMention: (id: string) => void;
-  clearFileMentions: () => void;
-  finalizeStreamingMessage: (suggestedTask?: InsightsChatMessage['suggestedTask']) => void;
+  appendStreamingContent: (content: string, sessionId?: string) => void;
+  clearStreamingContent: (sessionId?: string) => void;
+  setCurrentTool: (tool: ToolUsage | null, sessionId?: string) => void;
+  addToolUsage: (tool: ToolUsage, sessionId?: string) => void;
+  clearToolsUsed: (sessionId?: string) => void;
+  addFileMention: (mention: FileMention, sessionId?: string) => void;
+  removeFileMention: (id: string, sessionId?: string) => void;
+  clearFileMentions: (sessionId?: string) => void;
+  finalizeStreamingMessage: (suggestedTask?: InsightsChatMessage['suggestedTask'], sessionId?: string) => void;
   clearSession: () => void;
   setLoadingSessions: (loading: boolean) => void;
+  abortGeneration: (sessionId: string) => void;
+  cleanupSessionState: (sessionId: string) => void;
 
   // Selectors
   getCurrentSessionState: () => InsightsSessionState | undefined;
@@ -100,6 +103,7 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
   sessionStates: new Map<string, InsightsSessionState>(),
   isLoadingSessions: false,
   generatingSessionIds: new Map<string, string>(),
+  abortControllers: new Map<string, AbortController>(),
   status: initialStatus,
   pendingMessage: '',
   streamingContent: '',
@@ -194,17 +198,33 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
         }
       }
 
+      // Clean up abortControllers: remove entries for deleted sessions
+      const newAbortControllers = new Map<string, AbortController>();
+      for (const [sessionId, abortController] of state.abortControllers.entries()) {
+        // Keep abort controller if the session still exists
+        if (currentSessionIds.has(sessionId)) {
+          newAbortControllers.set(sessionId, abortController);
+        }
+      }
+
       return {
         sessions,
         sessionStates: newSessionStates,
-        generatingSessionIds: newGeneratingSessionIds
+        generatingSessionIds: newGeneratingSessionIds,
+        abortControllers: newAbortControllers
       };
     }),
 
-  setStatus: (status) => {
+  setStatus: (status, sessionId) => {
     const currentSessionId = _get().currentSessionId;
 
     return set((state) => {
+      // Validation guard: ensure session ID matches
+      if (sessionId && currentSessionId !== sessionId) {
+        console.warn(`[InsightsStore] Rejected setStatus for session ${sessionId} because current session is ${currentSessionId}`);
+        return state;
+      }
+
       // Update top-level field
       const updates: Partial<InsightsState> = { status };
 
@@ -251,8 +271,14 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
 
   setLoadingSessions: (loading) => set({ isLoadingSessions: loading }),
 
-  setPendingMessage: (message) =>
+  setPendingMessage: (message, sessionId) =>
     set((state) => {
+      // Validation guard: ensure session ID matches
+      if (sessionId && state.currentSessionId !== sessionId) {
+        console.warn(`[InsightsStore] Rejected setPendingMessage for session ${sessionId} because current session is ${state.currentSessionId}`);
+        return state;
+      }
+
       // Update top-level field
       const updates: Partial<InsightsState> = { pendingMessage: message };
 
@@ -317,8 +343,14 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       };
     }),
 
-  appendStreamingContent: (content) =>
+  appendStreamingContent: (content, sessionId) =>
     set((state) => {
+      // Validation guard: ensure session ID matches
+      if (sessionId && state.currentSessionId !== sessionId) {
+        console.warn(`[InsightsStore] Rejected appendStreamingContent for session ${sessionId} because current session is ${state.currentSessionId}`);
+        return state;
+      }
+
       if (!state.currentSessionId) return state;
 
       const sessionState = state.sessionStates.get(state.currentSessionId);
@@ -338,10 +370,16 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       };
     }),
 
-  clearStreamingContent: () => {
+  clearStreamingContent: (sessionId) => {
     const currentSessionId = _get().currentSessionId;
 
     return set((state) => {
+      // Validation guard: ensure session ID matches
+      if (sessionId && state.currentSessionId !== sessionId) {
+        console.warn(`[InsightsStore] Rejected clearStreamingContent for session ${sessionId} because current session is ${state.currentSessionId}`);
+        return state;
+      }
+
       if (!state.currentSessionId) return state;
 
       const sessionState = state.sessionStates.get(state.currentSessionId);
@@ -360,8 +398,14 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
     });
   },
 
-  setCurrentTool: (tool) =>
+  setCurrentTool: (tool, sessionId) =>
     set((state) => {
+      // Validation guard: ensure session ID matches
+      if (sessionId && state.currentSessionId !== sessionId) {
+        console.warn(`[InsightsStore] Rejected setCurrentTool for session ${sessionId} because current session is ${state.currentSessionId}`);
+        return state;
+      }
+
       if (!state.currentSessionId) return state;
 
       const sessionState = state.sessionStates.get(state.currentSessionId);
@@ -379,8 +423,14 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       };
     }),
 
-  addToolUsage: (tool) =>
+  addToolUsage: (tool, sessionId) =>
     set((state) => {
+      // Validation guard: ensure session ID matches
+      if (sessionId && state.currentSessionId !== sessionId) {
+        console.warn(`[InsightsStore] Rejected addToolUsage for session ${sessionId} because current session is ${state.currentSessionId}`);
+        return state;
+      }
+
       if (!state.currentSessionId) return state;
 
       const sessionState = state.sessionStates.get(state.currentSessionId);
@@ -407,8 +457,14 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       };
     }),
 
-  clearToolsUsed: () =>
+  clearToolsUsed: (sessionId) =>
     set((state) => {
+      // Validation guard: ensure session ID matches
+      if (sessionId && state.currentSessionId !== sessionId) {
+        console.warn(`[InsightsStore] Rejected clearToolsUsed for session ${sessionId} because current session is ${state.currentSessionId}`);
+        return state;
+      }
+
       if (!state.currentSessionId) return state;
 
       const sessionState = state.sessionStates.get(state.currentSessionId);
@@ -426,8 +482,14 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       };
     }),
 
-  addFileMention: (mention) =>
+  addFileMention: (mention, sessionId) =>
     set((state) => {
+      // Validation guard: ensure session ID matches
+      if (sessionId && state.currentSessionId !== sessionId) {
+        console.warn(`[InsightsStore] Rejected addFileMention for session ${sessionId} because current session is ${state.currentSessionId}`);
+        return state;
+      }
+
       if (!state.currentSessionId) return state;
 
       const sessionState = state.sessionStates.get(state.currentSessionId);
@@ -451,8 +513,14 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       };
     }),
 
-  removeFileMention: (id) =>
+  removeFileMention: (id, sessionId) =>
     set((state) => {
+      // Validation guard: ensure session ID matches
+      if (sessionId && state.currentSessionId !== sessionId) {
+        console.warn(`[InsightsStore] Rejected removeFileMention for session ${sessionId} because current session is ${state.currentSessionId}`);
+        return state;
+      }
+
       if (!state.currentSessionId) return state;
 
       const sessionState = state.sessionStates.get(state.currentSessionId);
@@ -471,8 +539,14 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       };
     }),
 
-  clearFileMentions: () =>
+  clearFileMentions: (sessionId) =>
     set((state) => {
+      // Validation guard: ensure session ID matches
+      if (sessionId && state.currentSessionId !== sessionId) {
+        console.warn(`[InsightsStore] Rejected clearFileMentions for session ${sessionId} because current session is ${state.currentSessionId}`);
+        return state;
+      }
+
       if (!state.currentSessionId) return state;
 
       const sessionState = state.sessionStates.get(state.currentSessionId);
@@ -490,8 +564,14 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       };
     }),
 
-  finalizeStreamingMessage: (suggestedTask) =>
+  finalizeStreamingMessage: (suggestedTask, sessionId) =>
     set((state) => {
+      // Validation guard: ensure session ID matches
+      if (sessionId && state.currentSessionId !== sessionId) {
+        console.warn(`[InsightsStore] Rejected finalizeStreamingMessage for session ${sessionId} because current session is ${state.currentSessionId}`);
+        return state;
+      }
+
       if (!state.currentSessionId) return state;
 
       const sessionState = state.sessionStates.get(state.currentSessionId);
@@ -569,6 +649,7 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       currentSessionId: null,
       sessionStates: new Map<string, InsightsSessionState>(),
       generatingSessionIds: new Map<string, string>(),
+      abortControllers: new Map<string, AbortController>(),
       status: initialStatus,
       pendingMessage: '',
       streamingContent: '',
@@ -577,6 +658,93 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       fileMentions: []
     });
   },
+
+  /**
+   * Aborts an ongoing generation for the specified session.
+   * Cleans up the abort controller, generating session tracking, and resets session status.
+   *
+   * @param sessionId - The ID of the session whose generation should be aborted
+   */
+  abortGeneration: (sessionId) =>
+    set((state) => {
+      // Abort the controller for this session
+      const abortController = state.abortControllers.get(sessionId);
+      if (abortController) {
+        abortController.abort();
+      }
+
+      // Remove the abort controller
+      const newAbortControllers = new Map(state.abortControllers);
+      newAbortControllers.delete(sessionId);
+
+      // Remove from generating session IDs
+      const newGeneratingSessionIds = new Map<string, string>();
+      for (const [projectId, generatingSessionId] of state.generatingSessionIds.entries()) {
+        if (generatingSessionId !== sessionId) {
+          newGeneratingSessionIds.set(projectId, generatingSessionId);
+        }
+      }
+
+      // Update status for the session
+      const sessionState = state.sessionStates.get(sessionId);
+      const updates: Partial<InsightsState> = {
+        abortControllers: newAbortControllers,
+        generatingSessionIds: newGeneratingSessionIds
+      };
+
+      if (sessionState) {
+        const newStatus: InsightsChatStatus = {
+          phase: 'idle',
+          message: ''
+        };
+
+        const newSessionStates = new Map(state.sessionStates);
+        newSessionStates.set(sessionId, {
+          ...sessionState,
+          status: newStatus
+        });
+        updates.sessionStates = newSessionStates;
+
+        if (state.currentSessionId === sessionId) {
+          updates.status = newStatus;
+        }
+      }
+
+      return updates;
+    }),
+
+  /**
+   * Cleans up the state for a specific session.
+   * Resets the session's streaming state to initial values.
+   * If the session is the current session, also resets the top-level fields.
+   *
+   * @param sessionId - The ID of the session to clean up
+   */
+  cleanupSessionState: (sessionId) =>
+    set((state) => {
+      // Get fresh initial state
+      const initialState = createInitialSessionState();
+
+      // Update the session in the sessionStates map
+      const newSessionStates = new Map(state.sessionStates);
+      newSessionStates.set(sessionId, initialState);
+
+      const updates: Partial<InsightsState> = {
+        sessionStates: newSessionStates
+      };
+
+      // If this is the current session, also reset top-level fields
+      if (state.currentSessionId === sessionId) {
+        updates.status = initialState.status;
+        updates.pendingMessage = initialState.pendingMessage;
+        updates.streamingContent = initialState.streamingContent;
+        updates.currentTool = initialState.currentTool;
+        updates.toolsUsed = initialState.toolsUsed;
+        updates.fileMentions = initialState.fileMentions;
+      }
+
+      return updates;
+    }),
 
   // Selectors
   /**
@@ -641,6 +809,12 @@ export function sendMessage(projectId: string, message: string, modelConfig?: In
     return;
   }
 
+  // Create and store abort controller for this session
+  const abortController = new AbortController();
+  useInsightsStore.setState((state) => ({
+    abortControllers: new Map(state.abortControllers).set(session.id, abortController)
+  }));
+
   // Ensure session state exists for the current session
   if (!store.sessionStates.has(session.id)) {
     useInsightsStore.setState((state) => {
@@ -663,13 +837,13 @@ export function sendMessage(projectId: string, message: string, modelConfig?: In
   store.addMessage(userMessage);
 
   // Clear pending and set status
-  store.setPendingMessage('');
-  store.clearStreamingContent();
-  store.clearToolsUsed(); // Clear tools from previous response
+  store.setPendingMessage('', session.id);
+  store.clearStreamingContent(session.id);
+  store.clearToolsUsed(session.id); // Clear tools from previous response
   store.setStatus({
     phase: 'thinking',
     message: 'Processing your message...'
-  });
+  }, session.id);
 
   // Store the projectId -> sessionId mapping so IPC chunks know which session to update
   useInsightsStore.setState((state) => ({
@@ -703,6 +877,15 @@ export async function newSession(projectId: string): Promise<void> {
 
 export async function switchSession(projectId: string, sessionId: string): Promise<void> {
   const store = useInsightsStore.getState();
+
+  // Abort ongoing generation in the current session before switching
+  const currentSessionId = store.currentSessionId;
+  if (currentSessionId && currentSessionId !== sessionId) {
+    // Check if current session is generating (has an abort controller)
+    if (store.abortControllers.has(currentSessionId)) {
+      store.abortGeneration(currentSessionId);
+    }
+  }
 
   const result = await window.electronAPI.switchInsightsSession(projectId, sessionId);
 
@@ -773,11 +956,21 @@ export async function createTaskFromSuggestion(
   return null;
 }
 
+export function abortGeneration(sessionId: string): void {
+  useInsightsStore.getState().abortGeneration(sessionId);
+}
+
+export function cleanupSessionState(sessionId: string): void {
+  useInsightsStore.getState().cleanupSessionState(sessionId);
+}
+
 // IPC listener setup - call this once when the app initializes
 export function setupInsightsListeners(): () => void {
   // Listen for streaming chunks
+  // Drop chunks for aborted sessions to prevent state pollution
   const unsubStreamChunk = window.electronAPI.onInsightsStreamChunk(
     (projectId, chunk: InsightsStreamChunk) => {
+      // Check if session was aborted and drop chunks accordingly
       const store = useInsightsStore.getState();
       const generatingSessionId = store.generatingSessionIds.get(projectId);
 
@@ -789,6 +982,13 @@ export function setupInsightsListeners(): () => void {
       }
 
       const targetSessionId = generatingSessionId;
+
+      // Check if the session has been aborted (no abort controller means it was aborted)
+      const abortController = store.abortControllers.get(targetSessionId);
+      if (!abortController) {
+        // Session was aborted, drop the chunk
+        return;
+      }
 
       switch (chunk.type) {
         case 'text':
@@ -988,7 +1188,7 @@ export function setupInsightsListeners(): () => void {
             return updates;
           });
           // Finalize the message with task suggestion
-          store.finalizeStreamingMessage(chunk.suggestedTask);
+          store.finalizeStreamingMessage(chunk.suggestedTask, targetSessionId);
           break;
         case 'done':
           // Clear current tool
@@ -1012,7 +1212,7 @@ export function setupInsightsListeners(): () => void {
             return updates;
           });
           // Finalize any remaining content
-          store.finalizeStreamingMessage();
+          store.finalizeStreamingMessage(undefined, targetSessionId);
           // Clear the generating session tracking since generation is complete
           useInsightsStore.setState((state) => {
             const newGeneratingSessionIds = new Map(state.generatingSessionIds);
@@ -1116,6 +1316,13 @@ export function setupInsightsListeners(): () => void {
 
     const targetSessionId = generatingSessionId;
 
+    // Check if the session has been aborted (no abort controller means it was aborted)
+    const abortController = store.abortControllers.get(targetSessionId);
+    if (!abortController) {
+      // Session was aborted, drop the status update
+      return;
+    }
+
     useInsightsStore.setState((state) => {
       const sessionState = state.sessionStates.get(targetSessionId);
       if (!sessionState) return state;
@@ -1150,6 +1357,13 @@ export function setupInsightsListeners(): () => void {
     }
 
     const targetSessionId = generatingSessionId;
+
+    // Check if the session has been aborted (no abort controller means it was aborted)
+    const abortController = store.abortControllers.get(targetSessionId);
+    if (!abortController) {
+      // Session was aborted, drop the error
+      return;
+    }
 
     useInsightsStore.setState((state) => {
       const sessionState = state.sessionStates.get(targetSessionId);
