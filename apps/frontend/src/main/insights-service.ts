@@ -47,17 +47,35 @@ export class InsightsService extends EventEmitter {
     });
     this.executor = new InsightsExecutor(this.config, this.sessionQueue);
 
-    // Forward executor events
-    this.executor.on('status', (projectId, status) => {
-      this.emit('status', projectId, status);
+    // Forward executor events with both sessionId and projectId for proper routing
+    this.executor.on('status', (sessionId, status) => {
+      const projectId = this.sessionQueue.getProjectIdForActiveSession(sessionId);
+      if (projectId) {
+        this.emit('status', sessionId, projectId, status);
+      } else {
+        // Fallback to sessionId-only if session not found in queue
+        this.emit('status', sessionId, sessionId, status);
+      }
     });
-    this.executor.on('stream-chunk', (projectId, chunk) => {
-      this.emit('stream-chunk', projectId, chunk);
+    this.executor.on('stream-chunk', (sessionId, chunk) => {
+      const projectId = this.sessionQueue.getProjectIdForActiveSession(sessionId);
+      if (projectId) {
+        this.emit('stream-chunk', sessionId, projectId, chunk);
+      } else {
+        // Fallback to sessionId-only if session not found in queue
+        this.emit('stream-chunk', sessionId, sessionId, chunk);
+      }
     });
-    this.executor.on('error', (projectId, error) => {
-      this.emit('error', projectId, error);
+    this.executor.on('error', (sessionId, error) => {
+      const projectId = this.sessionQueue.getProjectIdForActiveSession(sessionId);
+      if (projectId) {
+        this.emit('error', sessionId, projectId, error);
+      } else {
+        // Fallback to sessionId-only if session not found in queue
+        this.emit('error', sessionId, sessionId, error);
+      }
     });
-    this.executor.on('sdk-rate-limit', (info) => {
+    this.executor.on('sdk-rate-limit', (sessionId, info) => {
       this.emit('sdk-rate-limit', info);
     });
   }
