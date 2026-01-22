@@ -18,7 +18,7 @@ interface ToolUsage {
 }
 
 // Per-session streaming state
-interface InsightsSessionState {
+export interface InsightsSessionState {
   status: InsightsChatStatus;
   pendingMessage: string;
   streamingContent: string;
