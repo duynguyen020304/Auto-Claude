@@ -6,7 +6,7 @@
  * Optimized for CustomMcpServer configurations but works with any JSON data.
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import Editor from 'react-simple-code-editor';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-json';
@@ -34,6 +34,14 @@ interface JsonEditorProps {
 }
 
 /**
+ * Ref interface for JsonEditor component
+ */
+export type JsonEditorRef = {
+  formatJson: () => void;
+  minifyJson: () => void;
+};
+
+/**
  * JsonEditor component using lightweight textarea with syntax highlighting
  *
  * @example
@@ -52,19 +60,22 @@ interface JsonEditorProps {
  * />
  * ```
  */
-export function JsonEditor({
-  value,
-  onChange,
-  error = null,
-  readonly = false,
-  height = '400px',
-  minHeight = '200px',
-  className,
-  placeholder = '{\n\t\n}',
-}: JsonEditorProps) {
+export const JsonEditor = forwardRef<JsonEditorRef, JsonEditorProps>(
+  (
+    {
+      value,
+      onChange,
+      error = null,
+      readonly = false,
+      height = '400px',
+      minHeight = '200px',
+      className,
+      placeholder = '{\n\t\n}',
+    }: JsonEditorProps,
+    ref
+  ) => {
   const [isEditorReady, setIsEditorReady] = useState(false);
   const [internalValue, setInternalValue] = useState(value);
-  const editorRef = useRef<{ formatJson: () => void; minifyJson: () => void } | null>(null);
 
   /**
    * Highlight JSON code using Prism.js
@@ -125,7 +136,17 @@ export function JsonEditor({
     }
   }, [internalValue, onChange]);
 
-  // Auto-format on mount and expose methods via ref
+  // Expose format/minify methods to parent components via ref
+  useImperativeHandle(
+    ref,
+    () => ({
+      formatJson,
+      minifyJson,
+    }),
+    [formatJson, minifyJson]
+  );
+
+  // Auto-format on mount
   useEffect(() => {
     // Auto-format on mount if there's content
     if (value && value.trim() && !isEditorReady) {
@@ -144,21 +165,7 @@ export function JsonEditor({
     }
 
     setIsEditorReady(true);
-
-    // Expose format/minify methods via ref for parent components
-    if (editorRef.current) {
-      editorRef.current.formatJson = formatJson;
-      editorRef.current.minifyJson = minifyJson;
-    }
-  }, [value, isEditorReady, formatJson, minifyJson, onChange]);
-
-  // Update ref when format/minify methods change
-  useEffect(() => {
-    if (editorRef.current) {
-      editorRef.current.formatJson = formatJson;
-      editorRef.current.minifyJson = minifyJson;
-    }
-  }, [formatJson, minifyJson]);
+  }, [value, isEditorReady, onChange]);
 
   return (
     <div
@@ -212,23 +219,6 @@ export function JsonEditor({
       )}
     </div>
   );
-}
+});
 
-/**
- * Hook to programmatically control JsonEditor
- *
- * @example
- * ```tsx
- * const editorRef = useRef<{ formatJson: () => void; minifyJson: () => void }>(null);
- *
- * <JsonEditor ref={editorRef} {...props} />
- *
- * <button onClick={() => editorRef.current?.formatJson()}>
- *   Format JSON
- * </button>
- * ```
- */
-export type JsonEditorRef = {
-  formatJson: () => void;
-  minifyJson: () => void;
-};
+JsonEditor.displayName = 'JsonEditor';
