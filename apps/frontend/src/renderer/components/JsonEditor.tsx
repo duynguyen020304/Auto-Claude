@@ -11,6 +11,7 @@ import Editor from 'react-simple-code-editor';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-json';
 import 'prismjs/themes/prism-tomorrow.css';
+import { useTranslation } from 'react-i18next';
 import { cn } from '../lib/utils';
 import { Loader2 } from 'lucide-react';
 
@@ -74,6 +75,7 @@ export const JsonEditor = forwardRef<JsonEditorRef, JsonEditorProps>(
     }: JsonEditorProps,
     ref
   ) => {
+  const { t } = useTranslation(['common']);
   const [isEditorReady, setIsEditorReady] = useState(false);
   const [internalValue, setInternalValue] = useState(value);
 
@@ -213,7 +215,7 @@ export const JsonEditor = forwardRef<JsonEditorRef, JsonEditorProps>(
       {/* Error message overlay */}
       {error && (
         <div className="absolute bottom-0 left-0 right-0 bg-destructive/95 text-destructive-foreground px-3 py-2 text-sm">
-          <p className="font-medium">Validation Error</p>
+          <p className="font-medium">{t('common:errors.validationError')}</p>
           <p className="opacity-90">{error}</p>
         </div>
       )}
