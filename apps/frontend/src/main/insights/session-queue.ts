@@ -271,6 +271,16 @@ export class SessionQueue {
   }
 
   /**
+   * Get the project ID for an active session
+   * @param sessionId - Session ID to look up
+   * @returns Project ID if session is active, undefined otherwise
+   */
+  getProjectIdForActiveSession(sessionId: string): string | undefined {
+    const activeSession = this.activeSessions.get(sessionId);
+    return activeSession?.projectId;
+  }
+
+  /**
    * Clear all queued sessions (does not affect active sessions)
    */
   clearQueue(): void {

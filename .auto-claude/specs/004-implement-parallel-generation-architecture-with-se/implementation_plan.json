@@ -187,7 +187,7 @@
             "command": "cd apps/frontend && npm run test -- -- --run src/main/__tests__/insights-service.test.ts",
             "expected": "Tests pass, no project-wide cancellation"
           },
-          "status": "pending"
+          "status": "completed"
         },
         {
           "id": "subtask-3-2",
@@ -539,7 +539,7 @@
       "subtasks": [
         {
           "id": "subtask-7-1",
-          "description": "Create integration test for end-to-end concurrent generation flow (queue → execute → complete → cleanup)",
+          "description": "Create integration test for end-to-end concurrent generation flow (queue \u2192 execute \u2192 complete \u2192 cleanup)",
           "service": "frontend",
           "files_to_create": [
             "apps/frontend/src/main/__tests__/integration/concurrent-generation.integration.test.ts"
@@ -697,7 +697,7 @@
         "blocking": true
       }
     ],
-    "reasoning": "High-risk architectural transformation requires comprehensive testing across unit, integration, and E2E levels. Each phase introduces new concurrency complexity that must be verified before proceeding to next phase. Unit tests cover queue logic, rate limiting, process tracking, and store state management. Integration tests verify executor ↔ service ↔ store ↔ IPC integration. E2E tests verify real-world concurrent generation flows with UI interactions. No security scan needed as no auth/payment code involved."
+    "reasoning": "High-risk architectural transformation requires comprehensive testing across unit, integration, and E2E levels. Each phase introduces new concurrency complexity that must be verified before proceeding to next phase. Unit tests cover queue logic, rate limiting, process tracking, and store state management. Integration tests verify executor \u2194 service \u2194 store \u2194 IPC integration. E2E tests verify real-world concurrent generation flows with UI interactions. No security scan needed as no auth/payment code involved."
   },
   "qa_acceptance": {
     "unit_tests": {
@@ -764,5 +764,5 @@
   "qa_signoff": null,
   "status": "in_progress",
   "planStatus": "in_progress",
-  "updated_at": "2026-01-22T20:07:10.760Z"
+  "updated_at": "2026-01-22T20:20:08.997Z"
 }

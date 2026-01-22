@@ -250,6 +250,32 @@ export class InsightsService extends EventEmitter {
   updateSessionModelConfig(projectPath: string, sessionId: string, modelConfig: InsightsModelConfig): boolean {
     return this.sessionManager.updateSessionModelConfig(projectPath, sessionId, modelConfig);
   }
+
+  /**
+   * Cancel a session by ID
+   * Handles both queued sessions (waiting to start) and active sessions (currently running)
+   * @param sessionId - Session ID to cancel
+   * @returns true if session was cancelled, false if session was not found
+   */
+  cancelSession(sessionId: string): boolean {
+    // First, try to cancel from queue if it's waiting
+    if (this.sessionQueue.isQueued(sessionId)) {
+      return this.sessionQueue.cancel(sessionId);
+    }
+
+    // If not in queue, check if it's active and cancel the running process
+    if (this.sessionQueue.isActive(sessionId)) {
+      const projectId = this.sessionQueue.getProjectIdForActiveSession(sessionId);
+      if (!projectId) {
+        console.error(`[InsightsService] Session ${sessionId} is active but has no project ID`);
+        return false;
+      }
+      return this.executor.cancelSession(sessionId, projectId);
+    }
+
+    // Session not found in queue or active
+    return false;
+  }
 }
 
 // Singleton instance
