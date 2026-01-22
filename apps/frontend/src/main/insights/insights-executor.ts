@@ -448,7 +448,7 @@ export class InsightsExecutor extends EventEmitter {
       const rateLimitInfo = createSDKRateLimitInfo('other', rateLimitDetection, {
         taskId: sessionId
       });
-      this.emit('sdk-rate-limit', rateLimitInfo);
+      this.emit('sdk-rate-limit', sessionId, rateLimitInfo);
     }
   }
 }
