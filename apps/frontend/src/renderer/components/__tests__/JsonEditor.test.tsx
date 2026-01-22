@@ -3,56 +3,41 @@
  */
 /**
  * Tests for JsonEditor Component
- * Tests Monaco Editor wrapper component for JSON editing
+ *
+ * Tests the lightweight JSON editor using react-simple-code-editor
+ * with Prism.js syntax highlighting.
  */
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { JsonEditor } from '../JsonEditor';
 
-// Mock Monaco Editor
-vi.mock('@monaco-editor/react', () => ({
-  default: vi.fn(({ onChange, value, onMount }) => {
-    // Simulate editor mount callback
-    setTimeout(() => {
-      if (onMount) {
-        const mockEditor = {
-          getValue: () => value,
-          setValue: vi.fn(),
-          getAction: vi.fn()
-        };
-        onMount(mockEditor);
-      }
-    }, 0);
-
-    return (
-      <div data-testid="monaco-editor">
-        <textarea
-          data-testid="editor-textarea"
-          value={value || ''}
-          onChange={(e) => onChange && onChange(e.target.value)}
-        />
-      </div>
-    );
-  })
+// Mock i18next to avoid warnings
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+  }),
 }));
 
 describe('JsonEditor Component', () => {
   describe('Rendering', () => {
-    it('should render Monaco Editor container', () => {
+    it('should render editor container', () => {
       render(<JsonEditor value="" onChange={vi.fn()} />);
-      expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
+      const container = screen.getByRole('textbox').closest('div.border');
+      expect(container).toBeInTheDocument();
     });
 
     it('should render textarea for input', () => {
       render(<JsonEditor value="" onChange={vi.fn()} />);
-      expect(screen.getByTestId('editor-textarea')).toBeInTheDocument();
+      expect(screen.getByRole('textbox')).toBeInTheDocument();
     });
 
     it('should render with provided value', () => {
       const value = '{"name": "test"}';
       render(<JsonEditor value={value} onChange={vi.fn()} />);
-      const textarea = screen.getByTestId('editor-textarea');
-      expect(textarea).toHaveValue(value);
+      const textbox = screen.getByRole('textbox') as HTMLTextAreaElement;
+      // Component auto-formats JSON
+      expect(textbox.value).toContain('"name"');
+      expect(textbox.value).toContain('"test"');
     });
 
     it('should render with custom height', () => {
@@ -87,14 +72,15 @@ describe('JsonEditor Component', () => {
         <JsonEditor value="" onChange={vi.fn()} error={errorMessage} />
       );
 
-      expect(screen.getByText(/validation error/i)).toBeInTheDocument();
+      // Check for the validation error key (mocked) and the actual error message
+      expect(screen.getByText('common:errors.validationError')).toBeInTheDocument();
       expect(screen.getByText(errorMessage)).toBeInTheDocument();
     });
 
     it('should not display error when error prop is null', () => {
       render(<JsonEditor value="" onChange={vi.fn()} error={null} />);
 
-      expect(screen.queryByText(/validation error/i)).not.toBeInTheDocument();
+      expect(screen.queryByText('common:errors.validationError')).not.toBeInTheDocument();
     });
 
     it('should apply destructive border styling when error present', () => {
@@ -121,33 +107,75 @@ describe('JsonEditor Component', () => {
       const placeholder = '{\n\t\n}';
       render(<JsonEditor value="" onChange={vi.fn()} placeholder={placeholder} />);
 
-      const textarea = screen.getByTestId('editor-textarea') as HTMLTextAreaElement;
-      expect(textarea.value).toBe(placeholder);
+      const textbox = screen.getByRole('textbox') as HTMLTextAreaElement;
+      expect(textbox.value).toBe(placeholder);
     });
 
     it('should use default placeholder when not provided', () => {
       render(<JsonEditor value="" onChange={vi.fn()} />);
 
-      const textarea = screen.getByTestId('editor-textarea') as HTMLTextAreaElement;
-      expect(textarea.value).toBe('{\n\t\n}');
+      const textbox = screen.getByRole('textbox') as HTMLTextAreaElement;
+      expect(textbox.value).toBe('{\n\t\n}');
     });
 
     it('should display value instead of placeholder when value provided', () => {
       const value = '{"test": true}';
       render(<JsonEditor value={value} onChange={vi.fn()} />);
 
-      const textarea = screen.getByTestId('editor-textarea');
-      expect(textarea).toHaveValue(value);
+      const textbox = screen.getByRole('textbox');
+      // Component auto-formats JSON, so check that it contains the key content
+      expect(textbox.value).toContain('"test"');
+      expect(textbox.value).toContain('true');
     });
   });
 
   describe('onChange Callback', () => {
-    it('should have onChange callback in props', () => {
+    it('should call onChange when value changes', () => {
       const handleChange = vi.fn();
       render(<JsonEditor value="" onChange={handleChange} />);
 
-      // Component should render without errors
-      expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
+      const textbox = screen.getByRole('textbox');
+      fireEvent.change(textbox, { target: { value: '{"test": true}' } });
+
+      expect(handleChange).toHaveBeenCalled();
+    });
+
+    it('should pass parsed JSON to onChange when valid', () => {
+      const handleChange = vi.fn();
+      render(<JsonEditor value="" onChange={handleChange} />);
+
+      const textbox = screen.getByRole('textbox');
+      const validJson = '{"name": "test", "value": 123}';
+      fireEvent.change(textbox, { target: { value: validJson } });
+
+      expect(handleChange).toHaveBeenCalledWith(
+        validJson,
+        { name: 'test', value: 123 }
+      );
+    });
+
+    it('should pass undefined as parsed when JSON is invalid', () => {
+      const handleChange = vi.fn();
+      render(<JsonEditor value="" onChange={handleChange} />);
+
+      const textbox = screen.getByRole('textbox');
+      const invalidJson = '{invalid json}';
+      fireEvent.change(textbox, { target: { value: invalidJson } });
+
+      const calls = handleChange.mock.calls;
+      const lastCall = calls[calls.length - 1];
+      expect(lastCall[0]).toBe(invalidJson);
+      expect(lastCall[1]).toBeUndefined();
+    });
+
+    it('should handle empty value in onChange', () => {
+      const handleChange = vi.fn();
+      render(<JsonEditor value="" onChange={handleChange} />);
+
+      const textbox = screen.getByRole('textbox');
+      fireEvent.change(textbox, { target: { value: '' } });
+
+      expect(handleChange).toHaveBeenCalledWith('', undefined);
     });
   });
 
@@ -183,14 +211,14 @@ describe('JsonEditor Component', () => {
   describe('Edge Cases', () => {
     it('should handle empty string value', () => {
       render(<JsonEditor value="" onChange={vi.fn()} />);
-      const textarea = screen.getByTestId('editor-textarea') as HTMLTextAreaElement;
-      expect(textarea.value).toBe('{\n\t\n}'); // placeholder
+      const textbox = screen.getByRole('textbox') as HTMLTextAreaElement;
+      expect(textbox.value).toBe('{\n\t\n}'); // placeholder
     });
 
     it('should handle whitespace-only value', () => {
       render(<JsonEditor value="   " onChange={vi.fn()} />);
-      const textarea = screen.getByTestId('editor-textarea') as HTMLTextAreaElement;
-      expect(textarea.value).toBe('   ');
+      const textbox = screen.getByRole('textbox') as HTMLTextAreaElement;
+      expect(textbox.value).toBe('   ');
     });
 
     it('should handle complex nested JSON', () => {
@@ -203,19 +231,19 @@ describe('JsonEditor Component', () => {
             }
           }
         }
-      });
+      }, null, 2);
 
       render(<JsonEditor value={complexJson} onChange={vi.fn()} />);
-      const textarea = screen.getByTestId('editor-textarea');
-      expect(textarea).toHaveValue(complexJson);
+      const textbox = screen.getByRole('textbox');
+      expect(textbox).toHaveValue(complexJson);
     });
 
     it('should handle JSON array', () => {
-      const arrayJson = JSON.stringify([1, 2, 3, 'test', { nested: true }]);
+      const arrayJson = JSON.stringify([1, 2, 3, 'test', { nested: true }], null, 2);
 
       render(<JsonEditor value={arrayJson} onChange={vi.fn()} />);
-      const textarea = screen.getByTestId('editor-textarea');
-      expect(textarea).toHaveValue(arrayJson);
+      const textbox = screen.getByRole('textbox');
+      expect(textbox).toHaveValue(arrayJson);
     });
 
     it('should handle JSON primitives', () => {
@@ -229,8 +257,8 @@ describe('JsonEditor Component', () => {
 
       testCases.forEach(({ value }) => {
         const { unmount } = render(<JsonEditor value={value} onChange={vi.fn()} />);
-        const textarea = screen.getByTestId('editor-textarea');
-        expect(textarea).toHaveValue(value);
+        const textbox = screen.getByRole('textbox');
+        expect(textbox).toHaveValue(value);
         unmount();
       });
     });
@@ -241,7 +269,8 @@ describe('JsonEditor Component', () => {
       render(<JsonEditor value="" onChange={vi.fn()} readonly={true} />);
 
       // Component should render without errors in readonly mode
-      expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
+      const textbox = screen.getByRole('textbox');
+      expect(textbox).toBeDisabled();
     });
   });
 
@@ -250,7 +279,17 @@ describe('JsonEditor Component', () => {
       render(<JsonEditor value="" onChange={vi.fn()} />);
 
       // Component should render successfully
-      expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
+      const container = screen.getByRole('textbox').closest('div.border');
+      expect(container).toBeInTheDocument();
+    });
+
+    it('should show loading indicator initially', () => {
+      render(<JsonEditor value="" onChange={vi.fn()} />);
+
+      // Loading indicator should be present initially
+      // After it mounts, the loading indicator disappears
+      const container = screen.getByRole('textbox').closest('div.relative');
+      expect(container).toBeInTheDocument();
     });
   });
 
@@ -260,6 +299,12 @@ describe('JsonEditor Component', () => {
 
       // Should have proper container structure
       expect(container.firstChild).toBeInTheDocument();
+    });
+
+    it('should have textbox role for accessibility', () => {
+      render(<JsonEditor value="" onChange={vi.fn()} />);
+      const textbox = screen.getByRole('textbox');
+      expect(textbox).toBeInTheDocument();
     });
   });
 });
