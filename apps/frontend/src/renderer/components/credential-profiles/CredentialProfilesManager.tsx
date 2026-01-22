@@ -25,6 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from '../ui/alert-dialog';
+import { ProfileFormDialog } from './ProfileFormDialog';
 
 interface CredentialProfilesManagerProps {
   /** Optional callback when a profile is saved */
@@ -263,6 +264,20 @@ export function CredentialProfilesManager({ onProfileSaved }: CredentialProfiles
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Profile Form Dialog (Create/Edit) */}
+      <ProfileFormDialog
+        open={editProfile !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditProfile(null);
+        }}
+        profile={editProfile ?? undefined}
+        onSaved={() => {
+          if (onProfileSaved) {
+            onProfileSaved();
+          }
+        }}
+      />
     </div>
   );
 }
