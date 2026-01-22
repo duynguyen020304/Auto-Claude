@@ -384,7 +384,7 @@
             "command": "cd apps/frontend && npm run test -- -- --run src/renderer/stores/__tests__/insights-store-concurrent.test.ts",
             "expected": "Concurrent session updates work"
           },
-          "status": "pending"
+          "status": "completed"
         },
         {
           "id": "subtask-5-2",
