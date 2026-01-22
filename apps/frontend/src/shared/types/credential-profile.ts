@@ -102,3 +102,19 @@ export interface CredentialProfileFormData {
   rate_limit_threshold?: number;
   metadata?: Record<string, string>;
 }
+
+/**
+ * Form data type for creating/editing pools (without id)
+ */
+export interface PoolFormData {
+  name: string;
+  profile_ids: string[];
+  limit: number;
+  rotation_config: {
+    mode: RotationMode;
+    credential_pool: string[];
+    rate_limit_threshold: number;
+    max_retries: number;
+    retry_delay_seconds: number;
+  };
+}
