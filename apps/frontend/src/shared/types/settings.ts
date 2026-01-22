@@ -261,6 +261,12 @@ export interface AppSettings {
   // Feature-specific configuration (insights, ideation, roadmap)
   featureModels?: FeatureModelConfig;
   featureThinking?: FeatureThinkingConfig;
+  // Insights concurrency settings
+  maxConcurrentSessions?: number;         // Default: 1, enable parallel: 3+
+  maxSessionsPerProject?: number;         // Default: 2
+  rateLimitCount?: number;                // Default: 10
+  rateLimitWindowMs?: number;             // Default: 60000 (1 minute)
+  defaultSessionPriority?: 'low' | 'normal' | 'high' | 'urgent';  // Default: 'normal'
   // Changelog preferences
   changelogFormat?: ChangelogFormat;
   changelogAudience?: ChangelogAudience;

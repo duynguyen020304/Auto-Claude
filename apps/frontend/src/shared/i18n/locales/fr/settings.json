@@ -228,6 +228,28 @@
     "autoNameTerminals": "Nommer automatiquement les terminaux",
     "autoNameTerminalsDescription": "Utiliser l'IA pour générer des noms descriptifs pour les onglets de terminal en fonction de leur activité"
   },
+  "insightsConcurrency": {
+    "title": "Concurrence Insights",
+    "description": "Configurer les limites de sessions simultanées, la mise en file d'attente et la limitation de débit pour les générations Insights",
+    "priorityLow": "Faible",
+    "priorityNormal": "Normal",
+    "priorityHigh": "Élevé",
+    "priorityUrgent": "Urgent",
+    "maxConcurrentSessions": "Sessions Simultanées Maximales",
+    "maxConcurrentSessionsDescription": "Nombre maximal de sessions de génération d'insights pouvant s'exécuter simultanément sur tous les projets",
+    "maxConcurrentSessionsHint": "Définir sur 1 pour désactiver la génération parallèle, 3+ pour l'activer",
+    "maxSessionsPerProject": "Sessions Maximales Par Projet",
+    "maxSessionsPerProjectDescription": "Nombre maximal de sessions simultanées autorisées pour un seul projet",
+    "defaultSessionPriority": "Priorité de Session Par Défaut",
+    "defaultSessionPriorityDescription": "Niveau de priorité pour les nouvelles sessions de génération d'insights (les sessions à priorité élevée s'exécutent en premier lorsqu'elles sont en file d'attente)",
+    "rateLimiting": "Limitation de Débit",
+    "rateLimitingDescription": "Empêcher les abus en limitant la fréquence de démarrage des sessions par projet",
+    "rateLimitCount": "Limite de Taux",
+    "rateLimitCountDescription": "Nombre maximal de sessions autorisées dans la fenêtre de temps",
+    "rateLimitWindowMs": "Fenêtre de Limitation de Débit (millisecondes)",
+    "rateLimitWindowMsDescription": "Fenêtre de temps en millisecondes pour la limitation de débit",
+    "rateLimitWindowMsHint": "Fenêtre actuelle : {{minutes}} minutes"
+  },
   "theme": {
     "title": "Apparence",
     "description": "Personnalisez l'apparence de Auto Claude",

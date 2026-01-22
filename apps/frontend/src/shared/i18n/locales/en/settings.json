@@ -228,6 +228,28 @@
     "autoNameTerminals": "Automatically name terminals",
     "autoNameTerminalsDescription": "Use AI to generate descriptive names for terminal tabs based on their activity"
   },
+  "insightsConcurrency": {
+    "title": "Insights Concurrency",
+    "description": "Configure concurrent session limits, queueing, and rate limiting for Insights generations",
+    "priorityLow": "Low",
+    "priorityNormal": "Normal",
+    "priorityHigh": "High",
+    "priorityUrgent": "Urgent",
+    "maxConcurrentSessions": "Max Concurrent Sessions",
+    "maxConcurrentSessionsDescription": "Maximum number of insight generation sessions that can run simultaneously across all projects",
+    "maxConcurrentSessionsHint": "Set to 1 to disable parallel generation, 3+ to enable it",
+    "maxSessionsPerProject": "Max Sessions Per Project",
+    "maxSessionsPerProjectDescription": "Maximum number of concurrent sessions allowed for a single project",
+    "defaultSessionPriority": "Default Session Priority",
+    "defaultSessionPriorityDescription": "Priority level for new insight generation sessions (higher priority sessions execute first when queued)",
+    "rateLimiting": "Rate Limiting",
+    "rateLimitingDescription": "Prevent abuse by limiting how frequently sessions can be started per project",
+    "rateLimitCount": "Rate Limit Count",
+    "rateLimitCountDescription": "Maximum number of sessions allowed within the time window",
+    "rateLimitWindowMs": "Rate Limit Window (milliseconds)",
+    "rateLimitWindowMsDescription": "Time window in milliseconds for rate limiting",
+    "rateLimitWindowMsHint": "Current window: {{minutes}} minutes"
+  },
   "theme": {
     "title": "Appearance",
     "description": "Customize how Auto Claude looks",
