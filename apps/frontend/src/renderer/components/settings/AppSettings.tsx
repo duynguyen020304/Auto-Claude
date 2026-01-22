@@ -58,7 +58,7 @@ import { ProjectSelector } from './ProjectSelector';
 import { ProjectSettingsContent, ProjectSettingsSection } from './ProjectSettingsContent';
 import { useProjectStore } from '../../stores/project-store';
 import type { UseProjectSettingsReturn } from '../project-settings/hooks/useProjectSettings';
-import { CredentialProfilesManager } from '../credential-profiles';
+import { CredentialProfilesManagement } from '../credential-profiles';
 
 interface AppSettingsDialogProps {
   open: boolean;
@@ -200,7 +200,7 @@ export function AppSettingsDialog({ open, onOpenChange, initialSection, initialP
       case 'api-profiles':
         return <ProfileList />;
       case 'credential-profiles':
-        return <CredentialProfilesManager />;
+        return <CredentialProfilesManagement />;
       case 'updates':
         return <AdvancedSettings settings={settings} onSettingsChange={setSettings} section="updates" version={version} />;
       case 'notifications':
