@@ -9,7 +9,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { TaskProfileSelector } from '../credential-profiles/TaskProfileSelector';
-import type { CredentialProfile, Pool } from '../../shared/types/credential-profile';
+import type { CredentialProfile, Pool } from '@shared/types/credential-profile';
 
 // Mock the settings-store
 const mockCredentialProfiles: CredentialProfile[] = [

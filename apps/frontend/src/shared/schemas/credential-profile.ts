@@ -44,7 +44,7 @@ export const RateLimitInfoSchema = z.object({
  */
 export const RotationConfigSchema = z.object({
   mode: RotationModeSchema,
-  credential_pool: z.array(z.string().uuid()).default([]),
+  credential_pool: z.array(z.string()).default([]),
   rate_limit_threshold: z.number().min(0).max(1).default(0.8),
   max_retries: z.number().int().min(0).default(3),
   retry_delay_seconds: z.number().int().min(0).default(1),
@@ -122,7 +122,7 @@ export const PoolFormDataSchema = z
       .min(1, 'Pool name is required')
       .max(100, 'Pool name must be less than 100 characters'),
     profile_ids: z
-      .array(z.string().uuid())
+      .array(z.string())
       .min(1, 'At least one profile is required')
       .default([]),
     limit: z.number().int().min(0, 'Limit must be a non-negative number').default(0),
@@ -146,7 +146,7 @@ export const PoolFormDataSchema = z
 export const PoolSchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(1).max(100),
-  profile_ids: z.array(z.string().uuid()),
+  profile_ids: z.array(z.string()),
   limit: z.number().int().min(0),
   rotation_config: RotationConfigSchema,
 });

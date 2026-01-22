@@ -19,7 +19,7 @@ import {
   SelectValue
 } from '../ui/select';
 import { useSettingsStore } from '../../stores/settings-store';
-import type { CredentialProfile, Pool } from '../../shared/types/credential-profile';
+import type { CredentialProfile, Pool } from '@shared/types/credential-profile';
 
 interface TaskProfileSelectorProps {
   /** Currently selected API profile ID (empty string for no selection) */
