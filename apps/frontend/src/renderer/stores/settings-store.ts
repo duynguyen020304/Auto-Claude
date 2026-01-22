@@ -698,3 +698,41 @@ export async function loadProfiles(): Promise<void> {
     store.setProfilesLoading(false);
   }
 }
+
+/**
+ * Load credential profiles from main process
+ */
+export async function loadCredentialProfiles(): Promise<void> {
+  const store = useSettingsStore.getState();
+  store.setCredentialProfilesLoading(true);
+
+  try {
+    const result = await window.electronAPI.listCredentialProfiles();
+    if (result.success && result.data) {
+      store.setCredentialProfiles(result.data);
+    }
+  } catch (error) {
+    store.setCredentialProfilesError(error instanceof Error ? error.message : 'Failed to load credential profiles');
+  } finally {
+    store.setCredentialProfilesLoading(false);
+  }
+}
+
+/**
+ * Load credential pools from main process
+ */
+export async function loadPools(): Promise<void> {
+  const store = useSettingsStore.getState();
+  store.setPoolsLoading(true);
+
+  try {
+    const result = await window.electronAPI.listCredentialPools();
+    if (result.success && result.data) {
+      store.setPools(result.data);
+    }
+  } catch (error) {
+    store.setPoolsError(error instanceof Error ? error.message : 'Failed to load pools');
+  } finally {
+    store.setPoolsLoading(false);
+  }
+}
