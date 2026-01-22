@@ -119,46 +119,91 @@ export class InsightsService extends EventEmitter {
 
   /**
    * Send a message and get AI response
+   * @param sessionIdOrProjectId - Session ID (new) or Project ID (old, for backward compatibility)
+   * @param projectIdOrPath - Project ID (new) or Project Path (old, for backward compatibility)
+   * @param projectPathOrMessage - Project Path (new) or Message (old, for backward compatibility)
+   * @param messageOrConfig - Message (new) or Model Config (old, for backward compatibility)
+   * @param modelConfigOrMentions - Model Config (new) or File Mentions (old, for backward compatibility)
+   * @param fileMentions - File Mentions (new signature only)
    */
   async sendMessage(
-    projectId: string,
-    projectPath: string,
-    message: string,
-    modelConfig?: InsightsModelConfig,
+    sessionIdOrProjectId: string,
+    projectIdOrPath?: string,
+    projectPathOrMessage?: string,
+    messageOrConfig?: string | InsightsModelConfig,
+    modelConfigOrMentions?: InsightsModelConfig | FileMention[],
     fileMentions?: FileMention[]
   ): Promise<void> {
-    // Load or create session
-    let session = this.sessionManager.loadSession(projectId, projectPath);
-    if (!session) {
-      session = this.sessionManager.createNewSession(projectId, projectPath);
-    }
+    // Detect which signature is being used based on parameter types
+    // Old: (projectId: string, projectPath: string, message: string, modelConfig?, fileMentions?)
+    // New: (sessionId: string, projectId: string, projectPath: string, message: string, modelConfig?, fileMentions?)
 
-    // Cancel any existing session for this sessionId
-    this.executor.cancelSession(session.id, projectId);
+    let session: InsightsSession | null;
+    let targetProjectId: string;
+    let targetProjectPath: string;
+    let targetMessage: string;
+    let targetModelConfig: InsightsModelConfig | undefined;
+    let targetFileMentions: FileMention[] | undefined;
+
+    // Check if using new signature by looking at parameter types
+    const usingNewSignature =
+      projectIdOrPath !== undefined &&
+      projectPathOrMessage !== undefined &&
+      typeof messageOrConfig === 'string';
+
+    if (usingNewSignature) {
+      // New signature: sendMessage(sessionId, projectId, projectPath, message, modelConfig?, fileMentions?)
+      targetProjectId = projectIdOrPath;
+      targetProjectPath = projectPathOrMessage;
+      targetMessage = messageOrConfig as string;
+      targetModelConfig = modelConfigOrMentions as InsightsModelConfig | undefined;
+      targetFileMentions = fileMentions;
+
+      // Load session by ID
+      session = this.storage.loadSessionById(targetProjectPath, sessionIdOrProjectId);
+      if (!session) {
+        this.emit('error', targetProjectId, `Session ${sessionIdOrProjectId} not found`);
+        return;
+      }
+    } else {
+      // Old signature: sendMessage(projectId, projectPath, message, modelConfig?, fileMentions?)
+      // for backward compatibility during phased migration
+      targetProjectId = sessionIdOrProjectId;
+      targetProjectPath = projectIdOrPath!;
+      targetMessage = projectPathOrMessage as string;
+      targetModelConfig = messageOrConfig as InsightsModelConfig | undefined;
+      targetFileMentions = modelConfigOrMentions as FileMention[] | undefined;
+
+      // Load or create session (old behavior)
+      session = this.sessionManager.loadSession(targetProjectId, targetProjectPath);
+      if (!session) {
+        session = this.sessionManager.createNewSession(targetProjectId, targetProjectPath);
+      }
+    }
 
     // Validate auto-claude source
     const autoBuildSource = this.config.getAutoBuildSourcePath();
     if (!autoBuildSource) {
-      this.emit('error', projectId, 'Auto Claude source not found');
+      this.emit('error', targetProjectId, 'Auto Claude source not found');
       return;
     }
 
     // Auto-generate title from first user message if still default
     if (session.messages.length === 0 && session.title === 'New Conversation') {
-      session.title = this.storage.generateTitle(message);
+      session.title = this.storage.generateTitle(targetMessage);
     }
 
     // Add user message
     const userMessage: InsightsChatMessage = {
       id: `msg-${Date.now()}`,
       role: 'user',
-      content: message,
+      content: targetMessage,
       timestamp: new Date(),
-      fileMentions: fileMentions && fileMentions.length > 0 ? fileMentions : undefined
+      fileMentions: targetFileMentions && targetFileMentions.length > 0 ? targetFileMentions : undefined
     };
     session.messages.push(userMessage);
     session.updatedAt = new Date();
-    this.sessionManager.saveSession(projectPath, session);
+    this.sessionManager.saveSession(targetProjectPath, session);
 
     // Build conversation history for context
     const conversationHistory = session.messages.map(m => ({
@@ -167,15 +212,15 @@ export class InsightsService extends EventEmitter {
     }));
 
     // Use provided modelConfig or fall back to session's config
-    const configToUse = modelConfig || session.modelConfig;
+    const configToUse = targetModelConfig || session.modelConfig;
 
     try {
       // Execute insights query
       const result = await this.executor.execute(
         session.id,
-        projectId,
-        projectPath,
-        message,
+        targetProjectId,
+        targetProjectPath,
+        targetMessage,
         conversationHistory,
         configToUse
       );
@@ -192,7 +237,7 @@ export class InsightsService extends EventEmitter {
 
       session.messages.push(assistantMessage);
       session.updatedAt = new Date();
-      this.sessionManager.saveSession(projectPath, session);
+      this.sessionManager.saveSession(targetProjectPath, session);
     } catch (error) {
       // Error already emitted by executor
       console.error('[InsightsService] Error executing insights:', error);

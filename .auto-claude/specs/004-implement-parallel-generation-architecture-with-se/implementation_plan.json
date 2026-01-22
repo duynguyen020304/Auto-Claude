@@ -157,7 +157,7 @@
             "command": "cd apps/frontend && npm run test -- -- --run src/main/insights/__tests__/executor.test.ts",
             "expected": "All tests pass, no process leaks"
           },
-          "status": "pending"
+          "status": "completed"
         }
       ]
     },
@@ -764,5 +764,5 @@
   "qa_signoff": null,
   "status": "in_progress",
   "planStatus": "in_progress",
-  "updated_at": "2026-01-22T20:05:13.242Z"
+  "updated_at": "2026-01-22T20:07:10.760Z"
 }
