@@ -1919,3 +1919,204 @@ def validate_credential(credential: dict[str, str]) -> bool:
     logger.debug(f"Credential '{credential.get('id', 'unknown')}' passed format validation")
 
     return True
+
+
+def save_pool(name: str, profile_ids: list[str], limit: int, rotation_config: dict) -> bool:
+    """
+    Save a credential pool to platform-specific storage.
+
+    Creates or updates a pool with the specified configuration. A pool groups
+    multiple credential profiles together and defines rotation strategy.
+
+    Args:
+        name: Human-readable name for this pool (used as ID)
+        profile_ids: List of credential profile IDs to include in this pool
+        limit: Maximum number of profiles to use from this pool (0 = no limit)
+        rotation_config: Dictionary with rotation configuration:
+            - mode: Rotation mode ('manual', 'round_robin', 'usage_based', 'rate_limit_aware')
+            - rate_limit_threshold: Optional threshold (0.0-1.0) for rate_limit_aware mode
+            - max_retries: Optional maximum retry attempts (default: 3)
+            - retry_delay_seconds: Optional delay between retries (default: 1)
+
+    Returns:
+        True if save was successful, False otherwise
+
+    Example:
+        >>> success = save_pool(
+        ...     name="production-claude",
+        ...     profile_ids=["cred-001", "cred-002"],
+        ...     limit=2,
+        ...     rotation_config={"mode": "round_robin"}
+        ... )
+    """
+    # Validate required fields
+    if not name:
+        logger.error("Pool must have a name")
+        return False
+
+    if not isinstance(profile_ids, list):
+        logger.error("profile_ids must be a list")
+        return False
+
+    if not isinstance(limit, int) or limit < 0:
+        logger.error("limit must be a non-negative integer")
+        return False
+
+    if not isinstance(rotation_config, dict):
+        logger.error("rotation_config must be a dictionary")
+        return False
+
+    if "mode" not in rotation_config:
+        logger.error("rotation_config must have 'mode' field")
+        return False
+
+    # Prepare pool data for storage
+    pool_data = {
+        "id": name,  # Use name as ID for simplicity
+        "name": name,
+        "profile_ids": profile_ids,
+        "limit": limit,
+        "rotation_config": rotation_config,
+    }
+
+    # Delegate to platform-specific implementation
+    if is_macos():
+        return _save_pool_macos(pool_data)
+    elif is_windows():
+        return _save_pool_windows(pool_data)
+    else:
+        # Linux: use secret-service API via DBus
+        return _save_pool_linux(pool_data)
+
+
+def _save_pool_macos(pool: dict) -> bool:
+    """
+    Save a credential pool to macOS Keychain.
+
+    Args:
+        pool: Pool dictionary with all required fields
+
+    Returns:
+        True if save was successful, False otherwise
+    """
+    try:
+        # Construct service name for this pool
+        service_name = f"auto-claude-pool-{pool['id']}"
+
+        # Use 'security' command to add generic password
+        result = subprocess.run(
+            [
+                "/usr/bin/security",
+                "add-generic-password",
+                "-a", pool["id"],  # Account name
+                "-s", service_name,  # Service name
+                "-w", json.dumps(pool),  # Password (pool data as JSON)
+                "-U",  # Update if exists
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+
+        if result.returncode != 0:
+            logger.warning(f"Failed to save pool '{pool['id']}' to macOS Keychain: {result.stderr}")
+            return False
+
+        logger.info(f"Pool '{pool['id']}' saved to macOS Keychain")
+        return True
+
+    except (subprocess.TimeoutExpired, Exception) as e:
+        logger.warning(f"Failed to save pool '{pool['id']}' to macOS Keychain: {e}")
+        return False
+
+
+def _save_pool_windows(pool: dict) -> bool:
+    """
+    Save a credential pool to Windows credential storage.
+
+    Stores pool in ~/.claude/.pool-auto-claude-{id}.json file.
+
+    Args:
+        pool: Pool dictionary with all required fields
+
+    Returns:
+        True if save was successful, False otherwise
+    """
+    try:
+        # Create ~/.claude directory if it doesn't exist
+        claude_dir = os.path.expandvars(r"%USERPROFILE%\.claude")
+        os.makedirs(claude_dir, exist_ok=True)
+
+        # Save to pool file
+        pool_filename = f".pool-auto-claude-{pool['id']}.json"
+        pool_path = os.path.join(claude_dir, pool_filename)
+
+        with open(pool_path, "w", encoding="utf-8") as f:
+            json.dump(pool, f, indent=2)
+
+        logger.info(f"Pool '{pool['id']}' saved to Windows credential files")
+        return True
+
+    except (IOError, Exception) as e:
+        logger.warning(f"Failed to save pool '{pool['id']}' to Windows storage: {e}")
+        return False
+
+
+def _save_pool_linux(pool: dict) -> bool:
+    """
+    Save a credential pool to Linux Secret Service API.
+
+    Args:
+        pool: Pool dictionary with all required fields
+
+    Returns:
+        True if save was successful, False otherwise
+    """
+    if secretstorage is None:
+        logger.error("secretstorage not available for pool storage")
+        return False
+
+    try:
+        # Get the default collection
+        try:
+            collection = secretstorage.get_default_collection(None)
+        except (
+            AttributeError,
+            secretstorage.exceptions.SecretServiceNotAvailableException,
+        ):
+            logger.error("Secret Service not available")
+            return False
+
+        if collection.is_locked():
+            # Try to unlock the collection
+            try:
+                collection.unlock()
+            except secretstorage.exceptions.SecretStorageException:
+                logger.error("Failed to unlock Secret Service collection")
+                return False
+
+        # Check if item already exists
+        existing_items = collection.search_items({"application": f"auto-claude-pool-{pool['id']}"})
+
+        # Delete existing item if found
+        for item in existing_items:
+            item.delete()
+
+        # Create new item
+        collection.create_item(
+            label=pool["name"],
+            attributes={"application": f"auto-claude-pool-{pool['id']}"},
+            secret=json.dumps(pool),
+        )
+
+        logger.info(f"Pool '{pool['id']}' saved to Linux Secret Service")
+        return True
+
+    except (
+        secretstorage.exceptions.SecretStorageException,
+        json.JSONDecodeError,
+        AttributeError,
+        TypeError,
+    ) as e:
+        logger.warning(f"Failed to save pool '{pool['id']}' to Linux Secret Service: {e}")
+        return False
