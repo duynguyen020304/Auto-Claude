@@ -417,7 +417,8 @@
             "command": "cd apps/frontend && npm run test -- -- --run src/renderer/stores/__tests__/insights-store-cleanup.test.ts",
             "expected": "Session cleanup works correctly"
           },
-          "status": "pending"
+          "status": "completed",
+          "notes": "Added removeSession(sessionId) action to clean up session state when session is deleted. Aborts active generation, removes session from sessionStates/generatingSessionIds/abortControllers, and clears current session if needed. Created comprehensive test suite with 8 test cases covering all cleanup scenarios. All tests pass successfully."
         },
         {
           "id": "subtask-5-4",
