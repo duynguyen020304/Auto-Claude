@@ -315,6 +315,150 @@ def get_strategy_registry() -> StrategyRegistry:
     return _global_registry
 
 
+def inclusive_limit_calculation(pool_id: str) -> int:
+    """
+    Calculate the inclusive task limit for a credential pool.
+
+    This function computes the total number of tasks using a pool's resources,
+    which includes both tasks directly assigned to the pool and tasks that are
+    using individual credential profiles that belong to the pool. This provides
+    an accurate picture of pool utilization for limit enforcement.
+
+    The calculation is:
+        inclusive_count = pooled_task_count + non_pooled_task_count_using_pool_profiles
+
+    Where:
+        - pooled_task_count: Tasks directly assigned to the pool
+        - non_pooled_task_count_using_pool_profiles: Tasks using pool's profiles but not in pool
+
+    Args:
+        pool_id: Unique identifier of the credential pool to calculate limits for
+
+    Returns:
+        Total count of tasks using the pool's resources (pooled + non-pooled)
+        Returns 0 if pool is not found or has no profiles
+
+    Example:
+        >>> pool_id = "production-claude"
+        >>> total_tasks = inclusive_limit_calculation(pool_id)
+        >>> print(f"Pool {pool_id} has {total_tasks} tasks using its resources")
+
+    Note:
+        This function queries both the pool configuration and credential storage
+        to determine the actual usage. Non-pooled tasks are identified by checking
+        which tasks are using credential profiles that belong to this pool.
+
+        The function is designed to be called by limit enforcement logic to ensure
+        that pools don't exceed their configured limits even when tasks are using
+        individual profiles from the pool.
+    """
+    from core.auth import get_pool
+
+    try:
+        # Get pool configuration
+        pool = get_pool(pool_id)
+
+        if not pool:
+            logger.warning(f"inclusive_limit_calculation: Pool {pool_id} not found")
+            return 0
+
+        # Get profile IDs from the pool
+        profile_ids = pool.get("profile_ids", [])
+
+        if not profile_ids:
+            logger.debug(f"inclusive_limit_calculation: Pool {pool_id} has no profiles")
+            return 0
+
+        # Calculate pooled task count (tasks directly assigned to this pool)
+        # TODO: Query task storage for tasks with pool_id = this pool
+        # For now, this is a placeholder that will be implemented when task storage is available
+        pooled_task_count = _get_pooled_task_count(pool_id)
+
+        # Calculate non-pooled task count (tasks using pool's profiles but not in pool)
+        # This counts tasks that are using individual profiles from this pool
+        non_pooled_task_count = _get_non_pooled_task_count_using_profiles(
+            pool_id, profile_ids
+        )
+
+        total_count = pooled_task_count + non_pooled_task_count
+
+        logger.debug(
+            f"inclusive_limit_calculation: Pool {pool_id} has {total_count} tasks "
+            f"({pooled_task_count} pooled + {non_pooled_task_count} non-pooled using profiles)"
+        )
+
+        return total_count
+
+    except Exception as e:
+        logger.error(
+            f"inclusive_limit_calculation: Failed to calculate limit for pool {pool_id}: {e}",
+            exc_info=True,
+        )
+        return 0
+
+
+def _get_pooled_task_count(pool_id: str) -> int:
+    """
+    Get the count of tasks directly assigned to a pool.
+
+    Args:
+        pool_id: Unique identifier of the credential pool
+
+    Returns:
+        Number of tasks that have this pool selected
+
+    Note:
+        This is a placeholder implementation. The actual implementation will
+        query task storage when the task-pool tracking system is available.
+
+        Tasks are considered "pooled" when they have the pool_id field set
+        to this pool's ID in their configuration.
+    """
+    # TODO: Implement task storage query when available
+    # Query: SELECT COUNT(*) FROM tasks WHERE pool_id = {pool_id}
+    logger.debug(f"_get_pooled_task_count: Pool {pool_id} - placeholder returns 0")
+    return 0
+
+
+def _get_non_pooled_task_count_using_profiles(
+    pool_id: str, profile_ids: list[str]
+) -> int:
+    """
+    Get the count of tasks using pool's profiles but not assigned to the pool.
+
+    This identifies tasks that are using individual credential profiles that
+    belong to this pool, but are not themselves assigned to the pool. This is
+    important for accurate limit enforcement because these tasks still consume
+    the pool's resources.
+
+    Args:
+        pool_id: Unique identifier of the credential pool
+        profile_ids: List of credential profile IDs in this pool
+
+    Returns:
+        Number of tasks using pool's profiles but not assigned to the pool
+
+    Note:
+        This is a placeholder implementation. The actual implementation will:
+        1. Query task storage for tasks with profile_id in profile_ids
+        2. Filter out tasks where pool_id = this pool_id
+        3. Return count of remaining tasks
+
+        This ensures we don't double-count tasks that are both in the pool
+        and using a profile from the pool (though typically tasks are either
+        pool-assigned OR profile-assigned, not both, due to mutual exclusivity).
+    """
+    # TODO: Implement task storage query when available
+    # Query: SELECT COUNT(*) FROM tasks
+    #        WHERE profile_id IN {profile_ids}
+    #        AND pool_id != {pool_id}
+    logger.debug(
+        f"_get_non_pooled_task_count_using_profiles: Pool {pool_id} with "
+        f"{len(profile_ids)} profiles - placeholder returns 0"
+    )
+    return 0
+
+
 class ManualRotationStrategy(RotationStrategy):
     """
     Manual rotation strategy where user explicitly selects the credential.
