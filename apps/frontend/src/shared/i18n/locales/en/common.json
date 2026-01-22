@@ -121,7 +121,8 @@
     "terminalWorktreeNotFound": "Terminal worktree not found: {{name}}",
     "failedToDeleteTerminalWorktree": "Failed to delete terminal worktree: {{name}}",
     "taskCreationFailed": "Failed to create task",
-    "taskCreationFailedDescription": "Could not create task from suggestion. Please try again."
+    "taskCreationFailedDescription": "Could not create task from suggestion. Please try again.",
+    "validationError": "Validation Error"
   },
   "notification": {
     "accountSwitched": "Account Switched",

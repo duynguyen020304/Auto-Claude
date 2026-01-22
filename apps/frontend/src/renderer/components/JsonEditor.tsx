@@ -1,13 +1,17 @@
 /**
  * JsonEditor Component
  *
- * Monaco Editor wrapper for JSON editing with syntax highlighting,
- * validation, and error display. Optimized for CustomMcpServer
- * configurations but works with any JSON data.
+ * Lightweight JSON editor using react-simple-code-editor with Prism.js
+ * syntax highlighting. Provides validation, formatting, and error display.
+ * Optimized for CustomMcpServer configurations but works with any JSON data.
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
-import Editor from '@monaco-editor/react';
+import { useState, useCallback, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+import Editor from 'react-simple-code-editor';
+import Prism from 'prismjs';
+import 'prismjs/components/prism-json';
+import 'prismjs/themes/prism-tomorrow.css';
+import { useTranslation } from 'react-i18next';
 import { cn } from '../lib/utils';
 import { Loader2 } from 'lucide-react';
 
@@ -31,7 +35,15 @@ interface JsonEditorProps {
 }
 
 /**
- * JsonEditor component using Monaco Editor for JSON editing
+ * Ref interface for JsonEditor component
+ */
+export type JsonEditorRef = {
+  formatJson: () => void;
+  minifyJson: () => void;
+};
+
+/**
+ * JsonEditor component using lightweight textarea with syntax highlighting
  *
  * @example
  * ```tsx
@@ -49,57 +61,47 @@ interface JsonEditorProps {
  * />
  * ```
  */
-export function JsonEditor({
-  value,
-  onChange,
-  error = null,
-  readonly = false,
-  height = '400px',
-  minHeight = '200px',
-  className,
-  placeholder = '{\n\t\n}',
-}: JsonEditorProps) {
+export const JsonEditor = forwardRef<JsonEditorRef, JsonEditorProps>(
+  (
+    {
+      value,
+      onChange,
+      error = null,
+      readonly = false,
+      height = '400px',
+      minHeight = '200px',
+      className,
+      placeholder = '{\n\t\n}',
+    }: JsonEditorProps,
+    ref
+  ) => {
+  const { t } = useTranslation(['common']);
   const [isEditorReady, setIsEditorReady] = useState(false);
-  const editorRef = useRef<unknown>(null);
+  const [internalValue, setInternalValue] = useState(value);
 
   /**
-   * Handle editor mount
+   * Highlight JSON code using Prism.js
    */
-  const handleEditorDidMount = useCallback((editor: unknown) => {
-    editorRef.current = editor;
-    setIsEditorReady(true);
-
-    // Auto-format on mount if there's content
-    if (value && value.trim()) {
-      try {
-        const parsed = JSON.parse(value);
-        const formatted = JSON.stringify(parsed, null, 2);
-        // Update editor content without triggering onChange
-        if (typeof editor === 'object' && editor !== null && 'setValue' in editor) {
-          (editor as { setValue: (value: string) => void }).setValue(formatted);
-        }
-      } catch {
-        // Invalid JSON, don't auto-format
-      }
-    }
-  }, [value]);
+  const highlight = useCallback((code: string) => {
+    return Prism.highlight(code, Prism.languages.json, 'json');
+  }, []);
 
   /**
    * Handle editor value changes
    */
   const handleValueChange = useCallback(
-    (newValue: string | undefined) => {
-      const valueToUse = newValue ?? '';
+    (newValue: string) => {
+      setInternalValue(newValue);
 
       // Try to parse JSON to validate
       let parsed: unknown = undefined;
       try {
-        parsed = JSON.parse(valueToUse);
+        parsed = JSON.parse(newValue);
       } catch {
         // Invalid JSON, still update value but don't provide parsed
       }
 
-      onChange(valueToUse, parsed);
+      onChange(newValue, parsed);
     },
     [onChange]
   );
@@ -108,58 +110,64 @@ export function JsonEditor({
    * Format JSON content
    */
   const formatJson = useCallback(() => {
-    if (!editorRef.current) return;
-
-    const editor = editorRef.current as {
-      getValue: () => string;
-      setValue: (value: string) => void;
-      getAction: (action: string) => { run: () => void } | undefined;
-    };
-
-    const currentValue = editor.getValue();
-    if (!currentValue.trim()) return;
+    if (!internalValue.trim()) return;
 
     try {
-      const parsed = JSON.parse(currentValue);
+      const parsed = JSON.parse(internalValue);
       const formatted = JSON.stringify(parsed, null, 2);
-      editor.setValue(formatted);
+      setInternalValue(formatted);
+      onChange(formatted, parsed);
     } catch {
       // Invalid JSON, can't format
     }
-  }, []);
+  }, [internalValue, onChange]);
 
   /**
    * Minify JSON content
    */
   const minifyJson = useCallback(() => {
-    if (!editorRef.current) return;
-
-    const editor = editorRef.current as {
-      getValue: () => string;
-      setValue: (value: string) => void;
-    };
-
-    const currentValue = editor.getValue();
-    if (!currentValue.trim()) return;
+    if (!internalValue.trim()) return;
 
     try {
-      const parsed = JSON.parse(currentValue);
+      const parsed = JSON.parse(internalValue);
       const minified = JSON.stringify(parsed);
-      editor.setValue(minified);
+      setInternalValue(minified);
+      onChange(minified, parsed);
     } catch {
       // Invalid JSON, can't minify
     }
-  }, []);
+  }, [internalValue, onChange]);
 
-  // Expose format/minify methods via ref for parent components
+  // Expose format/minify methods to parent components via ref
+  useImperativeHandle(
+    ref,
+    () => ({
+      formatJson,
+      minifyJson,
+    }),
+    [formatJson, minifyJson]
+  );
+
+  // Auto-format on mount
   useEffect(() => {
-    if (editorRef.current) {
-      (editorRef.current as { formatJson: () => void; minifyJson: () => void }).formatJson =
-        formatJson;
-      (editorRef.current as { formatJson: () => void; minifyJson: () => void }).minifyJson =
-        minifyJson;
+    // Auto-format on mount if there's content
+    if (value && value.trim() && !isEditorReady) {
+      try {
+        const parsed = JSON.parse(value);
+        const formatted = JSON.stringify(parsed, null, 2);
+        setInternalValue(formatted);
+        // Update parent without triggering onChange again
+        onChange(formatted, parsed);
+      } catch {
+        // Invalid JSON, use value as-is
+        setInternalValue(value);
+      }
+    } else if (!isEditorReady) {
+      setInternalValue(value);
     }
-  }, [formatJson, minifyJson]);
+
+    setIsEditorReady(true);
+  }, [value, isEditorReady, onChange]);
 
   return (
     <div
@@ -179,78 +187,40 @@ export function JsonEditor({
         </div>
       )}
 
-      {/* Monaco Editor */}
-      <Editor
-        value={value || placeholder}
-        language="json"
-        theme="vs-dark"
-        options={{
-          readOnly: readonly,
-          minimap: { enabled: true },
-          fontSize: 14,
-          lineNumbers: 'on',
-          scrollBeyondLastLine: false,
-          automaticLayout: true,
-          tabSize: 2,
-          insertSpaces: true,
-          detectIndentation: true,
-          folding: true,
-          foldingStrategy: 'indentation',
-          showFoldingControls: 'always',
-          formatOnPaste: true,
-          formatOnType: true,
-          trimAutoWhitespace: true,
-          suggestOnTriggerCharacters: true,
-          quickSuggestions: {
-            other: true,
-            comments: false,
-            strings: false,
-          },
-          parameterHints: {
-            enabled: true,
-          },
-          wordWrap: 'on',
-          // JSON-specific options
-          colorDecorators: true,
-          // Accessibility
-          ariaLabel: 'JSON editor',
-        }}
-        onChange={handleValueChange}
-        onMount={handleEditorDidMount}
-        loading={
-          <div className="flex items-center justify-center h-full">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        }
-        className="flex-1"
-      />
+      {/* Simple Code Editor */}
+      <div className="flex-1 overflow-auto">
+        <Editor
+          value={internalValue || placeholder}
+          onValueChange={handleValueChange}
+          highlight={highlight}
+          disabled={readonly}
+          padding={16}
+          textareaClassName={cn(
+            'outline-none w-full h-full resize-none bg-transparent',
+            'font-mono text-[14px] leading-relaxed',
+            'text-foreground'
+          )}
+          style={{
+            fontFamily: "'Fira Code', 'Consolas', 'Monaco', 'Courier New', monospace",
+            fontSize: 14,
+            minHeight: '100%',
+          }}
+          className={cn(
+            'w-full h-full',
+            readonly && 'opacity-75 cursor-not-allowed'
+          )}
+        />
+      </div>
 
       {/* Error message overlay */}
       {error && (
         <div className="absolute bottom-0 left-0 right-0 bg-destructive/95 text-destructive-foreground px-3 py-2 text-sm">
-          <p className="font-medium">Validation Error</p>
+          <p className="font-medium">{t('common:errors.validationError')}</p>
           <p className="opacity-90">{error}</p>
         </div>
       )}
     </div>
   );
-}
+});
 
-/**
- * Hook to programmatically control JsonEditor
- *
- * @example
- * ```tsx
- * const editorRef = useRef<{ formatJson: () => void; minifyJson: () => void }>(null);
- *
- * <JsonEditor ref={editorRef} {...props} />
- *
- * <button onClick={() => editorRef.current?.formatJson()}>
- *   Format JSON
- * </button>
- * ```
- */
-export type JsonEditorRef = {
-  formatJson: () => void;
-  minifyJson: () => void;
-};
+JsonEditor.displayName = 'JsonEditor';

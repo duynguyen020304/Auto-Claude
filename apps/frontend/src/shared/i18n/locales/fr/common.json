@@ -121,7 +121,8 @@
     "terminalWorktreeNotFound": "Worktree terminal introuvable : {{name}}",
     "failedToDeleteTerminalWorktree": "Échec de la suppression du worktree terminal : {{name}}",
     "taskCreationFailed": "Échec de la création de la tâche",
-    "taskCreationFailedDescription": "Impossible de créer la tâche à partir de la suggestion. Veuillez réessayer."
+    "taskCreationFailedDescription": "Impossible de créer la tâche à partir de la suggestion. Veuillez réessayer.",
+    "validationError": "Erreur de validation"
   },
   "notification": {
     "accountSwitched": "Compte changé",
