@@ -139,7 +139,7 @@
             "command": "cd apps/frontend && npm run typecheck",
             "expected": "No TypeScript errors, events include sessionId"
           },
-          "status": "pending"
+          "status": "completed"
         },
         {
           "id": "subtask-2-4",
@@ -764,5 +764,5 @@
   "qa_signoff": null,
   "status": "in_progress",
   "planStatus": "in_progress",
-  "updated_at": "2026-01-22T19:46:27.857Z"
+  "updated_at": "2026-01-22T20:05:13.242Z"
 }
