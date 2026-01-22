@@ -19,7 +19,8 @@ import {
   Globe,
   Code,
   Bug,
-  Server
+  Server,
+  Shield
 } from 'lucide-react';
 
 // GitLab icon component (lucide-react doesn't have one)
@@ -57,6 +58,7 @@ import { ProjectSelector } from './ProjectSelector';
 import { ProjectSettingsContent, ProjectSettingsSection } from './ProjectSettingsContent';
 import { useProjectStore } from '../../stores/project-store';
 import type { UseProjectSettingsReturn } from '../project-settings/hooks/useProjectSettings';
+import { CredentialProfilesManager } from '../credential-profiles';
 
 interface AppSettingsDialogProps {
   open: boolean;
@@ -67,7 +69,7 @@ interface AppSettingsDialogProps {
 }
 
 // App-level settings sections
-export type AppSection = 'appearance' | 'display' | 'language' | 'devtools' | 'agent' | 'paths' | 'integrations' | 'api-profiles' | 'updates' | 'notifications' | 'debug';
+export type AppSection = 'appearance' | 'display' | 'language' | 'devtools' | 'agent' | 'paths' | 'integrations' | 'api-profiles' | 'credential-profiles' | 'updates' | 'notifications' | 'debug';
 
 interface NavItemConfig<T extends string> {
   id: T;
@@ -83,6 +85,7 @@ const appNavItemsConfig: NavItemConfig<AppSection>[] = [
   { id: 'paths', icon: FolderOpen },
   { id: 'integrations', icon: Key },
   { id: 'api-profiles', icon: Server },
+  { id: 'credential-profiles', icon: Shield },
   { id: 'updates', icon: Package },
   { id: 'notifications', icon: Bell },
   { id: 'debug', icon: Bug }
@@ -196,6 +199,8 @@ export function AppSettingsDialog({ open, onOpenChange, initialSection, initialP
         return <IntegrationSettings settings={settings} onSettingsChange={setSettings} isOpen={open} />;
       case 'api-profiles':
         return <ProfileList />;
+      case 'credential-profiles':
+        return <CredentialProfilesManager />;
       case 'updates':
         return <AdvancedSettings settings={settings} onSettingsChange={setSettings} section="updates" version={version} />;
       case 'notifications':
