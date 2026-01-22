@@ -215,25 +215,25 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       };
     }),
 
-  setStatus: (status, sessionId) => {
-    const currentSessionId = _get().currentSessionId;
+  setStatus: (status, sessionId) =>
+    set((state) => {
+      // Determine target session ID and whether to update top-level field
+      const targetSessionId = sessionId || state.currentSessionId;
+      const shouldUpdateTopLevel = !sessionId || sessionId === state.currentSessionId;
 
-    return set((state) => {
-      // Validation guard: ensure session ID matches
-      if (sessionId && currentSessionId !== sessionId) {
-        console.warn(`[InsightsStore] Rejected setStatus for session ${sessionId} because current session is ${currentSessionId}`);
-        return state;
+      const updates: Partial<InsightsState> = {};
+
+      // Update top-level field if appropriate
+      if (shouldUpdateTopLevel) {
+        updates.status = status;
       }
 
-      // Update top-level field
-      const updates: Partial<InsightsState> = { status };
-
-      // Also update in sessionStates map
-      if (currentSessionId && state.sessionStates.has(currentSessionId)) {
-        const sessionState = state.sessionStates.get(currentSessionId);
+      // Update sessionStates map if we have a target session
+      if (targetSessionId) {
+        const sessionState = state.sessionStates.get(targetSessionId);
         if (sessionState) {
           const newSessionStates = new Map(state.sessionStates);
-          newSessionStates.set(currentSessionId, {
+          newSessionStates.set(targetSessionId, {
             ...sessionState,
             status
           });
@@ -242,8 +242,7 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       }
 
       return updates;
-    });
-  },
+    }),
 
   resetStatus: () => {
     const currentSessionId = _get().currentSessionId;
@@ -273,21 +272,23 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
 
   setPendingMessage: (message, sessionId) =>
     set((state) => {
-      // Validation guard: ensure session ID matches
-      if (sessionId && state.currentSessionId !== sessionId) {
-        console.warn(`[InsightsStore] Rejected setPendingMessage for session ${sessionId} because current session is ${state.currentSessionId}`);
-        return state;
+      // Determine target session ID and whether to update top-level field
+      const targetSessionId = sessionId || state.currentSessionId;
+      const shouldUpdateTopLevel = !sessionId || sessionId === state.currentSessionId;
+
+      const updates: Partial<InsightsState> = {};
+
+      // Update top-level field if appropriate
+      if (shouldUpdateTopLevel) {
+        updates.pendingMessage = message;
       }
 
-      // Update top-level field
-      const updates: Partial<InsightsState> = { pendingMessage: message };
-
-      // Also update in sessionStates map
-      if (state.currentSessionId && state.sessionStates.has(state.currentSessionId)) {
-        const sessionState = state.sessionStates.get(state.currentSessionId);
+      // Update sessionStates map if we have a target session
+      if (targetSessionId) {
+        const sessionState = state.sessionStates.get(targetSessionId);
         if (sessionState) {
           const newSessionStates = new Map(state.sessionStates);
-          newSessionStates.set(state.currentSessionId, {
+          newSessionStates.set(targetSessionId, {
             ...sessionState,
             pendingMessage: message
           });
@@ -345,302 +346,326 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
 
   appendStreamingContent: (content, sessionId) =>
     set((state) => {
-      // Validation guard: ensure session ID matches
-      if (sessionId && state.currentSessionId !== sessionId) {
-        console.warn(`[InsightsStore] Rejected appendStreamingContent for session ${sessionId} because current session is ${state.currentSessionId}`);
-        return state;
+      // Determine target session ID and whether to update top-level field
+      const targetSessionId = sessionId || state.currentSessionId;
+      const shouldUpdateTopLevel = !sessionId || sessionId === state.currentSessionId;
+
+      const updates: Partial<InsightsState> = {};
+
+      // Update sessionStates map if we have a target session
+      if (targetSessionId) {
+        const sessionState = state.sessionStates.get(targetSessionId);
+        if (sessionState) {
+          const newContent = sessionState.streamingContent + content;
+
+          const newSessionStates = new Map(state.sessionStates);
+          newSessionStates.set(targetSessionId, {
+            ...sessionState,
+            streamingContent: newContent
+          });
+          updates.sessionStates = newSessionStates;
+
+          // Update top-level field if appropriate
+          if (shouldUpdateTopLevel) {
+            updates.streamingContent = newContent;
+          }
+        }
       }
 
-      if (!state.currentSessionId) return state;
-
-      const sessionState = state.sessionStates.get(state.currentSessionId);
-      if (!sessionState) return state;
-
-      const newContent = sessionState.streamingContent + content;
-
-      const newSessionStates = new Map(state.sessionStates);
-      newSessionStates.set(state.currentSessionId, {
-        ...sessionState,
-        streamingContent: newContent
-      });
-
-      return {
-        streamingContent: newContent,
-        sessionStates: newSessionStates
-      };
+      return updates;
     }),
 
-  clearStreamingContent: (sessionId) => {
-    const currentSessionId = _get().currentSessionId;
+  clearStreamingContent: (sessionId) =>
+    set((state) => {
+      // Determine target session ID and whether to update top-level field
+      const targetSessionId = sessionId || state.currentSessionId;
+      const shouldUpdateTopLevel = !sessionId || sessionId === state.currentSessionId;
 
-    return set((state) => {
-      // Validation guard: ensure session ID matches
-      if (sessionId && state.currentSessionId !== sessionId) {
-        console.warn(`[InsightsStore] Rejected clearStreamingContent for session ${sessionId} because current session is ${state.currentSessionId}`);
-        return state;
+      const updates: Partial<InsightsState> = {};
+
+      // Update top-level field if appropriate
+      if (shouldUpdateTopLevel) {
+        updates.streamingContent = '';
       }
 
-      if (!state.currentSessionId) return state;
+      // Update sessionStates map if we have a target session
+      if (targetSessionId) {
+        const sessionState = state.sessionStates.get(targetSessionId);
+        if (sessionState) {
+          const newSessionStates = new Map(state.sessionStates);
+          newSessionStates.set(targetSessionId, {
+            ...sessionState,
+            streamingContent: ''
+          });
+          updates.sessionStates = newSessionStates;
+        }
+      }
 
-      const sessionState = state.sessionStates.get(state.currentSessionId);
-      if (!sessionState) return state;
-
-      const newSessionStates = new Map(state.sessionStates);
-      newSessionStates.set(state.currentSessionId, {
-        ...sessionState,
-        streamingContent: ''
-      });
-
-      return {
-        streamingContent: '',
-        sessionStates: newSessionStates
-      };
-    });
-  },
+      return updates;
+    }),
 
   setCurrentTool: (tool, sessionId) =>
     set((state) => {
-      // Validation guard: ensure session ID matches
-      if (sessionId && state.currentSessionId !== sessionId) {
-        console.warn(`[InsightsStore] Rejected setCurrentTool for session ${sessionId} because current session is ${state.currentSessionId}`);
-        return state;
+      // Determine target session ID and whether to update top-level field
+      const targetSessionId = sessionId || state.currentSessionId;
+      const shouldUpdateTopLevel = !sessionId || sessionId === state.currentSessionId;
+
+      const updates: Partial<InsightsState> = {};
+
+      // Update top-level field if appropriate
+      if (shouldUpdateTopLevel) {
+        updates.currentTool = tool;
       }
 
-      if (!state.currentSessionId) return state;
+      // Update sessionStates map if we have a target session
+      if (targetSessionId) {
+        const sessionState = state.sessionStates.get(targetSessionId);
+        if (sessionState) {
+          const newSessionStates = new Map(state.sessionStates);
+          newSessionStates.set(targetSessionId, {
+            ...sessionState,
+            currentTool: tool
+          });
+          updates.sessionStates = newSessionStates;
+        }
+      }
 
-      const sessionState = state.sessionStates.get(state.currentSessionId);
-      if (!sessionState) return state;
-
-      const newSessionStates = new Map(state.sessionStates);
-      newSessionStates.set(state.currentSessionId, {
-        ...sessionState,
-        currentTool: tool
-      });
-
-      return {
-        currentTool: tool,
-        sessionStates: newSessionStates
-      };
+      return updates;
     }),
 
   addToolUsage: (tool, sessionId) =>
     set((state) => {
-      // Validation guard: ensure session ID matches
-      if (sessionId && state.currentSessionId !== sessionId) {
-        console.warn(`[InsightsStore] Rejected addToolUsage for session ${sessionId} because current session is ${state.currentSessionId}`);
-        return state;
+      // Determine target session ID and whether to update top-level field
+      const targetSessionId = sessionId || state.currentSessionId;
+      const shouldUpdateTopLevel = !sessionId || sessionId === state.currentSessionId;
+
+      const updates: Partial<InsightsState> = {};
+
+      // Update sessionStates map if we have a target session
+      if (targetSessionId) {
+        const sessionState = state.sessionStates.get(targetSessionId);
+        if (sessionState) {
+          const newToolsUsed = [
+            ...sessionState.toolsUsed,
+            {
+              name: tool.name,
+              input: tool.input,
+              timestamp: new Date()
+            }
+          ];
+
+          const newSessionStates = new Map(state.sessionStates);
+          newSessionStates.set(targetSessionId, {
+            ...sessionState,
+            toolsUsed: newToolsUsed
+          });
+          updates.sessionStates = newSessionStates;
+
+          // Update top-level field if appropriate
+          if (shouldUpdateTopLevel) {
+            updates.toolsUsed = newToolsUsed;
+          }
+        }
       }
 
-      if (!state.currentSessionId) return state;
-
-      const sessionState = state.sessionStates.get(state.currentSessionId);
-      if (!sessionState) return state;
-
-      const newToolsUsed = [
-        ...sessionState.toolsUsed,
-        {
-          name: tool.name,
-          input: tool.input,
-          timestamp: new Date()
-        }
-      ];
-
-      const newSessionStates = new Map(state.sessionStates);
-      newSessionStates.set(state.currentSessionId, {
-        ...sessionState,
-        toolsUsed: newToolsUsed
-      });
-
-      return {
-        toolsUsed: newToolsUsed,
-        sessionStates: newSessionStates
-      };
+      return updates;
     }),
 
   clearToolsUsed: (sessionId) =>
     set((state) => {
-      // Validation guard: ensure session ID matches
-      if (sessionId && state.currentSessionId !== sessionId) {
-        console.warn(`[InsightsStore] Rejected clearToolsUsed for session ${sessionId} because current session is ${state.currentSessionId}`);
-        return state;
+      // Determine target session ID and whether to update top-level field
+      const targetSessionId = sessionId || state.currentSessionId;
+      const shouldUpdateTopLevel = !sessionId || sessionId === state.currentSessionId;
+
+      const updates: Partial<InsightsState> = {};
+
+      // Update top-level field if appropriate
+      if (shouldUpdateTopLevel) {
+        updates.toolsUsed = [];
       }
 
-      if (!state.currentSessionId) return state;
+      // Update sessionStates map if we have a target session
+      if (targetSessionId) {
+        const sessionState = state.sessionStates.get(targetSessionId);
+        if (sessionState) {
+          const newSessionStates = new Map(state.sessionStates);
+          newSessionStates.set(targetSessionId, {
+            ...sessionState,
+            toolsUsed: []
+          });
+          updates.sessionStates = newSessionStates;
+        }
+      }
 
-      const sessionState = state.sessionStates.get(state.currentSessionId);
-      if (!sessionState) return state;
-
-      const newSessionStates = new Map(state.sessionStates);
-      newSessionStates.set(state.currentSessionId, {
-        ...sessionState,
-        toolsUsed: []
-      });
-
-      return {
-        toolsUsed: [],
-        sessionStates: newSessionStates
-      };
+      return updates;
     }),
 
   addFileMention: (mention, sessionId) =>
     set((state) => {
-      // Validation guard: ensure session ID matches
-      if (sessionId && state.currentSessionId !== sessionId) {
-        console.warn(`[InsightsStore] Rejected addFileMention for session ${sessionId} because current session is ${state.currentSessionId}`);
-        return state;
+      // Determine target session ID and whether to update top-level field
+      const targetSessionId = sessionId || state.currentSessionId;
+      const shouldUpdateTopLevel = !sessionId || sessionId === state.currentSessionId;
+
+      const updates: Partial<InsightsState> = {};
+
+      // Update sessionStates map if we have a target session
+      if (targetSessionId) {
+        const sessionState = state.sessionStates.get(targetSessionId);
+        if (sessionState) {
+          // Check if mention with same ID already exists
+          if (sessionState.fileMentions.some((m) => m.id === mention.id)) {
+            return state;
+          }
+
+          const newFileMentions = [...sessionState.fileMentions, mention];
+          const newSessionStates = new Map(state.sessionStates);
+          newSessionStates.set(targetSessionId, {
+            ...sessionState,
+            fileMentions: newFileMentions
+          });
+          updates.sessionStates = newSessionStates;
+
+          // Update top-level field if appropriate
+          if (shouldUpdateTopLevel) {
+            updates.fileMentions = newFileMentions;
+          }
+        }
       }
 
-      if (!state.currentSessionId) return state;
-
-      const sessionState = state.sessionStates.get(state.currentSessionId);
-      if (!sessionState) return state;
-
-      // Check if mention with same ID already exists
-      if (sessionState.fileMentions.some((m) => m.id === mention.id)) {
-        return state;
-      }
-
-      const newFileMentions = [...sessionState.fileMentions, mention];
-      const newSessionStates = new Map(state.sessionStates);
-      newSessionStates.set(state.currentSessionId, {
-        ...sessionState,
-        fileMentions: newFileMentions
-      });
-
-      return {
-        fileMentions: newFileMentions,
-        sessionStates: newSessionStates
-      };
+      return updates;
     }),
 
   removeFileMention: (id, sessionId) =>
     set((state) => {
-      // Validation guard: ensure session ID matches
-      if (sessionId && state.currentSessionId !== sessionId) {
-        console.warn(`[InsightsStore] Rejected removeFileMention for session ${sessionId} because current session is ${state.currentSessionId}`);
-        return state;
+      // Determine target session ID and whether to update top-level field
+      const targetSessionId = sessionId || state.currentSessionId;
+      const shouldUpdateTopLevel = !sessionId || sessionId === state.currentSessionId;
+
+      const updates: Partial<InsightsState> = {};
+
+      // Update sessionStates map if we have a target session
+      if (targetSessionId) {
+        const sessionState = state.sessionStates.get(targetSessionId);
+        if (sessionState) {
+          const newFileMentions = sessionState.fileMentions.filter((m) => m.id !== id);
+
+          const newSessionStates = new Map(state.sessionStates);
+          newSessionStates.set(targetSessionId, {
+            ...sessionState,
+            fileMentions: newFileMentions
+          });
+          updates.sessionStates = newSessionStates;
+
+          // Update top-level field if appropriate
+          if (shouldUpdateTopLevel) {
+            updates.fileMentions = newFileMentions;
+          }
+        }
       }
 
-      if (!state.currentSessionId) return state;
-
-      const sessionState = state.sessionStates.get(state.currentSessionId);
-      if (!sessionState) return state;
-
-      const newFileMentions = sessionState.fileMentions.filter((m) => m.id !== id);
-      const newSessionStates = new Map(state.sessionStates);
-      newSessionStates.set(state.currentSessionId, {
-        ...sessionState,
-        fileMentions: newFileMentions
-      });
-
-      return {
-        fileMentions: newFileMentions,
-        sessionStates: newSessionStates
-      };
+      return updates;
     }),
 
   clearFileMentions: (sessionId) =>
     set((state) => {
-      // Validation guard: ensure session ID matches
-      if (sessionId && state.currentSessionId !== sessionId) {
-        console.warn(`[InsightsStore] Rejected clearFileMentions for session ${sessionId} because current session is ${state.currentSessionId}`);
-        return state;
+      // Determine target session ID and whether to update top-level field
+      const targetSessionId = sessionId || state.currentSessionId;
+      const shouldUpdateTopLevel = !sessionId || sessionId === state.currentSessionId;
+
+      const updates: Partial<InsightsState> = {};
+
+      // Update top-level field if appropriate
+      if (shouldUpdateTopLevel) {
+        updates.fileMentions = [];
       }
 
-      if (!state.currentSessionId) return state;
+      // Update sessionStates map if we have a target session
+      if (targetSessionId) {
+        const sessionState = state.sessionStates.get(targetSessionId);
+        if (sessionState) {
+          const newSessionStates = new Map(state.sessionStates);
+          newSessionStates.set(targetSessionId, {
+            ...sessionState,
+            fileMentions: []
+          });
+          updates.sessionStates = newSessionStates;
+        }
+      }
 
-      const sessionState = state.sessionStates.get(state.currentSessionId);
-      if (!sessionState) return state;
-
-      const newSessionStates = new Map(state.sessionStates);
-      newSessionStates.set(state.currentSessionId, {
-        ...sessionState,
-        fileMentions: []
-      });
-
-      return {
-        fileMentions: [],
-        sessionStates: newSessionStates
-      };
+      return updates;
     }),
 
   finalizeStreamingMessage: (suggestedTask, sessionId) =>
     set((state) => {
-      // Validation guard: ensure session ID matches
-      if (sessionId && state.currentSessionId !== sessionId) {
-        console.warn(`[InsightsStore] Rejected finalizeStreamingMessage for session ${sessionId} because current session is ${state.currentSessionId}`);
-        return state;
-      }
+      // Determine target session ID and whether to update top-level field
+      const targetSessionId = sessionId || state.currentSessionId;
+      const shouldUpdateTopLevel = !sessionId || sessionId === state.currentSessionId;
 
-      if (!state.currentSessionId) return state;
+      const updates: Partial<InsightsState> = {};
 
-      const sessionState = state.sessionStates.get(state.currentSessionId);
-      if (!sessionState) return state;
+      // Update sessionStates map if we have a target session
+      if (targetSessionId) {
+        const sessionState = state.sessionStates.get(targetSessionId);
+        if (sessionState) {
+          const content = sessionState.streamingContent;
+          const toolsUsed = sessionState.toolsUsed.length > 0 ? [...sessionState.toolsUsed] : undefined;
 
-      const content = sessionState.streamingContent;
-      const toolsUsed = sessionState.toolsUsed.length > 0 ? [...sessionState.toolsUsed] : undefined;
+          // Reset streaming state in sessionStates map
+          const newSessionStates = new Map(state.sessionStates);
+          newSessionStates.set(targetSessionId, {
+            ...sessionState,
+            streamingContent: '',
+            toolsUsed: []
+          });
+          updates.sessionStates = newSessionStates;
 
-      if (!content && !suggestedTask && !toolsUsed) {
-        const newSessionStates = new Map(state.sessionStates);
-        newSessionStates.set(state.currentSessionId, {
-          ...sessionState,
-          streamingContent: '',
-          toolsUsed: []
-        });
-        return {
-          streamingContent: '',
-          toolsUsed: [],
-          sessionStates: newSessionStates
-        };
-      }
-
-      const newMessage: InsightsChatMessage = {
-        id: `msg-${Date.now()}`,
-        role: 'assistant',
-        content,
-        timestamp: new Date(),
-        suggestedTask,
-        toolsUsed
-      };
-
-      if (!state.session) {
-        const newSessionStates = new Map(state.sessionStates);
-        newSessionStates.set(state.currentSessionId, {
-          ...sessionState,
-          streamingContent: '',
-          toolsUsed: []
-        });
-        return {
-          streamingContent: '',
-          toolsUsed: [],
-          sessionStates: newSessionStates,
-          session: {
-            id: `session-${Date.now()}`,
-            projectId: '',
-            messages: [newMessage],
-            createdAt: new Date(),
-            updatedAt: new Date()
+          // Update top-level mirrored fields only if updating the current session
+          if (shouldUpdateTopLevel) {
+            updates.streamingContent = '';
+            updates.toolsUsed = [];
           }
-        };
+
+          // If no content, suggested task, or tools, just reset streaming state
+          if (!content && !suggestedTask && !toolsUsed) {
+            return updates;
+          }
+
+          const newMessage: InsightsChatMessage = {
+            id: `msg-${Date.now()}`,
+            role: 'assistant',
+            content,
+            timestamp: new Date(),
+            suggestedTask,
+            toolsUsed
+          };
+
+          // If no session exists, create one
+          if (!state.session) {
+            return {
+              ...updates,
+              session: {
+                id: `session-${Date.now()}`,
+                projectId: '',
+                messages: [newMessage],
+                createdAt: new Date(),
+                updatedAt: new Date()
+              }
+            };
+          }
+
+          // Add message to existing session
+          return {
+            ...updates,
+            session: {
+              ...state.session,
+              messages: [...state.session.messages, newMessage],
+              updatedAt: new Date()
+            }
+          };
+        }
       }
 
-      const newSessionStates = new Map(state.sessionStates);
-      newSessionStates.set(state.currentSessionId, {
-        ...sessionState,
-        streamingContent: '',
-        toolsUsed: []
-      });
-
-      return {
-        streamingContent: '',
-        toolsUsed: [],
-        sessionStates: newSessionStates,
-        session: {
-          ...state.session,
-          messages: [...state.session.messages, newMessage],
-          updatedAt: new Date()
-        }
-      };
+      return updates;
     }),
 
   clearSession: () => {
