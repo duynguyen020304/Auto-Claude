@@ -15,6 +15,23 @@ import { MODEL_ID_MAP } from '../../shared/constants';
 import { InsightsConfig } from './config';
 import { detectRateLimit, createSDKRateLimitInfo } from '../rate-limit-detector';
 import { SessionQueue, SessionPriority } from './session-queue';
+import { RollingWindowRateLimiter } from './rate-limiter';
+
+/**
+ * Rate limiting configuration
+ */
+interface RateLimitConfig {
+  limit: number;
+  windowMs: number;
+}
+
+/**
+ * Default rate limit: 10 sessions per minute
+ */
+const DEFAULT_RATE_LIMIT: RateLimitConfig = {
+  limit: 10,
+  windowMs: 60000 // 1 minute
+};
 
 /**
  * Message processor result
@@ -33,11 +50,19 @@ export class InsightsExecutor extends EventEmitter {
   private config: InsightsConfig;
   private activeProcesses: Map<string, ChildProcess> = new Map();
   private sessionQueue: SessionQueue;
+  private rateLimiter: RollingWindowRateLimiter;
+  private rateLimitConfig: RateLimitConfig;
 
-  constructor(config: InsightsConfig, sessionQueue: SessionQueue) {
+  constructor(
+    config: InsightsConfig,
+    sessionQueue: SessionQueue,
+    rateLimitConfig: RateLimitConfig = DEFAULT_RATE_LIMIT
+  ) {
     super();
     this.config = config;
     this.sessionQueue = sessionQueue;
+    this.rateLimiter = new RollingWindowRateLimiter();
+    this.rateLimitConfig = rateLimitConfig;
   }
 
   /**
@@ -61,6 +86,48 @@ export class InsightsExecutor extends EventEmitter {
   }
 
   /**
+   * Update rate limit configuration
+   */
+  updateRateLimitConfig(config: Partial<RateLimitConfig>): void {
+    this.rateLimitConfig = { ...this.rateLimitConfig, ...config };
+  }
+
+  /**
+   * Get current rate limit configuration
+   */
+  getRateLimitConfig(): RateLimitConfig {
+    return { ...this.rateLimitConfig };
+  }
+
+  /**
+   * Get rate limiter instance (for testing)
+   */
+  getRateLimiter(): RollingWindowRateLimiter {
+    return this.rateLimiter;
+  }
+
+  /**
+   * Get current rate limit usage for a project
+   */
+  getRateLimitUsage(projectId: string): number {
+    return this.rateLimiter.getUsage(projectId, this.rateLimitConfig.windowMs);
+  }
+
+  /**
+   * Clear rate limit data for a specific project
+   */
+  clearRateLimit(projectId: string): void {
+    this.rateLimiter.clearProject(projectId);
+  }
+
+  /**
+   * Clear all rate limit data
+   */
+  clearAllRateLimits(): void {
+    this.rateLimiter.clearAll();
+  }
+
+  /**
    * Execute insights query
    */
   async execute(
@@ -81,6 +148,15 @@ export class InsightsExecutor extends EventEmitter {
     // Check concurrent limits using session queue
     if (!this.sessionQueue.canStartSession(projectId)) {
       throw new Error('Cannot start session: concurrent limit reached');
+    }
+
+    // Check rate limiting before starting session
+    if (!this.rateLimiter.canStartSession(projectId, this.rateLimitConfig.limit, this.rateLimitConfig.windowMs)) {
+      const currentUsage = this.rateLimiter.getUsage(projectId, this.rateLimitConfig.windowMs);
+      throw new Error(
+        `Rate limit exceeded: ${currentUsage}/${this.rateLimitConfig.limit} sessions per ${this.rateLimitConfig.windowMs / 1000}s. ` +
+        `Please wait before starting another session.`
+      );
     }
 
     const autoBuildSource = this.config.getAutoBuildSourcePath();
