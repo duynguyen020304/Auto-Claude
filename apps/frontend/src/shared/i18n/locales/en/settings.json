@@ -165,6 +165,48 @@
       "deleting": "Deleting..."
     }
   },
+  "credentialProfiles": {
+    "title": "Credential Profiles",
+    "description": "Manage OAuth tokens and API keys with usage limits",
+    "addButton": "Add Profile",
+    "type": {
+      "api": "API",
+      "oauth": "OAuth"
+    },
+    "status": {
+      "active": "Active",
+      "rateLimited": "Rate Limited",
+      "disabled": "Disabled"
+    },
+    "usageLimit": "Usage limit: {{limit}}",
+    "rotationMode": "Rotation: {{mode}}",
+    "usageMetrics": "{{requests}} requests, {{tokens}} tokens",
+    "empty": {
+      "title": "No credential profiles configured",
+      "description": "Create a profile to manage your OAuth tokens and API keys with usage tracking.",
+      "action": "Create First Profile"
+    },
+    "tooltips": {
+      "edit": "Edit profile",
+      "delete": "Delete profile"
+    },
+    "deleteAriaLabel": "Delete profile {{name}}",
+    "toast": {
+      "delete": {
+        "title": "Profile deleted",
+        "description": "\"{{name}}\" has been removed.",
+        "errorTitle": "Failed to delete profile",
+        "errorFallback": "An error occurred while deleting the profile."
+      }
+    },
+    "dialog": {
+      "deleteTitle": "Delete Profile?",
+      "deleteDescription": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone.",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "deleting": "Deleting..."
+    }
+  },
   "modelSelect": {
     "placeholder": "Select a model or type manually",
     "placeholderManual": "Enter model name (e.g., claude-sonnet-4-5-20250929)",
