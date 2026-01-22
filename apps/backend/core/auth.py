@@ -2120,3 +2120,442 @@ def _save_pool_linux(pool: dict) -> bool:
     ) as e:
         logger.warning(f"Failed to save pool '{pool['id']}' to Linux Secret Service: {e}")
         return False
+
+
+def list_pools() -> list[dict[str, str | int | list[str] | dict | None]]:
+    """
+    List all credential pools from platform-specific storage.
+
+    Retrieves all Auto Claude credential pools from:
+    - macOS: Keychain (all items with service "auto-claude-pool-*")
+    - Windows: Credential Manager or .pool-auto-claude-*.json files
+    - Linux: Secret Service API (all items with application "auto-claude-pool-*")
+
+    Returns:
+        List of pool dictionaries with keys:
+        - id: Unique pool identifier
+        - name: Pool name
+        - profile_ids: List of credential profile IDs in this pool
+        - limit: Maximum number of profiles to use from this pool
+        - rotation_config: Dictionary with rotation configuration
+
+    Note:
+        This function only returns pool metadata, not actual credential values.
+        Use get_pool(id) to retrieve the full pool details.
+
+    Example:
+        >>> pools = list_pools()
+        >>> for pool in pools:
+        ...     print(f"{pool['name']}: {len(pool['profile_ids'])} profiles")
+    """
+    if is_macos():
+        return _list_pools_macos()
+    elif is_windows():
+        return _list_pools_windows()
+    else:
+        # Linux: use secret-service API via DBus
+        return _list_pools_linux()
+
+
+def _list_pools_macos() -> list[dict[str, str | int | list[str] | dict | None]]:
+    """
+    List all credential pools from macOS Keychain.
+
+    Searches for all Keychain items with service names matching
+    "auto-claude-pool-*" pattern to find Auto Claude credential pools.
+
+    Returns:
+        List of pool dictionaries
+    """
+    try:
+        # Use 'security' command to dump all Auto Claude pools
+        result = subprocess.run(
+            ["/usr/bin/security", "dump-keychain", "-g"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+
+        if result.returncode != 0:
+            logger.warning("Failed to dump macOS Keychain for pool listing")
+            return []
+
+        # Parse keychain output to find Auto Claude pools
+        pools = []
+        lines = result.stdout.split("\n")
+
+        current_pool = None
+        for line in lines:
+            # Look for service name (indicating a new pool)
+            if "svc." in line or "service" in line.lower():
+                service_match = None
+                # Extract service name from line format
+                for part in line.split('"'):
+                    if part.startswith("auto-claude-pool-"):
+                        service_match = part
+                        break
+
+                if service_match:
+                    # Save previous pool if exists
+                    if current_pool:
+                        pools.append(current_pool)
+
+                    # Start new pool
+                    pool_id = service_match.replace("auto-claude-pool-", "")
+                    current_pool = {
+                        "id": pool_id,
+                        "name": f"Pool {pool_id}",
+                        "profile_ids": [],
+                        "limit": 0,
+                        "rotation_config": {"mode": "manual"},
+                    }
+
+        # Don't forget the last pool
+        if current_pool:
+            pools.append(current_pool)
+
+        return pools
+
+    except subprocess.TimeoutExpired:
+        logger.warning("Timeout while listing macOS Keychain pools")
+        return []
+    except Exception as e:
+        logger.warning(f"Failed to list macOS Keychain pools: {e}")
+        return []
+
+
+def _list_pools_windows() -> list[dict[str, str | int | list[str] | dict | None]]:
+    """
+    List all credential pools from Windows credential storage.
+
+    Checks for pool files in ~/.claude directory.
+
+    Returns:
+        List of pool dictionaries
+    """
+    pools = []
+
+    try:
+        # Check for pool files in ~/.claude directory
+        claude_dir = os.path.expandvars(r"%USERPROFILE%\.claude")
+        if os.path.exists(claude_dir):
+            for filename in os.listdir(claude_dir):
+                if filename.startswith(".pool-auto-claude-") and filename.endswith(
+                    ".json"
+                ):
+                    try:
+                        pool_id = filename.replace(".pool-auto-claude-", "").replace(
+                            ".json", ""
+                        )
+                        filepath = os.path.join(claude_dir, filename)
+
+                        with open(filepath, encoding="utf-8") as f:
+                            data = json.load(f)
+
+                        pools.append(
+                            {
+                                "id": pool_id,
+                                "name": data.get("name", f"Pool {pool_id}"),
+                                "profile_ids": data.get("profile_ids", []),
+                                "limit": data.get("limit", 0),
+                                "rotation_config": data.get("rotation_config", {"mode": "manual"}),
+                            }
+                        )
+                    except (json.JSONDecodeError, KeyError, IOError) as e:
+                        logger.debug(f"Failed to read pool file {filename}: {e}")
+                        continue
+
+        return pools
+
+    except Exception as e:
+        logger.warning(f"Failed to list Windows pools: {e}")
+        return []
+
+
+def _list_pools_linux() -> list[dict[str, str | int | list[str] | dict | None]]:
+    """
+    List all credential pools from Linux Secret Service API.
+
+    Searches for all Secret Service items with application attribute
+    matching "auto-claude-pool-*" pattern.
+
+    Returns:
+        List of pool dictionaries
+    """
+    if secretstorage is None:
+        # secretstorage not installed
+        return []
+
+    try:
+        # Get the default collection
+        try:
+            collection = secretstorage.get_default_collection(None)
+        except (
+            AttributeError,
+            secretstorage.exceptions.SecretServiceNotAvailableException,
+        ):
+            # DBus not available or secret-service not running
+            return []
+
+        if collection.is_locked():
+            # Try to unlock the collection (may prompt user for password)
+            try:
+                collection.unlock()
+            except secretstorage.exceptions.SecretStorageException:
+                # User cancelled or unlock failed
+                return []
+
+        # Search for all items
+        items = collection.get_all_items()
+
+        pools = []
+        for item in items:
+            # Get item attributes
+            attrs = item.get_attributes()
+
+            # Check if this is an Auto Claude pool
+            application = attrs.get("application", "")
+            if application.startswith("auto-claude-pool-"):
+                # Extract pool ID from application name
+                pool_id = application.replace("auto-claude-pool-", "")
+
+                # Get label for name
+                label = item.get_label()
+
+                # Try to get secret to load pool data
+                secret = item.get_secret()
+                if secret:
+                    try:
+                        if isinstance(secret, bytes):
+                            secret = secret.decode("utf-8")
+                        data = json.loads(secret)
+
+                        pools.append(
+                            {
+                                "id": pool_id,
+                                "name": data.get("name", label or f"Pool {pool_id}"),
+                                "profile_ids": data.get("profile_ids", []),
+                                "limit": data.get("limit", 0),
+                                "rotation_config": data.get("rotation_config", {"mode": "manual"}),
+                            }
+                        )
+                    except (json.JSONDecodeError, UnicodeDecodeError):
+                        # Secret is not valid JSON, use defaults
+                        pools.append(
+                            {
+                                "id": pool_id,
+                                "name": label or f"Pool {pool_id}",
+                                "profile_ids": [],
+                                "limit": 0,
+                                "rotation_config": {"mode": "manual"},
+                            }
+                        )
+
+        return pools
+
+    except (
+        secretstorage.exceptions.SecretStorageException,
+        json.JSONDecodeError,
+        AttributeError,
+        TypeError,
+    ) as e:
+        logger.warning(f"Failed to list Linux Secret Service pools: {e}")
+        return []
+
+
+def get_pool(pool_id: str) -> dict[str, str | int | list[str] | dict | None] | None:
+    """
+    Get a single credential pool by ID from platform-specific storage.
+
+    Retrieves the full pool configuration from:
+    - macOS: Keychain (service: "auto-claude-pool-{pool_id}")
+    - Windows: .pool-auto-claude-{pool_id}.json file
+    - Linux: Secret Service API (application: "auto-claude-pool-{pool_id}")
+
+    Args:
+        pool_id: Unique pool identifier (e.g., "production-claude")
+
+    Returns:
+        Dictionary with pool data including:
+        - id: Pool ID
+        - name: Pool name
+        - profile_ids: List of credential profile IDs in this pool
+        - limit: Maximum number of profiles to use from this pool
+        - rotation_config: Dictionary with rotation configuration
+
+        Returns None if pool not found.
+
+    Example:
+        >>> pool = get_pool("production-claude")
+        >>> if pool:
+        ...     print(f"Found: {pool['name']}")
+        ...     profiles = pool['profile_ids']
+    """
+    if is_macos():
+        return _get_pool_macos(pool_id)
+    elif is_windows():
+        return _get_pool_windows(pool_id)
+    else:
+        # Linux: use secret-service API via DBus
+        return _get_pool_linux(pool_id)
+
+
+def _get_pool_macos(pool_id: str) -> dict[str, str | int | list[str] | dict | None] | None:
+    """
+    Get a credential pool from macOS Keychain.
+
+    Args:
+        pool_id: Unique pool identifier
+
+    Returns:
+        Pool dictionary, or None if not found
+    """
+    try:
+        # Construct service name for this pool
+        service_name = f"auto-claude-pool-{pool_id}"
+
+        # Use 'security' command to find password
+        result = subprocess.run(
+            [
+                "/usr/bin/security",
+                "find-generic-password",
+                "-s",
+                service_name,
+                "-w",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+
+        if result.returncode != 0:
+            logger.debug(f"Pool '{pool_id}' not found in macOS Keychain")
+            return None
+
+        pool_json = result.stdout.strip()
+        if not pool_json:
+            return None
+
+        data = json.loads(pool_json)
+
+        # Extract pool data
+        return {
+            "id": pool_id,
+            "name": data.get("name", f"Pool {pool_id}"),
+            "profile_ids": data.get("profile_ids", []),
+            "limit": data.get("limit", 0),
+            "rotation_config": data.get("rotation_config", {"mode": "manual"}),
+        }
+
+    except (subprocess.TimeoutExpired, json.JSONDecodeError, KeyError, Exception) as e:
+        logger.warning(f"Failed to get pool '{pool_id}' from macOS Keychain: {e}")
+        return None
+
+
+def _get_pool_windows(pool_id: str) -> dict[str, str | int | list[str] | dict | None] | None:
+    """
+    Get a credential pool from Windows credential storage.
+
+    Checks for pool file in ~/.claude directory.
+
+    Args:
+        pool_id: Unique pool identifier
+
+    Returns:
+        Pool dictionary, or None if not found
+    """
+    try:
+        # Check for pool file in ~/.claude directory
+        claude_dir = os.path.expandvars(r"%USERPROFILE%\.claude")
+        pool_filename = f".pool-auto-claude-{pool_id}.json"
+        pool_path = os.path.join(claude_dir, pool_filename)
+
+        if not os.path.exists(pool_path):
+            logger.debug(f"Pool '{pool_id}' not found in Windows pool files")
+            return None
+
+        with open(pool_path, encoding="utf-8") as f:
+            data = json.load(f)
+
+        return {
+            "id": pool_id,
+            "name": data.get("name", f"Pool {pool_id}"),
+            "profile_ids": data.get("profile_ids", []),
+            "limit": data.get("limit", 0),
+            "rotation_config": data.get("rotation_config", {"mode": "manual"}),
+        }
+
+    except (json.JSONDecodeError, KeyError, FileNotFoundError, Exception) as e:
+        logger.warning(f"Failed to get pool '{pool_id}' from Windows storage: {e}")
+        return None
+
+
+def _get_pool_linux(pool_id: str) -> dict[str, str | int | list[str] | dict | None] | None:
+    """
+    Get a credential pool from Linux Secret Service API.
+
+    Args:
+        pool_id: Unique pool identifier
+
+    Returns:
+        Pool dictionary, or None if not found
+    """
+    if secretstorage is None:
+        logger.debug("secretstorage not available for pool retrieval")
+        return None
+
+    try:
+        # Get the default collection
+        try:
+            collection = secretstorage.get_default_collection(None)
+        except (
+            AttributeError,
+            secretstorage.exceptions.SecretServiceNotAvailableException,
+        ):
+            logger.debug("Secret Service not available")
+            return None
+
+        if collection.is_locked():
+            # Try to unlock the collection
+            try:
+                collection.unlock()
+            except secretstorage.exceptions.SecretStorageException:
+                logger.debug("Failed to unlock Secret Service collection")
+                return None
+
+        # Search for items with our application attribute
+        items = collection.search_items({"application": f"auto-claude-pool-{pool_id}"})
+
+        for item in items:
+            # Get the secret (stored as JSON string)
+            secret = item.get_secret()
+            if not secret:
+                continue
+
+            try:
+                # Decode bytes to string if needed
+                if isinstance(secret, bytes):
+                    secret = secret.decode("utf-8")
+                data = json.loads(secret)
+
+                return {
+                    "id": pool_id,
+                    "name": data.get("name", f"Pool {pool_id}"),
+                    "profile_ids": data.get("profile_ids", []),
+                    "limit": data.get("limit", 0),
+                    "rotation_config": data.get("rotation_config", {"mode": "manual"}),
+                }
+            except json.JSONDecodeError:
+                continue
+
+        logger.debug(f"Pool '{pool_id}' not found in Linux Secret Service")
+        return None
+
+    except (
+        secretstorage.exceptions.SecretStorageException,
+        json.JSONDecodeError,
+        AttributeError,
+        TypeError,
+    ) as e:
+        logger.warning(f"Failed to get pool '{pool_id}' from Linux Secret Service: {e}")
+        return None
