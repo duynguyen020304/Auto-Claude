@@ -292,5 +292,24 @@
     "errors": {
       "profileNotFound": "Profile not found"
     }
+  },
+  "taskProfile": {
+    "apiProfile": {
+      "label": "API Profile",
+      "placeholder": "Select API profile",
+      "limit": "Limit",
+      "empty": "No API profiles available",
+      "disabledBecausePool": "Disabled when pool is selected"
+    },
+    "pool": {
+      "label": "Pool",
+      "placeholder": "Select pool",
+      "profiles": "profiles",
+      "empty": "No pools available",
+      "disabledBecauseProfile": "Disabled when API profile is selected"
+    },
+    "validation": {
+      "bothSelected": "Cannot select both API profile and pool"
+    }
   }
 }

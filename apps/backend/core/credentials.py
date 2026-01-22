@@ -348,6 +348,129 @@ class CredentialProfile:
         )
 
 
+@dataclass
+class Pool:
+    """
+    A pool of credential profiles with rotation configuration.
+
+    A pool groups multiple credential profiles together and defines how they
+    should be rotated during usage. This enables load balancing, rate limit
+    avoidance, and high availability through automatic credential rotation.
+
+    Attributes:
+        id: Unique identifier for this pool (e.g., "pool-001")
+        name: Human-readable name for this pool
+        profile_ids: List of credential profile IDs in this pool
+        limit: Maximum number of profiles to use from this pool (0 = no limit)
+        rotation_config: Configuration for credential rotation strategy
+
+    Example:
+        >>> pool = Pool(
+        ...     id="pool-001",
+        ...     name="Production Claude Pool",
+        ...     profile_ids=["cred-001", "cred-002", "cred-003"],
+        ...     limit=2,
+        ...     rotation_config=RotationConfig(mode=RotationMode.ROUND_ROBIN)
+        ... )
+    """
+
+    id: str
+    name: str
+    profile_ids: list[str] = field(default_factory=list)
+    limit: int = 0
+    rotation_config: RotationConfig = field(default_factory=lambda: RotationConfig(mode=RotationMode.MANUAL))
+
+    def __post_init__(self):
+        """Validate pool configuration after initialization."""
+        if self.limit < 0:
+            raise ValueError(
+                f"limit must be non-negative, got {self.limit}"
+            )
+        if not self.id:
+            raise ValueError("Pool ID cannot be empty")
+        if not self.name:
+            raise ValueError("Pool name cannot be empty")
+
+    def is_empty(self) -> bool:
+        """
+        Check if this pool has no credential profiles.
+
+        Returns:
+            True if pool has no profiles, False otherwise
+        """
+        return len(self.profile_ids) == 0
+
+    def get_effective_profiles(self) -> list[str]:
+        """
+        Get the effective list of profile IDs to use from this pool.
+
+        If limit is set and greater than 0, returns up to that many profiles.
+        Otherwise, returns all profiles in the pool.
+
+        Returns:
+            List of credential profile IDs to use
+        """
+        if self.limit > 0:
+            return self.profile_ids[:self.limit]
+        return self.profile_ids.copy()
+
+    def has_profile(self, profile_id: str) -> bool:
+        """
+        Check if a specific profile ID is in this pool.
+
+        Args:
+            profile_id: Credential profile ID to check
+
+        Returns:
+            True if profile is in the pool, False otherwise
+        """
+        return profile_id in self.profile_ids
+
+    def add_profile(self, profile_id: str) -> None:
+        """
+        Add a credential profile to this pool.
+
+        Args:
+            profile_id: Credential profile ID to add
+        """
+        if profile_id not in self.profile_ids:
+            self.profile_ids.append(profile_id)
+            logger.debug(f"Added profile {profile_id} to pool {self.id}")
+
+    def remove_profile(self, profile_id: str) -> bool:
+        """
+        Remove a credential profile from this pool.
+
+        Args:
+            profile_id: Credential profile ID to remove
+
+        Returns:
+            True if profile was removed, False if not found
+        """
+        if profile_id in self.profile_ids:
+            self.profile_ids.remove(profile_id)
+            logger.debug(f"Removed profile {profile_id} from pool {self.id}")
+            return True
+        return False
+
+    def get_profile_count(self) -> int:
+        """
+        Get the number of profiles in this pool.
+
+        Returns:
+            Number of credential profiles
+        """
+        return len(self.profile_ids)
+
+    def __repr__(self) -> str:
+        """Return string representation."""
+        return (
+            f"Pool(id={self.id!r}, name={self.name!r}, "
+            f"profiles={len(self.profile_ids)}, limit={self.limit}, "
+            f"rotation_mode={self.rotation_config.mode.value!r})"
+        )
+
+
 class CredentialStorage(ABC):
     """
     Abstract interface for platform-specific credential storage.

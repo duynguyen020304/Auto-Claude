@@ -165,6 +165,226 @@
       "deleting": "Deleting..."
     }
   },
+  "credentialProfiles": {
+    "title": "Credential Profiles",
+    "description": "Manage OAuth tokens and API keys with usage limits",
+    "addButton": "Add Profile",
+    "type": {
+      "api": "API",
+      "oauth": "OAuth"
+    },
+    "status": {
+      "active": "Active",
+      "rateLimited": "Rate Limited",
+      "disabled": "Disabled"
+    },
+    "usageLimit": "Usage limit: {{limit}}",
+    "rotationMode": "Rotation: {{mode}}",
+    "usageMetrics": "{{requests}} requests, {{tokens}} tokens",
+    "empty": {
+      "title": "No credential profiles configured",
+      "description": "Create a profile to manage your OAuth tokens and API keys with usage tracking.",
+      "action": "Create First Profile"
+    },
+    "tooltips": {
+      "edit": "Edit profile",
+      "delete": "Delete profile"
+    },
+    "deleteAriaLabel": "Delete profile {{name}}",
+    "form": {
+      "nameLabel": "Profile Name",
+      "namePlaceholder": "e.g., Production API Key",
+      "typeLabel": "Profile Type",
+      "typePlaceholder": "Select profile type",
+      "typeDescription": {
+        "api": "API Key profiles require usage limits and support rotation strategies.",
+        "oauth": "OAuth profiles do not have usage limits."
+      },
+      "credentialLabel": "Credential Value",
+      "credentialPlaceholder": {
+        "api": "sk-ant-...",
+        "oauth": "OAuth token"
+      },
+      "changeCredential": "Change",
+      "cancelChange": "Cancel Change",
+      "usageLimitLabel": "Usage Limit",
+      "usageLimitPlaceholder": "e.g., 100",
+      "usageLimitHelp": "Maximum number of requests allowed for this profile.",
+      "rotationModeLabel": "Rotation Mode",
+      "rotationModePlaceholder": "Select rotation mode",
+      "rotationMode": {
+        "manual": "Manual",
+        "roundRobin": "Round Robin",
+        "usageBased": "Usage Based",
+        "rateLimitAware": "Rate Limit Aware"
+      },
+      "rotationModeDescription": {
+        "manual": "Manually select which credential to use.",
+        "roundRobin": "Rotate through credentials in order.",
+        "usageBased": "Use credential with lowest usage.",
+        "rateLimitAware": "Rotate based on rate limit thresholds."
+      },
+      "rateLimitThresholdLabel": "Rate Limit Threshold",
+      "rateLimitThresholdPlaceholder": "e.g., 0.8",
+      "rateLimitThresholdHelp": "Threshold (0.0-1.0) for switching credentials when rate limit is approached.",
+      "save": "Save Profile",
+      "saving": "Saving...",
+      "cancel": "Cancel",
+      "validation": {
+        "nameRequired": "Name is required",
+        "credentialRequired": "Credential value is required",
+        "usageLimitRequired": "Usage limit is required for API profiles",
+        "usageLimitNonNegative": "Usage limit must be a non-negative number",
+        "thresholdRequired": "Rate limit threshold is required for rate-limit-aware mode",
+        "thresholdBetween0And1": "Rate limit threshold must be between 0 and 1"
+      }
+    },
+    "dialog": {
+      "createTitle": "Create Credential Profile",
+      "editTitle": "Edit Credential Profile",
+      "deleteTitle": "Delete Profile?",
+      "deleteDescription": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone.",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "deleting": "Deleting..."
+    },
+    "toast": {
+      "create": {
+        "title": "Profile created",
+        "description": "\"{{name}}\" has been added successfully."
+      },
+      "update": {
+        "title": "Profile updated",
+        "description": "\"{{name}}\" has been updated successfully."
+      },
+      "delete": {
+        "title": "Profile deleted",
+        "description": "\"{{name}}\" has been removed.",
+        "errorTitle": "Failed to delete profile",
+        "errorFallback": "An error occurred while deleting the profile."
+      }
+    }
+  },
+  "pools": {
+    "title": "Credential Pools",
+    "description": "Group multiple credential profiles with rotation strategies and limits",
+    "addButton": "Add Pool",
+    "empty": {
+      "title": "No pools configured",
+      "description": "Create a pool to group multiple credential profiles with shared limits and rotation.",
+      "action": "Create First Pool"
+    },
+    "profileCount": {
+      "single": "{{count}} profile",
+      "multiple": "{{count}} profiles"
+    },
+    "profileType": {
+      "api": "API",
+      "oauth": "OAuth"
+    },
+    "rotationMode": {
+      "label": "Rotation",
+      "manual": "Manual",
+      "roundRobin": "Round Robin",
+      "usageBased": "Usage Based",
+      "rateLimitAware": "Rate Limit Aware"
+    },
+    "taskUsage": {
+      "label": "Tasks"
+    },
+    "rateLimitThreshold": "Threshold: {{threshold}}",
+    "warnings": {
+      "noProfiles": "No profiles assigned"
+    },
+    "tooltips": {
+      "edit": "Edit pool",
+      "delete": "Delete pool"
+    },
+    "deleteAriaLabel": "Delete pool {{name}}",
+    "form": {
+      "nameLabel": "Pool Name",
+      "namePlaceholder": "e.g., Production Pool",
+      "profilesLabel": "Profiles",
+      "profilesLabelApi": "API Key Profiles",
+      "profilesLabelOauth": "OAuth Profiles",
+      "profilesHelp": "Select at least one profile to include in this pool.",
+      "limitLabel": "Pool Limit",
+      "limitPlaceholder": "e.g., 10",
+      "limitHelp": "Maximum concurrent tasks (0 = unlimited).",
+      "rotationConfigLabel": "Rotation Configuration",
+      "rotationModeLabel": "Rotation Mode",
+      "rateLimitThresholdLabel": "Rate Limit Threshold",
+      "maxRetriesLabel": "Max Retries",
+      "retryDelayLabel": "Retry Delay (seconds)",
+      "save": "Save Pool",
+      "saving": "Saving...",
+      "cancel": "Cancel",
+      "validation": {
+        "nameRequired": "Name is required",
+        "atLeastOneProfile": "At least one profile is required",
+        "limitRequired": "Limit is required",
+        "limitNonNegative": "Limit must be a non-negative number",
+        "thresholdRequired": "Rate limit threshold is required for rate-limit-aware mode",
+        "thresholdBetween0And1": "Rate limit threshold must be between 0 and 1",
+        "maxRetriesRequired": "Max retries is required",
+        "maxRetriesNonNegative": "Max retries must be a non-negative number",
+        "retryDelayRequired": "Retry delay is required",
+        "retryDelayNonNegative": "Retry delay must be a non-negative number"
+      }
+    },
+    "dialog": {
+      "createTitle": "Create Credential Pool",
+      "editTitle": "Edit Credential Pool",
+      "deleteTitle": "Delete Pool?",
+      "deleteDescription": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone.",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "deleting": "Deleting..."
+    },
+    "toast": {
+      "create": {
+        "title": "Pool created",
+        "description": "\"{{name}}\" has been added successfully."
+      },
+      "update": {
+        "title": "Pool updated",
+        "description": "\"{{name}}\" has been updated successfully."
+      },
+      "delete": {
+        "title": "Pool deleted",
+        "description": "\"{{name}}\" has been removed.",
+        "errorTitle": "Failed to delete pool",
+        "errorFallback": "An error occurred while deleting the pool."
+      }
+    }
+  },
+  "profiles": {
+    "type": {
+      "oauth": "OAuth",
+      "apiKey": "API"
+    }
+  },
+  "usageMonitor": {
+    "title": "Usage Monitor",
+    "description": "Real-time tracking of credential and pool usage",
+    "refresh": "Refresh",
+    "lastUpdate": "Last update: {{time}}",
+    "tabs": {
+      "profiles": "Profiles",
+      "pools": "Pools"
+    },
+    "profiles": {
+      "empty": "No credential profiles configured"
+    },
+    "pools": {
+      "empty": "No pools configured"
+    },
+    "usage": {
+      "label": "{{current}}/{{limit}} used"
+    },
+    "unlimited": "Unlimited",
+    "noLimit": "No limit"
+  },
   "modelSelect": {
     "placeholder": "Select a model or type manually",
     "placeholderManual": "Enter model name (e.g., claude-sonnet-4-5-20250929)",

@@ -37,6 +37,14 @@
       "title": "Profils API",
       "description": "Profils d'endpoint API personnalisés"
     },
+    "credential-profiles": {
+      "title": "Profils d'identifiants",
+      "description": "Profils d'identifiants avec limites et rotation"
+    },
+    "credential-pools": {
+      "title": "Pools d'identifiants",
+      "description": "Groupes de profils avec rotation partagée"
+    },
     "updates": {
       "title": "Mises à jour",
       "description": "Mises à jour Auto Claude"
@@ -164,6 +172,226 @@
       "delete": "Supprimer",
       "deleting": "Suppression..."
     }
+  },
+  "credentialProfiles": {
+    "title": "Profils d'identifiants",
+    "description": "Gérez les jetons OAuth et les clés API avec des limites d'utilisation",
+    "addButton": "Ajouter un profil",
+    "type": {
+      "api": "API",
+      "oauth": "OAuth"
+    },
+    "status": {
+      "active": "Actif",
+      "rateLimited": "Limité",
+      "disabled": "Désactivé"
+    },
+    "usageLimit": "Limite d'utilisation : {{limit}}",
+    "rotationMode": "Rotation : {{mode}}",
+    "usageMetrics": "{{requests}} requêtes, {{tokens}} jetons",
+    "empty": {
+      "title": "Aucun profil d'identifiants configuré",
+      "description": "Créez un profil pour gérer vos jetons OAuth et clés API avec suivi d'utilisation.",
+      "action": "Créer le premier profil"
+    },
+    "tooltips": {
+      "edit": "Modifier le profil",
+      "delete": "Supprimer le profil"
+    },
+    "deleteAriaLabel": "Supprimer le profil {{name}}",
+    "form": {
+      "nameLabel": "Nom du profil",
+      "namePlaceholder": "ex. : Clé API de production",
+      "typeLabel": "Type de profil",
+      "typePlaceholder": "Sélectionner le type de profil",
+      "typeDescription": {
+        "api": "Les profils de clé API nécessitent des limites d'utilisation et prennent en charge les stratégies de rotation.",
+        "oauth": "Les profils OAuth n'ont pas de limites d'utilisation."
+      },
+      "credentialLabel": "Valeur de l'identifiant",
+      "credentialPlaceholder": {
+        "api": "sk-ant-...",
+        "oauth": "Jeton OAuth"
+      },
+      "changeCredential": "Modifier",
+      "cancelChange": "Annuler la modification",
+      "usageLimitLabel": "Limite d'utilisation",
+      "usageLimitPlaceholder": "ex. : 100",
+      "usageLimitHelp": "Nombre maximal de requêtes autorisées pour ce profil.",
+      "rotationModeLabel": "Mode de rotation",
+      "rotationModePlaceholder": "Sélectionner le mode de rotation",
+      "rotationMode": {
+        "manual": "Manuel",
+        "roundRobin": "Tourniquet",
+        "usageBased": "Basé sur l'utilisation",
+        "rateLimitAware": "Conscient des limites de débit"
+      },
+      "rotationModeDescription": {
+        "manual": "Sélectionner manuellement l'identifiant à utiliser.",
+        "roundRobin": "Faire défiler les identifiants dans l'ordre.",
+        "usageBased": "Utiliser l'identifiant avec l'utilisation la plus faible.",
+        "rateLimitAware": "Rotation en fonction des seuils de limite de débit."
+      },
+      "rateLimitThresholdLabel": "Seuil de limite de débit",
+      "rateLimitThresholdPlaceholder": "ex. : 0.8",
+      "rateLimitThresholdHelp": "Seuil (0.0-1.0) pour changer d'identifiants lorsque la limite de débit est approchée.",
+      "save": "Enregistrer le profil",
+      "saving": "Enregistrement...",
+      "cancel": "Annuler",
+      "validation": {
+        "nameRequired": "Le nom est requis",
+        "credentialRequired": "La valeur de l'identifiant est requise",
+        "usageLimitRequired": "La limite d'utilisation est requise pour les profils API",
+        "usageLimitNonNegative": "La limite d'utilisation doit être un nombre non négatif",
+        "thresholdRequired": "Le seuil de limite de débit est requis pour le mode conscient des limites",
+        "thresholdBetween0And1": "Le seuil de limite de débit doit être entre 0 et 1"
+      }
+    },
+    "dialog": {
+      "createTitle": "Créer un profil d'identifiants",
+      "editTitle": "Modifier le profil d'identifiants",
+      "deleteTitle": "Supprimer le profil ?",
+      "deleteDescription": "Êtes-vous sûr de vouloir supprimer \"{{name}}\" ? Cette action est irréversible.",
+      "cancel": "Annuler",
+      "delete": "Supprimer",
+      "deleting": "Suppression..."
+    },
+    "toast": {
+      "create": {
+        "title": "Profil créé",
+        "description": "\"{{name}}\" a été ajouté avec succès."
+      },
+      "update": {
+        "title": "Profil mis à jour",
+        "description": "\"{{name}}\" a été mis à jour avec succès."
+      },
+      "delete": {
+        "title": "Profil supprimé",
+        "description": "\"{{name}}\" a été supprimé.",
+        "errorTitle": "Échec de la suppression du profil",
+        "errorFallback": "Une erreur s'est produite lors de la suppression du profil."
+      }
+    }
+  },
+  "pools": {
+    "title": "Pools d'identifiants",
+    "description": "Regroupez plusieurs profils d'identifiants avec des stratégies de rotation et des limites",
+    "addButton": "Ajouter un pool",
+    "empty": {
+      "title": "Aucun pool configuré",
+      "description": "Créez un pool pour regrouper plusieurs profils d'identifiants avec des limites et une rotation partagées.",
+      "action": "Créer le premier pool"
+    },
+    "profileCount": {
+      "single": "{{count}} profil",
+      "multiple": "{{count}} profils"
+    },
+    "profileType": {
+      "api": "API",
+      "oauth": "OAuth"
+    },
+    "rotationMode": {
+      "label": "Rotation",
+      "manual": "Manuel",
+      "roundRobin": "Tourniquet",
+      "usageBased": "Basé sur l'utilisation",
+      "rateLimitAware": "Conscient des limites de débit"
+    },
+    "taskUsage": {
+      "label": "Tâches"
+    },
+    "rateLimitThreshold": "Seuil : {{threshold}}",
+    "warnings": {
+      "noProfiles": "Aucun profil assigné"
+    },
+    "tooltips": {
+      "edit": "Modifier le pool",
+      "delete": "Supprimer le pool"
+    },
+    "deleteAriaLabel": "Supprimer le pool {{name}}",
+    "form": {
+      "nameLabel": "Nom du pool",
+      "namePlaceholder": "ex. : Pool de production",
+      "profilesLabel": "Profils",
+      "profilesLabelApi": "Profils de clé API",
+      "profilesLabelOauth": "Profils OAuth",
+      "profilesHelp": "Sélectionnez au moins un profil à inclure dans ce pool.",
+      "limitLabel": "Limite du pool",
+      "limitPlaceholder": "ex. : 10",
+      "limitHelp": "Tâches simultanées maximales (0 = illimité).",
+      "rotationConfigLabel": "Configuration de la rotation",
+      "rotationModeLabel": "Mode de rotation",
+      "rateLimitThresholdLabel": "Seuil de limite de débit",
+      "maxRetriesLabel": "Tentatives max",
+      "retryDelayLabel": "Délai de nouvelle tentative (secondes)",
+      "save": "Enregistrer le pool",
+      "saving": "Enregistrement...",
+      "cancel": "Annuler",
+      "validation": {
+        "nameRequired": "Le nom est requis",
+        "atLeastOneProfile": "Au moins un profil est requis",
+        "limitRequired": "La limite est requise",
+        "limitNonNegative": "La limite doit être un nombre non négatif",
+        "thresholdRequired": "Le seuil de limite de débit est requis pour le mode conscient des limites",
+        "thresholdBetween0And1": "Le seuil de limite de débit doit être entre 0 et 1",
+        "maxRetriesRequired": "Le nombre maximal de tentatives est requis",
+        "maxRetriesNonNegative": "Le nombre maximal de tentatives doit être un nombre non négatif",
+        "retryDelayRequired": "Le délai de nouvelle tentative est requis",
+        "retryDelayNonNegative": "Le délai de nouvelle tentative doit être un nombre non négatif"
+      }
+    },
+    "dialog": {
+      "createTitle": "Créer un pool d'identifiants",
+      "editTitle": "Modifier le pool d'identifiants",
+      "deleteTitle": "Supprimer le pool ?",
+      "deleteDescription": "Êtes-vous sûr de vouloir supprimer \"{{name}}\" ? Cette action est irréversible.",
+      "cancel": "Annuler",
+      "delete": "Supprimer",
+      "deleting": "Suppression..."
+    },
+    "toast": {
+      "create": {
+        "title": "Pool créé",
+        "description": "\"{{name}}\" a été ajouté avec succès."
+      },
+      "update": {
+        "title": "Pool mis à jour",
+        "description": "\"{{name}}\" a été mis à jour avec succès."
+      },
+      "delete": {
+        "title": "Pool supprimé",
+        "description": "\"{{name}}\" a été supprimé.",
+        "errorTitle": "Échec de la suppression du pool",
+        "errorFallback": "Une erreur s'est produite lors de la suppression du pool."
+      }
+    }
+  },
+  "profiles": {
+    "type": {
+      "oauth": "OAuth",
+      "apiKey": "API"
+    }
+  },
+  "usageMonitor": {
+    "title": "Moniteur d'utilisation",
+    "description": "Suivi en temps réel de l'utilisation des identifiants et des pools",
+    "refresh": "Actualiser",
+    "lastUpdate": "Dernière mise à jour : {{time}}",
+    "tabs": {
+      "profiles": "Profils",
+      "pools": "Pools"
+    },
+    "profiles": {
+      "empty": "Aucun profil d'identifiants configuré"
+    },
+    "pools": {
+      "empty": "Aucun pool configuré"
+    },
+    "usage": {
+      "label": "{{current}}/{{limit}} utilisés"
+    },
+    "unlimited": "Illimité",
+    "noLimit": "Sans limite"
   },
   "modelSelect": {
     "placeholder": "Sélectionner un modèle ou saisir manuellement",
