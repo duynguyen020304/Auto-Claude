@@ -122,7 +122,7 @@ describe('JsonEditor Component', () => {
       const value = '{"test": true}';
       render(<JsonEditor value={value} onChange={vi.fn()} />);
 
-      const textbox = screen.getByRole('textbox');
+      const textbox = screen.getByRole('textbox') as HTMLTextAreaElement;
       // Component auto-formats JSON, so check that it contains the key content
       expect(textbox.value).toContain('"test"');
       expect(textbox.value).toContain('true');
