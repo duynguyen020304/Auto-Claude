@@ -1,0 +1,768 @@
+{
+  "feature": "Parallel Generation Architecture with Session-Based Concurrent Execution",
+  "workflow_type": "refactor",
+  "workflow_rationale": "This is a fundamental architectural transformation from single-generation to concurrent execution model. It requires a phased refactor approach: (1) Build new session queue and rate limiting infrastructure alongside existing system, (2) Migrate executor and service to use sessionId instead of projectId, (3) Update store to support concurrent sessions by removing blocking guards, (4) Enhance UI for concurrent indicators, (5) Integrate all components and enable parallel generation.",
+  "phases": [
+    {
+      "id": "phase-1-queue-infrastructure",
+      "name": "Queue and Rate Limiting Infrastructure",
+      "type": "implementation",
+      "description": "Build the session queue with priority-based ordering and rolling window rate limiting. This foundational infrastructure must exist before we can refactor the executor to use it.",
+      "depends_on": [],
+      "parallel_safe": true,
+      "subtasks": [
+        {
+          "id": "subtask-1-1",
+          "status": "completed",
+          "description": "Create SessionQueue class with priority-based ordering (LOW, NORMAL, HIGH, URGENT) and configurable limits (maxConcurrentSessions, maxSessionsPerProject)",
+          "service": "frontend",
+          "files_to_create": [
+            "apps/frontend/src/main/insights/session-queue.ts"
+          ],
+          "files_to_modify": [],
+          "patterns_from": [],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/frontend && npm run test -- -- --run src/main/insights/__tests__/session-queue.test.ts",
+            "expected": "Tests pass"
+          }
+        },
+        {
+          "id": "subtask-1-2",
+          "description": "Create RollingWindowRateLimiter class with per-project tracking and automatic cleanup of old timestamps",
+          "service": "frontend",
+          "files_to_create": [
+            "apps/frontend/src/main/insights/rate-limiter.ts"
+          ],
+          "files_to_modify": [],
+          "patterns_from": [],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/frontend && npm run test -- -- --run src/main/insights/__tests__/rate-limiter.test.ts",
+            "expected": "Tests pass"
+          },
+          "status": "completed"
+        },
+        {
+          "id": "subtask-1-3",
+          "description": "Create unit tests for session queue priority ordering and concurrent limit enforcement",
+          "service": "frontend",
+          "files_to_create": [
+            "apps/frontend/src/main/insights/__tests__/session-queue.test.ts"
+          ],
+          "files_to_modify": [],
+          "patterns_from": [
+            "apps/frontend/src/renderer/stores/__tests__/insights-store.test.ts"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/frontend && npm run test -- -- --run src/main/insights/__tests__/session-queue.test.ts",
+            "expected": "All tests pass"
+          },
+          "status": "completed"
+        },
+        {
+          "id": "subtask-1-4",
+          "description": "Create unit tests for rolling window rate limiting with memory leak prevention",
+          "service": "frontend",
+          "files_to_create": [
+            "apps/frontend/src/main/insights/__tests__/rate-limiter.test.ts"
+          ],
+          "files_to_modify": [],
+          "patterns_from": [
+            "apps/frontend/src/renderer/stores/__tests__/insights-store.test.ts"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/frontend && npm run test -- -- --run src/main/insights/__tests__/rate-limiter.test.ts",
+            "expected": "All tests pass"
+          },
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "phase-2-executor-refactor",
+      "name": "Refactor Executor for Session-Based Process Management",
+      "type": "implementation",
+      "description": "Refactor InsightsExecutor to track processes by sessionId instead of projectId, integrate with SessionQueue and RollingWindowRateLimiter, and start with maxConcurrentSessions=1 for non-breaking behavior.",
+      "depends_on": [
+        "phase-1-queue-infrastructure"
+      ],
+      "parallel_safe": false,
+      "subtasks": [
+        {
+          "id": "subtask-2-1",
+          "description": "Update InsightsExecutor to track active processes by sessionId instead of projectId, integrate SessionQueue for concurrent session management",
+          "service": "frontend",
+          "files_to_modify": [
+            "apps/frontend/src/main/insights/insights-executor.ts"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/frontend/src/main/insights/insights-executor.ts"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/frontend && npm run test -- -- --run src/main/insights/__tests__/executor.test.ts",
+            "expected": "Tests pass, processes tracked by sessionId"
+          },
+          "status": "completed"
+        },
+        {
+          "id": "subtask-2-2",
+          "description": "Add rate limiting checks before starting new sessions, integrate RollingWindowRateLimiter into executor",
+          "service": "frontend",
+          "files_to_modify": [
+            "apps/frontend/src/main/insights/insights-executor.ts"
+          ],
+          "files_to_create": [],
+          "patterns_from": [],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/frontend && npm run test -- -- --run src/main/insights/__tests__/executor-rate-limit.test.ts",
+            "expected": "Rate limit enforced, sessions blocked when limit exceeded"
+          },
+          "status": "pending"
+        },
+        {
+          "id": "subtask-2-3",
+          "description": "Update executor event emissions to include sessionId parameter for proper routing",
+          "service": "frontend",
+          "files_to_modify": [
+            "apps/frontend/src/main/insights/insights-executor.ts"
+          ],
+          "files_to_create": [],
+          "patterns_from": [],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/frontend && npm run typecheck",
+            "expected": "No TypeScript errors, events include sessionId"
+          },
+          "status": "pending"
+        },
+        {
+          "id": "subtask-2-4",
+          "description": "Create unit tests for concurrent process tracking, queue integration, and cleanup on process exit",
+          "service": "frontend",
+          "files_to_create": [
+            "apps/frontend/src/main/insights/__tests__/executor.test.ts"
+          ],
+          "files_to_modify": [],
+          "patterns_from": [
+            "apps/frontend/src/renderer/stores/__tests__/insights-store-isolation.test.ts"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/frontend && npm run test -- -- --run src/main/insights/__tests__/executor.test.ts",
+            "expected": "All tests pass, no process leaks"
+          },
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": "phase-3-service-refactor",
+      "name": "Refactor Service for Session-Aware Operations",
+      "type": "implementation",
+      "description": "Update InsightsService to support session-specific operations, remove project-wide cancellation on sendMessage, and add cancelSession(sessionId) method.",
+      "depends_on": [
+        "phase-2-executor-refactor"
+      ],
+      "parallel_safe": false,
+      "subtasks": [
+        {
+          "id": "subtask-3-1",
+          "description": "Remove project-wide cancellation in sendMessage(), update all operations to accept sessionId parameter",
+          "service": "frontend",
+          "files_to_modify": [
+            "apps/frontend/src/main/insights-service.ts"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/frontend/src/main/insights-service.ts"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/frontend && npm run test -- -- --run src/main/__tests__/insights-service.test.ts",
+            "expected": "Tests pass, no project-wide cancellation"
+          },
+          "status": "pending"
+        },
+        {
+          "id": "subtask-3-2",
+          "description": "Add session-specific cancelSession(sessionId) method to InsightsService",
+          "service": "frontend",
+          "files_to_modify": [
+            "apps/frontend/src/main/insights-service.ts"
+          ],
+          "files_to_create": [],
+          "patterns_from": [],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/frontend && npm run test -- -- --run src/main/__tests__/insights-service.test.ts",
+            "expected": "Session-specific cancellation works"
+          },
+          "status": "pending"
+        },
+        {
+          "id": "subtask-3-3",
+          "description": "Add getActiveSessions() method to return list of currently running sessions",
+          "service": "frontend",
+          "files_to_modify": [
+            "apps/frontend/src/main/insights-service.ts"
+          ],
+          "files_to_create": [],
+          "patterns_from": [],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/frontend && npm run test -- -- --run src/main/__tests__/insights-service.test.ts",
+            "expected": "Active sessions returned correctly"
+          },
+          "status": "pending"
+        },
+        {
+          "id": "subtask-3-4",
+          "description": "Create unit tests for session-aware service operations and cancellation",
+          "service": "frontend",
+          "files_to_create": [
+            "apps/frontend/src/main/__tests__/insights-service.test.ts"
+          ],
+          "files_to_modify": [],
+          "patterns_from": [
+            "apps/frontend/src/renderer/stores/__tests__/insights-store-switching.test.ts"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/frontend && npm run test -- -- --run src/main/__tests__/insights-service.test.ts",
+            "expected": "All tests pass"
+          },
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": "phase-4-ipc-updates",
+      "name": "Update IPC Handlers and Preload API",
+      "type": "implementation",
+      "description": "Update IPC handlers to route events by (sessionId, projectId) tuples, add new operations (insights:cancel-session, insights:get-active-sessions), and update preload API.",
+      "depends_on": [
+        "phase-3-service-refactor"
+      ],
+      "parallel_safe": false,
+      "subtasks": [
+        {
+          "id": "subtask-4-1",
+          "description": "Update IPC channels constant to add INSIGHTS_CANCEL_SESSION and INSIGHTS_GET_ACTIVE_SESSIONS",
+          "service": "frontend",
+          "files_to_modify": [
+            "apps/frontend/src/shared/constants.ts"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/frontend/src/shared/constants.ts"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/frontend && npm run typecheck",
+            "expected": "No TypeScript errors"
+          },
+          "status": "pending"
+        },
+        {
+          "id": "subtask-4-2",
+          "description": "Add IPC handlers for insights:cancel-session and insights:get-active-sessions operations",
+          "service": "frontend",
+          "files_to_modify": [
+            "apps/frontend/src/main/ipc-handlers/insights-handlers.ts"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/frontend/src/main/ipc-handlers/insights-handlers.ts"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/frontend && npm run test -- -- --run src/main/ipc-handlers/__tests__/insights-handlers.test.ts",
+            "expected": "New handlers work correctly"
+          },
+          "status": "pending"
+        },
+        {
+          "id": "subtask-4-3",
+          "description": "Update existing IPC handlers to accept sessionId parameter and route events by (sessionId, projectId) tuples",
+          "service": "frontend",
+          "files_to_modify": [
+            "apps/frontend/src/main/ipc-handlers/insights-handlers.ts"
+          ],
+          "files_to_create": [],
+          "patterns_from": [],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/frontend && npm run typecheck",
+            "expected": "No TypeScript errors"
+          },
+          "status": "pending"
+        },
+        {
+          "id": "subtask-4-4",
+          "description": "Update preload API to expose cancelInsightsSession and getActiveInsightsSessions methods",
+          "service": "frontend",
+          "files_to_modify": [
+            "apps/frontend/src/preload/api/modules/insights-api.ts"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/frontend/src/preload/api/modules/insights-api.ts"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/frontend && npm run typecheck",
+            "expected": "No TypeScript errors"
+          },
+          "status": "pending"
+        },
+        {
+          "id": "subtask-4-5",
+          "description": "Update preload API event listeners to route by (sessionId, projectId) tuples",
+          "service": "frontend",
+          "files_to_modify": [
+            "apps/frontend/src/preload/api/modules/insights-api.ts"
+          ],
+          "files_to_create": [],
+          "patterns_from": [],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/frontend && npm run typecheck",
+            "expected": "No TypeScript errors"
+          },
+          "status": "pending"
+        },
+        {
+          "id": "subtask-4-6",
+          "description": "Create unit tests for IPC handler routing and new operations",
+          "service": "frontend",
+          "files_to_create": [
+            "apps/frontend/src/main/ipc-handlers/__tests__/insights-handlers.test.ts"
+          ],
+          "files_to_modify": [],
+          "patterns_from": [
+            "apps/frontend/src/renderer/stores/__tests__/insights-store-isolation.test.ts"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/frontend && npm run test -- -- --run src/main/ipc-handlers/__tests__/insights-handlers.test.ts",
+            "expected": "All tests pass"
+          },
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": "phase-5-store-refactor",
+      "name": "Refactor Store to Support Concurrent Sessions",
+      "type": "implementation",
+      "description": "Remove validation guards that block non-current session updates in insights-store.ts, ensure all state updates work for any session, and verify immutable Map updates trigger re-renders.",
+      "depends_on": [
+        "phase-4-ipc-updates"
+      ],
+      "parallel_safe": false,
+      "subtasks": [
+        {
+          "id": "subtask-5-1",
+          "description": "Remove validation guards checking sessionId === currentSessionId from setStatus, setPendingMessage, appendStreamingContent, clearStreamingContent, setCurrentTool, addToolUsage, clearToolsUsed, addFileMention, removeFileMention, clearFileMentions, and finalizeStreamingMessage",
+          "service": "frontend",
+          "files_to_modify": [
+            "apps/frontend/src/renderer/stores/insights-store.ts"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/frontend/src/renderer/stores/insights-store.ts"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/frontend && npm run test -- -- --run src/renderer/stores/__tests__/insights-store-concurrent.test.ts",
+            "expected": "Concurrent session updates work"
+          },
+          "status": "pending"
+        },
+        {
+          "id": "subtask-5-2",
+          "description": "Verify all Map updates create new Map instances to trigger Zustand re-renders for concurrent sessions",
+          "service": "frontend",
+          "files_to_modify": [
+            "apps/frontend/src/renderer/stores/insights-store.ts"
+          ],
+          "files_to_create": [],
+          "patterns_from": [],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/frontend && npm run test -- -- --run src/renderer/stores/__tests__/insights-store-immutable.test.ts",
+            "expected": "All Map updates are immutable"
+          },
+          "status": "pending"
+        },
+        {
+          "id": "subtask-5-3",
+          "description": "Add removeSession(sessionId) action to clean up session state when session is deleted",
+          "service": "frontend",
+          "files_to_modify": [
+            "apps/frontend/src/renderer/stores/insights-store.ts"
+          ],
+          "files_to_create": [],
+          "patterns_from": [],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/frontend && npm run test -- -- --run src/renderer/stores/__tests__/insights-store-cleanup.test.ts",
+            "expected": "Session cleanup works correctly"
+          },
+          "status": "pending"
+        },
+        {
+          "id": "subtask-5-4",
+          "description": "Create unit tests for concurrent session state updates without blocking",
+          "service": "frontend",
+          "files_to_create": [
+            "apps/frontend/src/renderer/stores/__tests__/insights-store-concurrent.test.ts"
+          ],
+          "files_to_modify": [],
+          "patterns_from": [
+            "apps/frontend/src/renderer/stores/__tests__/insights-store-isolation.test.ts"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/frontend && npm run test -- -- --run src/renderer/stores/__tests__/insights-store-concurrent.test.ts",
+            "expected": "All concurrent update tests pass"
+          },
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": "phase-6-ui-enhancements",
+      "name": "Enhance UI for Concurrent Session Indicators",
+      "type": "implementation",
+      "description": "Update Insights component to display concurrent generation indicators per session, expose individual cancel controls, and add configuration UI for concurrency limits and rate limiting.",
+      "depends_on": [
+        "phase-5-store-refactor"
+      ],
+      "parallel_safe": true,
+      "subtasks": [
+        {
+          "id": "subtask-6-1",
+          "description": "Update Insights component to display active session indicators with status, progress, and individual cancel buttons",
+          "service": "frontend",
+          "files_to_modify": [
+            "apps/frontend/src/renderer/components/Insights.tsx"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "apps/frontend/src/renderer/components/Insights.tsx"
+          ],
+          "verification": {
+            "type": "browser",
+            "url": "http://localhost:3000",
+            "checks": [
+              "Concurrent sessions displayed",
+              "Individual cancel buttons visible",
+              "Status indicators show correct state"
+            ]
+          },
+          "status": "pending"
+        },
+        {
+          "id": "subtask-6-2",
+          "description": "Add configuration UI section for concurrency settings (maxConcurrentSessions, maxSessionsPerProject, rateLimitCount, rateLimitWindowMs)",
+          "service": "frontend",
+          "files_to_create": [
+            "apps/frontend/src/renderer/components/settings/InsightsConcurrencySettings.tsx"
+          ],
+          "files_to_modify": [],
+          "patterns_from": [
+            "apps/frontend/src/renderer/components/settings/GeneralSettings.tsx"
+          ],
+          "verification": {
+            "type": "browser",
+            "url": "http://localhost:3000#settings",
+            "checks": [
+              "Concurrency settings panel visible",
+              "Inputs are editable and persist",
+              "Default values are correct"
+            ]
+          },
+          "status": "pending"
+        },
+        {
+          "id": "subtask-6-3",
+          "description": "Update IPC event listeners in store to handle sessionId-aware routing for concurrent sessions",
+          "service": "frontend",
+          "files_to_modify": [
+            "apps/frontend/src/renderer/stores/insights-store.ts"
+          ],
+          "files_to_create": [],
+          "patterns_from": [],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/frontend && npm run test -- -- --run src/renderer/stores/__tests__/insights-store-listeners.test.ts",
+            "expected": "IPC listeners route correctly by sessionId"
+          },
+          "status": "pending"
+        },
+        {
+          "id": "subtask-6-4",
+          "description": "Create E2E tests for concurrent generation flow with UI interactions",
+          "service": "frontend",
+          "files_to_create": [
+            "apps/frontend/e2e/insights-concurrent.spec.ts"
+          ],
+          "files_to_modify": [],
+          "patterns_from": [
+            "apps/frontend/e2e/**/*.spec.ts"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/frontend && npm run test:e2e -- --project=insights-concurrent",
+            "expected": "E2E tests pass"
+          },
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": "phase-7-integration",
+      "name": "Integration and Enable Parallel Generation",
+      "type": "integration",
+      "description": "Wire all components together, verify end-to-end concurrent generation flow, and enable parallel generation by increasing maxConcurrentSessions from 1 to 3+.",
+      "depends_on": [
+        "phase-6-ui-enhancements"
+      ],
+      "parallel_safe": false,
+      "subtasks": [
+        {
+          "id": "subtask-7-1",
+          "description": "Create integration test for end-to-end concurrent generation flow (queue → execute → complete → cleanup)",
+          "service": "frontend",
+          "files_to_create": [
+            "apps/frontend/src/main/__tests__/integration/concurrent-generation.integration.test.ts"
+          ],
+          "files_to_modify": [],
+          "patterns_from": [
+            "apps/frontend/src/renderer/stores/__tests__/insights-store-isolation.test.ts"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/frontend && npm run test -- -- --run src/main/__tests__/integration/concurrent-generation.integration.test.ts",
+            "expected": "End-to-end concurrent flow works"
+          },
+          "status": "pending"
+        },
+        {
+          "id": "subtask-7-2",
+          "description": "Enable parallel generation by setting maxConcurrentSessions=3 in configuration",
+          "service": "frontend",
+          "files_to_modify": [
+            "apps/frontend/src/main/insights/config.ts"
+          ],
+          "files_to_create": [],
+          "patterns_from": [],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/frontend && npm run test:e2e -- --project=insights-concurrent",
+            "expected": "Multiple sessions run concurrently"
+          },
+          "status": "pending"
+        },
+        {
+          "id": "subtask-7-3",
+          "description": "Verify no regressions in existing single-generation workflow with all tests passing",
+          "service": "frontend",
+          "files_to_modify": [],
+          "files_to_create": [],
+          "patterns_from": [],
+          "verification": {
+            "type": "command",
+            "command": "cd apps/frontend && npm run test",
+            "expected": "All existing tests pass"
+          },
+          "status": "pending"
+        },
+        {
+          "id": "subtask-7-4",
+          "description": "Run full E2E test suite to verify concurrent generation, cancellation, queueing, and rate limiting",
+          "service": "frontend",
+          "files_to_modify": [],
+          "files_to_create": [],
+          "patterns_from": [],
+          "verification": {
+            "type": "e2e",
+            "steps": [
+              "Start 3 concurrent generations for same project",
+              "Verify 2 sessions run, 1 session queued (per-project limit)",
+              "Cancel one active session, verify queued session starts",
+              "Verify all concurrent indicators show correctly in UI",
+              "Test rate limiting by starting sessions rapidly",
+              "Verify configuration UI changes take effect"
+            ]
+          },
+          "status": "pending"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "total_phases": 7,
+    "total_subtasks": 30,
+    "services_involved": [
+      "frontend"
+    ],
+    "parallelism": {
+      "max_parallel_phases": 1,
+      "parallel_groups": [],
+      "recommended_workers": 1,
+      "speedup_estimate": "Sequential execution required due to tight dependencies between phases"
+    },
+    "startup_command": "cd apps/frontend && npm run dev"
+  },
+  "verification_strategy": {
+    "risk_level": "high",
+    "skip_validation": false,
+    "test_creation_phase": "post_implementation",
+    "test_types_required": [
+      "unit",
+      "integration",
+      "e2e"
+    ],
+    "security_scanning_required": false,
+    "staging_deployment_required": false,
+    "acceptance_criteria": [
+      "Multiple concurrent insight generation sessions can run simultaneously without blocking each other",
+      "Session queue correctly prioritizes sessions (HIGH before NORMAL before LOW) and respects per-project limits",
+      "Per-project rate limiting prevents sessions exceeding configured limits within rolling window",
+      "Individual session cancellation works without affecting other concurrent sessions",
+      "Zustand store correctly maintains per-session state (streaming content, status, tools, isGenerating)",
+      "UI displays all active sessions with individual cancel controls and status indicators",
+      "Configuration UI allows adjustment of concurrency, queueing, and rate limiting parameters",
+      "All existing tests still pass (no regressions in single-generation workflow)",
+      "New unit tests cover concurrent session management, queue behavior, and rate limiting",
+      "E2E tests verify parallel generation flow with UI interactions",
+      "No console errors during concurrent operations",
+      "Python processes are properly cleaned up on session completion, cancellation, or app quit"
+    ],
+    "verification_steps": [
+      {
+        "name": "Unit Tests - Queue and Rate Limiter",
+        "command": "cd apps/frontend && npm run test -- -- --run src/main/insights/__tests__/",
+        "expected_outcome": "All queue and rate limiter tests pass",
+        "type": "test",
+        "required": true,
+        "blocking": true
+      },
+      {
+        "name": "Unit Tests - Executor and Service",
+        "command": "cd apps/frontend && npm run test -- -- --run src/main/insights/__tests__/executor.test.ts src/main/__tests__/insights-service.test.ts",
+        "expected_outcome": "All executor and service tests pass",
+        "type": "test",
+        "required": true,
+        "blocking": true
+      },
+      {
+        "name": "Unit Tests - Store Concurrent Updates",
+        "command": "cd apps/frontend && npm run test -- -- --run src/renderer/stores/__tests__/insights-store-concurrent.test.ts",
+        "expected_outcome": "All concurrent store update tests pass",
+        "type": "test",
+        "required": true,
+        "blocking": true
+      },
+      {
+        "name": "Integration Tests - Concurrent Generation",
+        "command": "cd apps/frontend && npm run test -- -- --run src/main/__tests__/integration/concurrent-generation.integration.test.ts",
+        "expected_outcome": "End-to-end concurrent flow works correctly",
+        "type": "test",
+        "required": true,
+        "blocking": true
+      },
+      {
+        "name": "E2E Tests - Concurrent Generation",
+        "command": "cd apps/frontend && npm run test:e2e -- --project=insights-concurrent",
+        "expected_outcome": "All concurrent generation E2E tests pass",
+        "type": "test",
+        "required": true,
+        "blocking": true
+      },
+      {
+        "name": "Regression Tests - Existing Functionality",
+        "command": "cd apps/frontend && npm run test",
+        "expected_outcome": "All existing tests pass, no regressions",
+        "type": "test",
+        "required": true,
+        "blocking": true
+      }
+    ],
+    "reasoning": "High-risk architectural transformation requires comprehensive testing across unit, integration, and E2E levels. Each phase introduces new concurrency complexity that must be verified before proceeding to next phase. Unit tests cover queue logic, rate limiting, process tracking, and store state management. Integration tests verify executor ↔ service ↔ store ↔ IPC integration. E2E tests verify real-world concurrent generation flows with UI interactions. No security scan needed as no auth/payment code involved."
+  },
+  "qa_acceptance": {
+    "unit_tests": {
+      "required": true,
+      "commands": [
+        "cd apps/frontend && npm run test -- -- --run src/main/insights/__tests__/",
+        "cd apps/frontend && npm run test -- -- --run src/renderer/stores/__tests__/insights-store-concurrent.test.ts"
+      ],
+      "minimum_coverage": null
+    },
+    "integration_tests": {
+      "required": true,
+      "commands": [
+        "cd apps/frontend && npm run test -- -- --run src/main/__tests__/integration/concurrent-generation.integration.test.ts"
+      ],
+      "services_to_test": [
+        "executor",
+        "service",
+        "store",
+        "ipc"
+      ]
+    },
+    "e2e_tests": {
+      "required": true,
+      "commands": [
+        "cd apps/frontend && npm run test:e2e -- --project=insights-concurrent"
+      ],
+      "flows": [
+        "parallel-generation",
+        "session-cancellation",
+        "queue-priority",
+        "rate-limiting"
+      ]
+    },
+    "browser_verification": {
+      "required": true,
+      "pages": [
+        {
+          "url": "http://localhost:3000",
+          "checks": [
+            "Concurrent sessions displayed",
+            "Individual cancel buttons work",
+            "Status indicators show correct state"
+          ]
+        },
+        {
+          "url": "http://localhost:3000#settings",
+          "checks": [
+            "Concurrency settings panel visible",
+            "Inputs are editable and persist"
+          ]
+        }
+      ]
+    },
+    "process_verification": {
+      "required": true,
+      "checks": [
+        "no-orphaned-processes",
+        "no-memory-leaks",
+        "proper-cleanup-on-exit"
+      ]
+    }
+  },
+  "qa_signoff": null,
+  "status": "in_progress",
+  "planStatus": "in_progress",
+  "updated_at": "2026-01-22T19:46:27.857Z"
+}
