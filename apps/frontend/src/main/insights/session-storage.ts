@@ -157,6 +157,13 @@ export class SessionStorage {
   }
 
   /**
+   * Check if an empty session exists for a project
+   */
+  hasEmptySession(projectPath: string): boolean {
+    return this.findEmptySession(projectPath) !== null;
+  }
+
+  /**
    * Get current session ID for a project
    */
   getCurrentSessionId(projectPath: string): string | null {
