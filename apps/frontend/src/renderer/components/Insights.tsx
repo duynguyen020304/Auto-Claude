@@ -94,13 +94,13 @@ interface InsightsProps {
 export function Insights({ projectId }: InsightsProps) {
   const { t } = useTranslation('common');
   const session = useInsightsStore((state) => state.session);
+  const currentSessionId = useInsightsStore((state) => state.currentSessionId);
   const sessions = useInsightsStore((state) => state.sessions);
   const status = useInsightsStore((state) => state.status);
   const streamingContent = useInsightsStore((state) => state.streamingContent);
   const currentTool = useInsightsStore((state) => state.currentTool);
   const isLoadingSessions = useInsightsStore((state) => state.isLoadingSessions);
   const addTask = useTaskStore((state) => state.addTask);
-  const generatingSessionIds = useInsightsStore((state) => state.generatingSessionIds);
   const abortControllers = useInsightsStore((state) => state.abortControllers);
   const sessionStates = useInsightsStore((state) => state.sessionStates);
 
@@ -159,7 +159,7 @@ export function Insights({ projectId }: InsightsProps) {
   };
 
   const handleSelectSession = async (sessionId: string) => {
-    if (sessionId !== session?.id) {
+    if (sessionId !== currentSessionId) {
       await switchSession(projectId, sessionId);
     }
   };
@@ -227,7 +227,7 @@ export function Insights({ projectId }: InsightsProps) {
       {showSidebar && (
         <ChatHistorySidebar
           sessions={sessions}
-          currentSessionId={session?.id || null}
+          currentSessionId={currentSessionId}
           isLoading={isLoadingSessions}
           onNewSession={handleNewSession}
           onSelectSession={handleSelectSession}
@@ -286,11 +286,11 @@ export function Insights({ projectId }: InsightsProps) {
         {/* Concurrent Sessions Indicator */}
         <ConcurrentSessions
           sessions={sessions}
-          generatingSessionIds={generatingSessionIds}
           abortControllers={abortControllers}
           sessionStates={sessionStates}
-          currentSessionId={session?.id || null}
+          currentSessionId={currentSessionId}
           onAbortSession={handleAbortSession}
+          onSelectSession={handleSelectSession}
         />
 
         {messages.length === 0 && !streamingContent ? (
@@ -711,23 +711,23 @@ function ToolIndicator({ name, input }: ToolIndicatorProps) {
 // Concurrent sessions indicator component
 interface ConcurrentSessionsProps {
   sessions: InsightsSessionSummary[];
-  generatingSessionIds: Map<string, string>;
   abortControllers: Map<string, AbortController>;
   sessionStates: Map<string, InsightsSessionState>;
   currentSessionId: string | null;
   onAbortSession: (sessionId: string) => void;
+  onSelectSession: (sessionId: string) => void;
 }
 
 function ConcurrentSessions({
   sessions,
-  generatingSessionIds,
   abortControllers,
   sessionStates,
   currentSessionId,
-  onAbortSession
+  onAbortSession,
+  onSelectSession
 }: ConcurrentSessionsProps) {
-  // Get all active generating session IDs
-  const activeSessionIds = Array.from(new Set(generatingSessionIds.values()));
+  // Get all active generating session IDs (sessions with abort controllers are generating)
+  const activeSessionIds = Array.from(abortControllers.keys());
 
   // If only one or zero active sessions, don't show anything
   if (activeSessionIds.length <= 1) {
@@ -764,9 +764,10 @@ function ConcurrentSessions({
             <div
               key={activeSession.id}
               className={cn(
-                'flex items-center gap-2 rounded-md px-3 py-2 text-sm',
-                activeSession.isCurrent ? 'bg-primary/10' : 'bg-muted/50'
+                'flex items-center gap-2 rounded-md px-3 py-2 text-sm cursor-pointer transition-colors',
+                activeSession.isCurrent ? 'bg-primary/10' : 'bg-muted/50 hover:bg-muted/70'
               )}
+              onClick={() => !activeSession.isCurrent && onSelectSession(activeSession.id)}
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
@@ -791,7 +792,10 @@ function ConcurrentSessions({
                   variant="ghost"
                   size="sm"
                   className="h-7 w-7 p-0 shrink-0"
-                  onClick={() => onAbortSession(activeSession.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAbortSession(activeSession.id);
+                  }}
                   title="Cancel this session"
                 >
                   <X className="h-3 w-3" />

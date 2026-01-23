@@ -145,11 +145,6 @@ export class InsightsExecutor extends EventEmitter {
       throw new Error(`Session ${sessionId} is already active`);
     }
 
-    // Check concurrent limits using session queue
-    if (!this.sessionQueue.canStartSession(projectId)) {
-      throw new Error('Cannot start session: concurrent limit reached');
-    }
-
     // Check rate limiting before starting session
     if (!this.rateLimiter.canStartSession(projectId, this.rateLimitConfig.limit, this.rateLimitConfig.windowMs)) {
       const currentUsage = this.rateLimiter.getUsage(projectId, this.rateLimitConfig.windowMs);

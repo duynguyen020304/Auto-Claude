@@ -133,13 +133,8 @@ export class SessionQueue {
    * @returns true if session can start immediately
    */
   canStartSession(projectId: string): boolean {
-    const activeCount = this.activeSessions.size;
-    const projectActiveCount = this.activeSessionsPerProject.get(projectId)?.size ?? 0;
-
-    return (
-      activeCount < this.config.maxConcurrentSessions &&
-      projectActiveCount < this.config.maxSessionsPerProject
-    );
+    // Concurrent limits removed - sessions can always start
+    return true;
   }
 
   /**

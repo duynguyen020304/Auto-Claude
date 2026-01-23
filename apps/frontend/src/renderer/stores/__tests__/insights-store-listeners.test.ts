@@ -2,7 +2,7 @@
  * Tests for insights-store IPC event listener routing by sessionId
  * @vitest-environment jsdom
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { useInsightsStore, setupInsightsListeners } from '../insights-store';
 import type { InsightsStreamChunk } from '../../../../shared/types';
 
@@ -57,7 +57,7 @@ describe('insights-store - IPC listener routing by sessionId', () => {
   });
 
   describe('stream chunk routing', () => {
-    it('should route stream chunks to the correct session based on generatingSessionIds', () => {
+    it('should route stream chunks to the correct session based on sessionId', () => {
       const store = useInsightsStore.getState();
 
       // Setup two sessions
@@ -69,14 +69,13 @@ describe('insights-store - IPC listener routing by sessionId', () => {
       store.setCurrentSessionId(sessionAId);
       store.setCurrentSessionId(sessionBId);
 
-      // Track which session is generating for this project
-      store.generatingSessionIds.set(projectId, sessionAId);
+      // Add abort controller for session A (marks it as generating)
       store.abortControllers.set(sessionAId, new AbortController());
 
       // Set session B as current (not the generating session)
       store.setCurrentSessionId(sessionBId);
 
-      // Simulate stream chunk for project 1
+      // Simulate stream chunk for session A
       const streamChunkCallback = mockListeners.get('streamChunk');
       expect(streamChunkCallback).toBeDefined();
 
@@ -85,7 +84,7 @@ describe('insights-store - IPC listener routing by sessionId', () => {
         content: 'Hello from session A'
       };
 
-      streamChunkCallback!(projectId, chunk);
+      streamChunkCallback!(sessionAId, projectId, chunk);
 
       // Verify session A received the content (not session B)
       const stateA = store.getSessionState(sessionAId);
@@ -107,21 +106,7 @@ describe('insights-store - IPC listener routing by sessionId', () => {
       // Initialize session state
       store.setCurrentSessionId(sessionId);
 
-      // Track as generating but abort immediately using setState
-      const abortController = new AbortController();
-      abortController.abort(); // Abort the session
-
-      useInsightsStore.setState((state) => ({
-        generatingSessionIds: new Map(state.generatingSessionIds).set(projectId, sessionId),
-        abortControllers: new Map(state.abortControllers).set(sessionId, abortController)
-      }));
-
-      // Remove abort controller to simulate aborted state
-      useInsightsStore.setState((state) => {
-        const newAbortControllers = new Map(state.abortControllers);
-        newAbortControllers.delete(sessionId);
-        return { abortControllers: newAbortControllers };
-      });
+      // Don't add abort controller - simulates already-aborted state
 
       // Simulate stream chunk
       const streamChunkCallback = mockListeners.get('streamChunk');
@@ -130,34 +115,33 @@ describe('insights-store - IPC listener routing by sessionId', () => {
         content: 'This should be dropped'
       };
 
-      streamChunkCallback!(projectId, chunk);
+      streamChunkCallback!(sessionId, projectId, chunk);
 
       // Verify content was NOT added (chunk was dropped)
       const state = store.getSessionState(sessionId);
       expect(state?.streamingContent).toBe('');
     });
 
-    it('should drop stream chunks for unknown projects', () => {
+    it('should drop stream chunks for unknown sessions', () => {
       const store = useInsightsStore.getState();
 
       const sessionId = 'session-unknown';
       const projectId = 'proj-unknown';
 
-      // Initialize session state but don't track as generating
-      store.setCurrentSessionId(sessionId);
+      // Don't initialize session state or add abort controller
 
-      // Simulate stream chunk for unknown project
+      // Simulate stream chunk
       const streamChunkCallback = mockListeners.get('streamChunk');
       const chunk: InsightsStreamChunk = {
         type: 'text',
         content: 'This should be dropped'
       };
 
-      streamChunkCallback!(projectId, chunk);
+      streamChunkCallback!(sessionId, projectId, chunk);
 
       // Verify content was NOT added (chunk was dropped)
       const state = store.getSessionState(sessionId);
-      expect(state?.streamingContent).toBe('');
+      expect(state?.streamingContent).toBeUndefined();
     });
 
     it('should handle concurrent stream chunks for multiple sessions', () => {
@@ -165,34 +149,23 @@ describe('insights-store - IPC listener routing by sessionId', () => {
 
       const sessionAId = 'session-a';
       const sessionBId = 'session-b';
-      const projectAId = 'proj-a';
-      const projectBId = 'proj-b';
+      const projectId = 'proj-1';
 
       // Initialize both sessions
       store.setCurrentSessionId(sessionAId);
       store.setCurrentSessionId(sessionBId);
 
-      // Track both sessions as generating for their respective projects using setState
-      useInsightsStore.setState((state) => {
-        const newGenerating = new Map(state.generatingSessionIds)
-          .set(projectAId, sessionAId)
-          .set(projectBId, sessionBId);
-        const newAbortControllers = new Map(state.abortControllers)
-          .set(sessionAId, new AbortController())
-          .set(sessionBId, new AbortController());
-        return {
-          generatingSessionIds: newGenerating,
-          abortControllers: newAbortControllers
-        };
-      });
+      // Add abort controllers for both sessions (both generating)
+      store.abortControllers.set(sessionAId, new AbortController());
+      store.abortControllers.set(sessionBId, new AbortController());
 
       // Simulate concurrent streaming
       const streamChunkCallback = mockListeners.get('streamChunk');
 
-      streamChunkCallback!(projectAId, { type: 'text', content: 'Chunk A1 ' });
-      streamChunkCallback!(projectBId, { type: 'text', content: 'Chunk B1 ' });
-      streamChunkCallback!(projectAId, { type: 'text', content: 'Chunk A2 ' });
-      streamChunkCallback!(projectBId, { type: 'text', content: 'Chunk B2 ' });
+      streamChunkCallback!(sessionAId, projectId, { type: 'text', content: 'Chunk A1 ' });
+      streamChunkCallback!(sessionBId, projectId, { type: 'text', content: 'Chunk B1 ' });
+      streamChunkCallback!(sessionAId, projectId, { type: 'text', content: 'Chunk A2 ' });
+      streamChunkCallback!(sessionBId, projectId, { type: 'text', content: 'Chunk B2 ' });
 
       // Verify both sessions received correct content without cross-talk
       const stateA = store.getSessionState(sessionAId);
@@ -213,16 +186,13 @@ describe('insights-store - IPC listener routing by sessionId', () => {
       store.setCurrentSessionId(sessionAId);
       store.setCurrentSessionId(sessionBId);
 
-      // Set session A as generating and session B as current using setState
-      useInsightsStore.setState((state) => ({
-        generatingSessionIds: new Map(state.generatingSessionIds).set(projectId, sessionAId),
-        abortControllers: new Map(state.abortControllers).set(sessionAId, new AbortController())
-      }));
+      // Add abort controller for session A only
+      store.abortControllers.set(sessionAId, new AbortController());
       useInsightsStore.getState().setCurrentSessionId(sessionBId); // Session B is current
 
       // Simulate stream chunk
       const streamChunkCallback = mockListeners.get('streamChunk');
-      streamChunkCallback!(projectId, { type: 'text', content: 'Content A' });
+      streamChunkCallback!(sessionAId, projectId, { type: 'text', content: 'Content A' });
 
       // Verify session A received content
       const stateA = store.getSessionState(sessionAId);
@@ -234,22 +204,18 @@ describe('insights-store - IPC listener routing by sessionId', () => {
 
     it('should handle tool_start chunks and update session state', () => {
       const store = useInsightsStore.getState();
-
       const sessionId = 'session-tool';
       const projectId = 'proj-1';
 
       // Initialize session
       useInsightsStore.getState().setCurrentSessionId(sessionId);
 
-      // Track as generating using setState
-      useInsightsStore.setState((state) => ({
-        generatingSessionIds: new Map(state.generatingSessionIds).set(projectId, sessionId),
-        abortControllers: new Map(state.abortControllers).set(sessionId, new AbortController())
-      }));
+      // Add abort controller to mark as generating
+      store.abortControllers.set(sessionId, new AbortController());
 
       // Simulate tool_start chunk
       const streamChunkCallback = mockListeners.get('streamChunk');
-      streamChunkCallback!(projectId, {
+      streamChunkCallback!(sessionId, projectId, {
         type: 'tool_start',
         tool: { name: 'test-tool', input: 'test-input' }
       });
@@ -265,24 +231,20 @@ describe('insights-store - IPC listener routing by sessionId', () => {
 
     it('should handle tool_end chunks and clear current tool', () => {
       const store = useInsightsStore.getState();
-
       const sessionId = 'session-tool-end';
       const projectId = 'proj-1';
 
       // Initialize session with current tool
       useInsightsStore.getState().setCurrentSessionId(sessionId);
 
-      // Track as generating using setState
-      useInsightsStore.setState((state) => ({
-        generatingSessionIds: new Map(state.generatingSessionIds).set(projectId, sessionId),
-        abortControllers: new Map(state.abortControllers).set(sessionId, new AbortController())
-      }));
+      // Add abort controller to mark as generating
+      store.abortControllers.set(sessionId, new AbortController());
 
       useInsightsStore.getState().setCurrentTool({ name: 'active-tool', input: 'input' });
 
       // Simulate tool_end chunk
       const streamChunkCallback = mockListeners.get('streamChunk');
-      streamChunkCallback!(projectId, { type: 'tool_end' });
+      streamChunkCallback!(sessionId, projectId, { type: 'tool_end' });
 
       // Verify current tool cleared
       const state = store.getSessionState(sessionId);
@@ -290,6 +252,7 @@ describe('insights-store - IPC listener routing by sessionId', () => {
     });
 
     it('should handle done chunks and finalize message', () => {
+      const store = useInsightsStore.getState();
       const sessionId = 'session-done';
       const projectId = 'proj-1';
 
@@ -303,57 +266,52 @@ describe('insights-store - IPC listener routing by sessionId', () => {
         updatedAt: new Date()
       });
 
-      // Track as generating using setState (immutable update pattern)
-      useInsightsStore.setState((state) => ({
-        generatingSessionIds: new Map(state.generatingSessionIds).set(projectId, sessionId),
-        abortControllers: new Map(state.abortControllers).set(sessionId, new AbortController())
-      }));
+      // Add abort controller to mark as generating
+      store.abortControllers.set(sessionId, new AbortController());
 
       useInsightsStore.getState().appendStreamingContent('Final message', sessionId);
 
       // Simulate done chunk
       const streamChunkCallback = mockListeners.get('streamChunk');
-      streamChunkCallback!(projectId, { type: 'done' });
+      streamChunkCallback!(sessionId, projectId, { type: 'done' });
 
       // Verify state finalized
-      const store = useInsightsStore.getState();
-      const state = store.getSessionState(sessionId);
+      const storeState = useInsightsStore.getState();
+      const state = storeState.getSessionState(sessionId);
       expect(state?.streamingContent).toBe(''); // Cleared
-      expect(store.session?.messages).toHaveLength(1); // Message added
-      expect(store.session?.messages[0].content).toBe('Final message');
+      expect(storeState.session?.messages).toHaveLength(1); // Message added
+      expect(storeState.session?.messages[0].content).toBe('Final message');
 
-      // Verify generating session tracking cleared
-      expect(store.generatingSessionIds.has(projectId)).toBe(false);
+      // CRITICAL: Verify abort controller was removed (this was the bug)
+      expect(storeState.abortControllers.has(sessionId)).toBe(false);
     });
 
     it('should handle error chunks and update status', () => {
+      const store = useInsightsStore.getState();
       const sessionId = 'session-error';
       const projectId = 'proj-1';
 
       // Initialize session
       useInsightsStore.getState().setCurrentSessionId(sessionId);
 
-      // Track as generating using setState (immutable update pattern)
-      useInsightsStore.setState((state) => ({
-        generatingSessionIds: new Map(state.generatingSessionIds).set(projectId, sessionId),
-        abortControllers: new Map(state.abortControllers).set(sessionId, new AbortController())
-      }));
+      // Add abort controller to mark as generating
+      store.abortControllers.set(sessionId, new AbortController());
 
       // Simulate error chunk
       const streamChunkCallback = mockListeners.get('streamChunk');
-      streamChunkCallback!(projectId, {
+      streamChunkCallback!(sessionId, projectId, {
         type: 'error',
         error: 'Test error message'
       });
 
       // Verify error status
-      const store = useInsightsStore.getState();
-      const state = store.getSessionState(sessionId);
+      const storeState = useInsightsStore.getState();
+      const state = storeState.getSessionState(sessionId);
       expect(state?.status.phase).toBe('error');
       expect(state?.status.error).toBe('Test error message');
 
-      // Verify generating session tracking cleared
-      expect(store.generatingSessionIds.has(projectId)).toBe(false);
+      // CRITICAL: Verify abort controller was removed (this was the bug)
+      expect(storeState.abortControllers.has(sessionId)).toBe(false);
     });
   });
 
@@ -369,18 +327,15 @@ describe('insights-store - IPC listener routing by sessionId', () => {
       store.setCurrentSessionId(sessionAId);
       store.setCurrentSessionId(sessionBId);
 
-      // Track session A as generating using setState
-      useInsightsStore.setState((state) => ({
-        generatingSessionIds: new Map(state.generatingSessionIds).set(projectId, sessionAId),
-        abortControllers: new Map(state.abortControllers).set(sessionAId, new AbortController())
-      }));
+      // Add abort controller for session A only
+      store.abortControllers.set(sessionAId, new AbortController());
 
       // Set session B as current
       useInsightsStore.getState().setCurrentSessionId(sessionBId);
 
       // Simulate status update
       const statusCallback = mockListeners.get('status');
-      statusCallback!(projectId, { phase: 'thinking', message: 'Processing...' });
+      statusCallback!(sessionAId, projectId, { phase: 'thinking', message: 'Processing...' });
 
       // Verify session A received status (not session B)
       const stateA = store.getSessionState(sessionAId);
@@ -402,18 +357,11 @@ describe('insights-store - IPC listener routing by sessionId', () => {
       // Initialize session
       useInsightsStore.getState().setCurrentSessionId(sessionId);
 
-      // Abort session using setState - don't add abortController to map (simulates aborted state)
-      const abortController = new AbortController();
-      abortController.abort();
-
-      useInsightsStore.setState((state) => ({
-        generatingSessionIds: new Map(state.generatingSessionIds).set(projectId, sessionId)
-        // Note: NOT adding abortController to map - simulates already-aborted state
-      }));
+      // Don't add abort controller - simulates aborted state
 
       // Simulate status update
       const statusCallback = mockListeners.get('status');
-      statusCallback!(projectId, { phase: 'streaming', message: 'Should be dropped' });
+      statusCallback!(sessionId, projectId, { phase: 'streaming', message: 'Should be dropped' });
 
       // Verify status NOT updated
       const store = useInsightsStore.getState();
@@ -421,18 +369,18 @@ describe('insights-store - IPC listener routing by sessionId', () => {
       expect(state?.status.phase).toBe('idle');
     });
 
-    it('should drop status updates for unknown projects', () => {
+    it('should drop status updates for unknown sessions', () => {
       const store = useInsightsStore.getState();
 
       const sessionId = 'session-unknown';
       const projectId = 'proj-unknown';
 
-      // Initialize session without tracking
+      // Initialize session without abort controller
       store.setCurrentSessionId(sessionId);
 
       // Simulate status update
       const statusCallback = mockListeners.get('status');
-      statusCallback!(projectId, { phase: 'thinking', message: 'Should be dropped' });
+      statusCallback!(sessionId, projectId, { phase: 'thinking', message: 'Should be dropped' });
 
       // Verify status NOT updated
       const state = store.getSessionState(sessionId);
@@ -442,6 +390,7 @@ describe('insights-store - IPC listener routing by sessionId', () => {
 
   describe('error routing', () => {
     it('should route errors to the correct session', () => {
+      const store = useInsightsStore.getState();
       const sessionAId = 'session-a';
       const sessionBId = 'session-b';
       const projectId = 'proj-1';
@@ -450,31 +399,25 @@ describe('insights-store - IPC listener routing by sessionId', () => {
       useInsightsStore.getState().setCurrentSessionId(sessionAId);
       useInsightsStore.getState().setCurrentSessionId(sessionBId);
 
-      // Track session A as generating using setState (immutable update pattern)
-      useInsightsStore.setState((state) => ({
-        generatingSessionIds: new Map(state.generatingSessionIds).set(projectId, sessionAId),
-        abortControllers: new Map(state.abortControllers).set(sessionAId, new AbortController())
-      }));
+      // Add abort controller for session A only
+      store.abortControllers.set(sessionAId, new AbortController());
 
       // Set session B as current
       useInsightsStore.getState().setCurrentSessionId(sessionBId);
 
       // Simulate error
       const errorCallback = mockListeners.get('error');
-      errorCallback!(projectId, 'Test error');
+      errorCallback!(sessionAId, projectId, 'Test error');
 
       // Verify session A received error (not session B)
-      const store = useInsightsStore.getState();
-      const stateA = store.getSessionState(sessionAId);
-      const stateB = store.getSessionState(sessionBId);
+      const storeState = useInsightsStore.getState();
+      const stateA = storeState.getSessionState(sessionAId);
+      const stateB = storeState.getSessionState(sessionBId);
 
       expect(stateA?.status.phase).toBe('error');
       expect(stateA?.status.error).toBe('Test error');
 
       expect(stateB?.status.phase).toBe('idle');
-
-      // Verify generating session tracking cleared
-      expect(store.generatingSessionIds.has(projectId)).toBe(false);
     });
 
     it('should drop errors for aborted sessions', () => {
@@ -484,18 +427,11 @@ describe('insights-store - IPC listener routing by sessionId', () => {
       // Initialize session
       useInsightsStore.getState().setCurrentSessionId(sessionId);
 
-      // Abort session using setState - don't add abortController to map (simulates aborted state)
-      const abortController = new AbortController();
-      abortController.abort();
-
-      useInsightsStore.setState((state) => ({
-        generatingSessionIds: new Map(state.generatingSessionIds).set(projectId, sessionId)
-        // Note: NOT adding abortController to map - simulates already-aborted state
-      }));
+      // Don't add abort controller - simulates aborted state
 
       // Simulate error
       const errorCallback = mockListeners.get('error');
-      errorCallback!(projectId, 'Should be dropped');
+      errorCallback!(sessionId, projectId, 'Should be dropped');
 
       // Verify error NOT set
       const store = useInsightsStore.getState();
@@ -504,18 +440,18 @@ describe('insights-store - IPC listener routing by sessionId', () => {
       expect(state?.status.error).toBeUndefined();
     });
 
-    it('should drop errors for unknown projects', () => {
+    it('should drop errors for unknown sessions', () => {
       const store = useInsightsStore.getState();
 
       const sessionId = 'session-unknown';
       const projectId = 'proj-unknown';
 
-      // Initialize session without tracking
+      // Initialize session without abort controller
       store.setCurrentSessionId(sessionId);
 
       // Simulate error
       const errorCallback = mockListeners.get('error');
-      errorCallback!(projectId, 'Should be dropped');
+      errorCallback!(sessionId, projectId, 'Should be dropped');
 
       // Verify error NOT set
       const state = store.getSessionState(sessionId);
@@ -540,10 +476,10 @@ describe('insights-store - IPC listener routing by sessionId', () => {
 
   describe('cross-session isolation', () => {
     it('should prevent cross-session data leakage during concurrent streaming', () => {
+      const store = useInsightsStore.getState();
       const sessionAId = 'session-a';
       const sessionBId = 'session-b';
-      const projectAId = 'proj-a';
-      const projectBId = 'proj-b';
+      const projectId = 'proj-1';
 
       // Initialize sessions with different states
       useInsightsStore.getState().setCurrentSessionId(sessionAId);
@@ -556,40 +492,30 @@ describe('insights-store - IPC listener routing by sessionId', () => {
       useInsightsStore.getState().appendStreamingContent('Content B', sessionBId);
       useInsightsStore.getState().setCurrentTool({ name: 'tool-b' }, sessionBId);
 
-      // Track both as generating using setState (immutable update pattern)
-      useInsightsStore.setState((state) => {
-        const newGenerating = new Map(state.generatingSessionIds)
-          .set(projectAId, sessionAId)
-          .set(projectBId, sessionBId);
-        const newAbortControllers = new Map(state.abortControllers)
-          .set(sessionAId, new AbortController())
-          .set(sessionBId, new AbortController());
-        return {
-          generatingSessionIds: newGenerating,
-          abortControllers: newAbortControllers
-        };
-      });
+      // Add abort controllers for both
+      store.abortControllers.set(sessionAId, new AbortController());
+      store.abortControllers.set(sessionBId, new AbortController());
 
       // Stream to both sessions
       const streamChunkCallback = mockListeners.get('streamChunk');
 
-      streamChunkCallback!(projectAId, {
+      streamChunkCallback!(sessionAId, projectId, {
         type: 'text',
         content: ' - more A'
       });
-      streamChunkCallback!(projectBId, {
+      streamChunkCallback!(sessionBId, projectId, {
         type: 'text',
         content: ' - more B'
       });
-      streamChunkCallback!(projectAId, {
+      streamChunkCallback!(sessionAId, projectId, {
         type: 'tool_start',
         tool: { name: 'new-tool-a', input: 'input-a' }
       });
 
       // Verify sessions remain isolated
-      const store = useInsightsStore.getState();
-      const stateA = store.getSessionState(sessionAId);
-      const stateB = store.getSessionState(sessionBId);
+      const storeState = useInsightsStore.getState();
+      const stateA = storeState.getSessionState(sessionAId);
+      const stateB = storeState.getSessionState(sessionBId);
 
       expect(stateA?.streamingContent).toBe('Content A - more A');
       expect(stateB?.streamingContent).toBe('Content B - more B');

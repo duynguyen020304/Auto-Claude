@@ -65,7 +65,7 @@ describe('insights-store - session removal', () => {
     expect(abortController.signal.aborted).toBe(true);
   });
 
-  it('should remove session from generatingSessionIds mapping', () => {
+  it('should remove session from abortControllers mapping', () => {
     const store = useInsightsStore.getState();
 
     // Set up session with active generation
@@ -73,21 +73,21 @@ describe('insights-store - session removal', () => {
     const sessionId = 'session-generating';
     store.setCurrentSessionId(sessionId);
 
-    // Add to generatingSessionIds mapping
+    // Add to abortControllers mapping (simulating active generation)
     useInsightsStore.setState((state) => ({
-      generatingSessionIds: new Map(state.generatingSessionIds).set(projectId, sessionId)
+      abortControllers: new Map(state.abortControllers).set(sessionId, new AbortController())
     }));
 
-    // Verify generating session ID exists
+    // Verify abort controller exists
     let state = useInsightsStore.getState();
-    expect(state.generatingSessionIds.get(projectId)).toBe(sessionId);
+    expect(state.abortControllers.get(sessionId)).toBeDefined();
 
     // Remove the session
-    store.removeSession(sessionId);
+    store.removeSession(sessionId, projectId);
 
-    // Verify generating session ID is removed
+    // Verify abort controller is removed
     state = useInsightsStore.getState();
-    expect(state.generatingSessionIds.get(projectId)).toBeUndefined();
+    expect(state.abortControllers.get(sessionId)).toBeUndefined();
   });
 
   it('should clear current session if removing the current session', () => {
@@ -179,7 +179,6 @@ describe('insights-store - session removal', () => {
     const state = useInsightsStore.getState();
     expect(state.sessionStates.size).toBe(0);
     expect(state.abortControllers.size).toBe(0);
-    expect(state.generatingSessionIds.size).toBe(0);
   });
 
   it('should handle removing session with all types of state', () => {
@@ -187,7 +186,6 @@ describe('insights-store - session removal', () => {
 
     // Set up session with comprehensive state
     const sessionId = 'session-comprehensive';
-    const projectId = 'project-1';
 
     store.setCurrentSessionId(sessionId);
     store.setStatus({ phase: 'streaming', message: 'Streaming...' }, sessionId);
@@ -204,16 +202,10 @@ describe('insights-store - session removal', () => {
       abortControllers: new Map(state.abortControllers).set(sessionId, abortController)
     }));
 
-    // Add to generatingSessionIds
-    useInsightsStore.setState((state) => ({
-      generatingSessionIds: new Map(state.generatingSessionIds).set(projectId, sessionId)
-    }));
-
     // Verify all state exists before removal
     let state = useInsightsStore.getState();
     expect(state.sessionStates.has(sessionId)).toBe(true);
     expect(state.abortControllers.has(sessionId)).toBe(true);
-    expect(state.generatingSessionIds.get(projectId)).toBe(sessionId);
 
     // Remove the session
     store.removeSession(sessionId);
@@ -222,7 +214,6 @@ describe('insights-store - session removal', () => {
     state = useInsightsStore.getState();
     expect(state.sessionStates.has(sessionId)).toBe(false);
     expect(state.abortControllers.has(sessionId)).toBe(false);
-    expect(state.generatingSessionIds.get(projectId)).toBeUndefined();
     expect(abortController.signal.aborted).toBe(true);
   });
 

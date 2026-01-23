@@ -217,39 +217,6 @@ describe('InsightsStore - Map Immutability', () => {
     });
   });
 
-  describe('generatingSessionIds Map updates', () => {
-    it('should create new Map instance when setting sessions list', () => {
-      // Setup: add a generating session
-      useInsightsStore.setState((state) => ({
-        generatingSessionIds: new Map(state.generatingSessionIds).set('project-1', 'session-1')
-      }));
-
-      const initialState = useInsightsStore.getState();
-      const initialMap = initialState.generatingSessionIds;
-
-      useInsightsStore.getState().setSessions([]);
-
-      const newState = useInsightsStore.getState();
-      expect(newState.generatingSessionIds).not.toBe(initialMap);
-    });
-
-    it('should create new Map instance when aborting generation', () => {
-      // Setup: add a generating session and abort controller
-      useInsightsStore.setState((state) => ({
-        generatingSessionIds: new Map(state.generatingSessionIds).set('project-1', 'session-1'),
-        abortControllers: new Map(state.abortControllers).set('session-1', new AbortController())
-      }));
-
-      const initialState = useInsightsStore.getState();
-      const initialMap = initialState.generatingSessionIds;
-
-      useInsightsStore.getState().abortGeneration('session-1');
-
-      const newState = useInsightsStore.getState();
-      expect(newState.generatingSessionIds).not.toBe(initialMap);
-    });
-  });
-
   describe('abortControllers Map updates', () => {
     it('should create new Map instance when setting sessions list', () => {
       // Setup: add an abort controller
@@ -287,20 +254,17 @@ describe('InsightsStore - Map Immutability', () => {
       // Setup: create some state
       useInsightsStore.getState().setCurrentSessionId('session-1');
       useInsightsStore.setState((state) => ({
-        generatingSessionIds: new Map(state.generatingSessionIds).set('project-1', 'session-1'),
         abortControllers: new Map(state.abortControllers).set('session-1', new AbortController())
       }));
 
       const initialState = useInsightsStore.getState();
       const initialSessionStates = initialState.sessionStates;
-      const initialGeneratingIds = initialState.generatingSessionIds;
       const initialAbortControllers = initialState.abortControllers;
 
       useInsightsStore.getState().clearSession();
 
       const newState = useInsightsStore.getState();
       expect(newState.sessionStates).not.toBe(initialSessionStates);
-      expect(newState.generatingSessionIds).not.toBe(initialGeneratingIds);
       expect(newState.abortControllers).not.toBe(initialAbortControllers);
     });
   });

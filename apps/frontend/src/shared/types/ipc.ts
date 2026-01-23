@@ -702,8 +702,8 @@ export interface ElectronAPI {
 
   // Insights operations
   getInsightsSession: (projectId: string) => Promise<IPCResult<InsightsSession | null>>;
-  sendInsightsMessage: (projectId: string, message: string, modelConfig?: InsightsModelConfig) => void;
-  clearInsightsSession: (projectId: string) => Promise<IPCResult>;
+  sendInsightsMessage: (sessionId: string, projectId: string, message: string, modelConfig?: InsightsModelConfig) => void;
+  clearInsightsSession: (sessionId: string, projectId: string) => Promise<IPCResult>;
   createTaskFromInsights: (
     projectId: string,
     title: string,
@@ -716,16 +716,18 @@ export interface ElectronAPI {
   deleteInsightsSession: (projectId: string, sessionId: string) => Promise<IPCResult>;
   renameInsightsSession: (projectId: string, sessionId: string, newTitle: string) => Promise<IPCResult>;
   updateInsightsModelConfig: (projectId: string, sessionId: string, modelConfig: InsightsModelConfig) => Promise<IPCResult>;
+  cancelInsightsSession: (projectId: string, sessionId: string) => Promise<IPCResult>;
+  getActiveInsightsSessions: (projectId: string) => Promise<IPCResult<InsightsSessionSummary[]>>;
 
   // Insights event listeners
   onInsightsStreamChunk: (
-    callback: (projectId: string, chunk: InsightsStreamChunk) => void
+    callback: (sessionId: string, projectId: string, chunk: InsightsStreamChunk) => void
   ) => () => void;
   onInsightsStatus: (
-    callback: (projectId: string, status: InsightsChatStatus) => void
+    callback: (sessionId: string, projectId: string, status: InsightsChatStatus) => void
   ) => () => void;
   onInsightsError: (
-    callback: (projectId: string, error: string) => void
+    callback: (sessionId: string, projectId: string, error: string) => void
   ) => () => void;
 
   // Task logs operations
