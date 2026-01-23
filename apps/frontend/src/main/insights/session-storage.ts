@@ -127,6 +127,36 @@ export class SessionStorage {
   }
 
   /**
+   * Find an empty session (conversation with no messages)
+   */
+  findEmptySession(projectPath: string): string | null {
+    const sessionsDir = this.paths.getSessionsDir(projectPath);
+    if (!existsSync(sessionsDir)) return null;
+
+    try {
+      const files = readdirSync(sessionsDir).filter(f => f.endsWith('.json'));
+
+      for (const file of files) {
+        try {
+          const content = readFileSync(path.join(sessionsDir, file), 'utf-8');
+          const session = JSON.parse(content) as InsightsSession;
+
+          // Check if session has no messages
+          if (!session.messages || session.messages.length === 0) {
+            return session.id;
+          }
+        } catch {
+          // Skip invalid session files
+        }
+      }
+
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Get current session ID for a project
    */
   getCurrentSessionId(projectPath: string): string | null {
