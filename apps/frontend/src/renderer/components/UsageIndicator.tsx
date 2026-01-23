@@ -217,7 +217,7 @@ export function UsageIndicator() {
               : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
           }`}
         >
-          7 Days
+          {t('common:usage.dashboard.timePeriod7Days')}
         </Button>
         <Button
           size="sm"
@@ -229,7 +229,7 @@ export function UsageIndicator() {
               : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
           }`}
         >
-          30 Days
+          {t('common:usage.dashboard.timePeriod30Days')}
         </Button>
       </div>
 
@@ -245,7 +245,7 @@ export function UsageIndicator() {
               : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
           }`}
         >
-          Area
+          {t('common:usage.dashboard.chartTypeArea')}
         </Button>
         <Button
           size="sm"
@@ -257,7 +257,7 @@ export function UsageIndicator() {
               : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
           }`}
         >
-          Line
+          {t('common:usage.dashboard.chartTypeLine')}
         </Button>
         <Button
           size="sm"
@@ -269,7 +269,7 @@ export function UsageIndicator() {
               : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
           }`}
         >
-          Bar
+          {t('common:usage.dashboard.chartTypeBar')}
         </Button>
       </div>
 
@@ -285,7 +285,7 @@ export function UsageIndicator() {
               : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
           }`}
         >
-          Tokens
+          {t('common:usage.dashboard.metricTokens')}
         </Button>
         <Button
           size="sm"
@@ -297,7 +297,7 @@ export function UsageIndicator() {
               : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
           }`}
         >
-          Tools
+          {t('common:usage.dashboard.metricTools')}
         </Button>
       </div>
     </div>
@@ -320,7 +320,7 @@ export function UsageIndicator() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2 text-gray-200">
               <Activity className="h-4 w-4 text-indigo-400" />
-              Token Usage (5H Quota)
+              {t('common:usage.dashboard.cardTokenUsage')} ({t('common:usage.dashboard.tokenUsageQuota')})
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -332,7 +332,7 @@ export function UsageIndicator() {
                 <span className="text-xs text-gray-400 font-mono">
                   {usage && usage.sessionUsageValue != null && usage.sessionUsageLimit != null
                     ? `${formatUsageValue(usage.sessionUsageValue)} / ${formatUsageValue(usage.sessionUsageLimit)}`
-                    : 'N/A'
+                    : t('common:usage.notAvailable')
                   }
                 </span>
               </div>
@@ -356,7 +356,7 @@ export function UsageIndicator() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2 text-gray-200">
               <TrendingUp className="h-4 w-4 text-violet-400" />
-              Tools Usage (Monthly)
+              {t('common:usage.dashboard.cardToolsUsage')} ({t('common:usage.dashboard.toolsUsageMonthly')})
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -368,7 +368,7 @@ export function UsageIndicator() {
                 <span className="text-xs text-gray-400 font-mono">
                   {usage && usage.weeklyUsageValue != null && usage.weeklyUsageLimit != null
                     ? `${formatUsageValue(usage.weeklyUsageValue)} / ${formatUsageValue(usage.weeklyUsageLimit)}`
-                    : 'N/A'
+                    : t('common:usage.notAvailable')
                   }
                 </span>
               </div>
@@ -392,21 +392,21 @@ export function UsageIndicator() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2 text-gray-200">
               <Clock className="h-4 w-4 text-indigo-400" />
-              Reset Schedule
+              {t('common:usage.dashboard.cardResetSchedule')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-1.5 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-gray-400">Session:</span>
+                <span className="text-gray-400">{t('common:usage.sessionDefault')}:</span>
                 <span className="font-medium font-mono text-gray-200">
-                  {sessionResetTime || 'Calculating...'}
+                  {sessionResetTime || t('common:usage.dashboard.loadingData')}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-400">Weekly:</span>
+                <span className="text-gray-400">{t('common:usage.weeklyDefault')}:</span>
                 <span className="font-medium font-mono text-gray-200">
-                  {weeklyResetTime || 'Calculating...'}
+                  {weeklyResetTime || t('common:usage.dashboard.loadingData')}
                 </span>
               </div>
             </div>
@@ -418,20 +418,20 @@ export function UsageIndicator() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2 text-gray-200">
               <User className="h-4 w-4 text-violet-400" />
-              Account Status
+              {t('common:usage.dashboard.cardAccountStatus')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-400">Profile:</span>
+                <span className="text-xs text-gray-400">{t('common:usage.profile')}:</span>
                 <span className="text-xs font-medium truncate ml-2 text-gray-200" title={profileName}>
                   {profileName}
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="h-2 w-2 rounded-full bg-emerald-500 motion-safe:animate-pulse" />
-                <span className="text-xs font-medium text-emerald-400">Live</span>
+                <span className="text-xs font-medium text-emerald-400">{t('common:usage.dashboard.statusLive')}</span>
               </div>
             </div>
           </CardContent>
@@ -675,7 +675,7 @@ export function UsageIndicator() {
                 textAnchor="middle"
                 className="text-[10px] fill-gray-400 font-mono"
               >
-                Day {index + 1}
+                {t('common:usage.dashboard.chartAxisDay')} {index + 1}
               </text>
             );
           })}
