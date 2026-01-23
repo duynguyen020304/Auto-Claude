@@ -38,23 +38,47 @@ export function UsageIndicator() {
   const [chartType, setChartType] = useState<'area' | 'line' | 'bar'>('area');
   const [metric, setMetric] = useState<'tokens' | 'tools'>('tokens');
 
-  // Profile selection
+  // Profile selection state
   const { profiles, activeProfileId, setActiveProfile } = useSettingsStore();
+  const [isSwitchingProfile, setIsSwitchingProfile] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   const handleProfileChange = async (profileId: string) => {
-    await setActiveProfile(profileId);
-    // Request usage data refresh for the new profile
+    setIsSwitchingProfile(true);
+    setProfileError(null);
+
     try {
+      await setActiveProfile(profileId);
+
+      // Request usage data refresh for the new profile
       const result = await window.electronAPI.requestUsageUpdate();
+
       if (result.success && result.data) {
         setUsage(result.data);
         setIsAvailable(true);
       } else {
+        // Profile switched but no usage data available
+        setUsage(null);
         setIsAvailable(false);
       }
     } catch (error) {
-      console.warn('[UsageIndicator] Failed to refresh usage after profile change:', error);
+      // Profile switching failed - revert and show error
+      console.warn('[UsageIndicator] Failed to switch profile:', error);
+      setProfileError(t('common:usage.dashboard.profileSwitchFailed'));
       setIsAvailable(false);
+
+      // Revert to previous profile after a short delay
+      setTimeout(() => {
+        if (activeProfileId) {
+          setActiveProfile(activeProfileId).catch(() => {
+            // If revert also fails, just clear the error
+            setProfileError(null);
+          });
+        }
+        setProfileError(null);
+      }, 2000);
+    } finally {
+      setIsSwitchingProfile(false);
     }
   };
 
@@ -511,15 +535,25 @@ export function UsageIndicator() {
   /**
    * Custom SVG Chart Component
    * Displays usage trends with configurable chart type (area/line/bar)
-   * TODO: Replace placeholder data with real data in Phase 3 (subtask-2-4)
    */
   const renderChart = () => {
     // Transform usage snapshot to chart data points
     const dataPoints = transformUsageToChartData(usage, timePeriod, metric);
 
-    // Fallback to placeholder if no data available
-    const chartData = dataPoints.length > 0 ? dataPoints : [65, 72, 58, 81, 74, 69, 77];
+    // Show empty state if no data available
+    if (!dataPoints || dataPoints.length === 0) {
+      return (
+        <div className="w-full h-full flex items-center justify-center p-4 bg-[#161618]" role="region" aria-label={t('common:usage.dashboard.ariaLabel.chartVisualization')}>
+          <div className="text-center space-y-2">
+            <Activity className="h-8 w-8 text-gray-600 mx-auto" aria-hidden="true" />
+            <p className="text-sm text-gray-400">{t('common:usage.dashboard.chartEmptyState')}</p>
+            <p className="text-xs text-gray-500">{t('common:usage.dashboard.chartNoDataMessage')}</p>
+          </div>
+        </div>
+      );
+    }
 
+    const chartData = dataPoints;
     const chartWidth = 600;
     const chartHeight = 200;
     const padding = { top: 20, right: 20, bottom: 30, left: 40 };
@@ -832,15 +866,29 @@ export function UsageIndicator() {
 
           {/* Profile selector */}
           <div className="pt-2 border-t border-white/10 space-y-2">
-            <div className="flex items-center gap-1.5 text-[10px] text-gray-400">
-              <User className="h-3 w-3" aria-hidden="true" />
-              <span>{t('common:usage.activeAccount')}</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-[10px] text-gray-400">
+                <User className="h-3 w-3" aria-hidden="true" />
+                <span>{t('common:usage.activeAccount')}</span>
+              </div>
+              {isSwitchingProfile && (
+                <div className="flex items-center gap-1 text-[10px] text-indigo-400" role="status" aria-live="polite">
+                  <Activity className="h-3 w-3 motion-safe:animate-spin" aria-hidden="true" />
+                  <span>{t('common:usage.dashboard.profileSwitching')}</span>
+                </div>
+              )}
             </div>
+            {profileError && (
+              <div className="text-[10px] text-red-400 bg-red-500/10 border border-red-500/20 rounded px-2 py-1" role="alert" aria-live="assertive">
+                {profileError}
+              </div>
+            )}
             <Select
               value={activeProfileId || undefined}
               onValueChange={handleProfileChange}
-              disabled={!profiles || profiles.length === 0}
+              disabled={!profiles || profiles.length === 0 || isSwitchingProfile}
               aria-label={t('common:usage.dashboard.ariaLabel.profileDropdown')}
+              aria-busy={isSwitchingProfile}
             >
               <SelectTrigger className="h-8 text-xs bg-white/5 border-white/10 text-gray-200">
                 <SelectValue placeholder={t('tasks:apiProfile.placeholder')} />
@@ -862,7 +910,7 @@ export function UsageIndicator() {
                   ))
                 ) : (
                   <SelectItem value="empty" disabled>
-                    {t('tasks:apiProfile.empty')}
+                    {t('common:usage.dashboard.noProfilesConfigured')}
                   </SelectItem>
                 )}
               </SelectContent>
