@@ -501,7 +501,7 @@ export function UsageIndicator() {
 
           {/* Data Points */}
           {dataPoints.map((value, index) => {
-            const stepX = innerWidth / (data.length - 1);
+            const stepX = innerWidth / (dataPoints.length - 1);
             const x = padding.left + (index * stepX);
             const y = padding.top + innerHeight - ((value / 100) * innerHeight);
 
@@ -521,7 +521,7 @@ export function UsageIndicator() {
 
           {/* X-Axis Labels (Days) */}
           {dataPoints.map((_, index) => {
-            const stepX = innerWidth / (data.length - 1);
+            const stepX = innerWidth / (dataPoints.length - 1);
             const x = padding.left + (index * stepX);
 
             return (
