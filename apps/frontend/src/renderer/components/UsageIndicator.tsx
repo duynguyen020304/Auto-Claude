@@ -136,8 +136,8 @@ export function UsageIndicator() {
   // Show loading state initially
   if (isLoading) {
     return (
-      <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-white/10 bg-[#161618] text-gray-400">
-        <Activity className="h-3.5 w-3.5 motion-safe:animate-pulse" />
+      <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-white/10 bg-[#161618] text-gray-400" role="status" aria-live="polite" aria-label={t('common:usage.loading')}>
+        <Activity className="h-3.5 w-3.5 motion-safe:animate-pulse" aria-hidden="true" />
         <span className="text-xs font-semibold">{t('common:usage.loading')}</span>
       </div>
     );
@@ -148,12 +148,16 @@ export function UsageIndicator() {
     return (
       <Popover>
         <PopoverTrigger asChild>
-          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-white/10 bg-[#161618] text-gray-400 cursor-help">
-            <Activity className="h-3.5 w-3.5" />
+          <button
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-white/10 bg-[#161618] text-gray-400 cursor-help transition-all hover:opacity-80"
+            aria-label={t('common:usage.notAvailable')}
+            aria-haspopup="dialog"
+          >
+            <Activity className="h-3.5 w-3.5" aria-hidden="true" />
             <span className="text-xs font-semibold">{t('common:usage.notAvailable')}</span>
-          </div>
+          </button>
         </PopoverTrigger>
-        <PopoverContent align="start" sideOffset={4} className="text-xs w-64 bg-[#161618] border border-white/10">
+        <PopoverContent align="start" sideOffset={4} className="text-xs w-64 bg-[#161618] border border-white/10" role="dialog" aria-modal="false">
           <div className="space-y-1">
             <p className="font-medium">{t('common:usage.dataUnavailable')}</p>
             <p className="text-gray-400 text-[10px]">
@@ -200,13 +204,15 @@ export function UsageIndicator() {
    * TODO: Integrate into dashboard layout in Phase 4
    */
   const renderFilterBar = () => (
-    <div className="flex flex-wrap items-center gap-2 p-2 border-b border-white/10 bg-[#161618]">
+    <div className="flex flex-wrap items-center gap-2 p-2 border-b border-white/10 bg-[#161618]" role="toolbar" aria-label={t('common:usage.dashboard.ariaLabel.filterTimePeriod')}>
       {/* Time Period Toggle */}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1" role="group" aria-label={t('common:usage.dashboard.filterTimePeriod')}>
         <Button
           size="sm"
           variant={timePeriod === '7d' ? 'default' : 'outline'}
           onClick={() => setTimePeriod('7d')}
+          aria-pressed={timePeriod === '7d'}
+          aria-label={t('common:usage.dashboard.timePeriod7Days')}
           className={`h-7 px-3 text-xs font-mono transition-all duration-200 ${
             timePeriod === '7d'
               ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0'
@@ -219,6 +225,8 @@ export function UsageIndicator() {
           size="sm"
           variant={timePeriod === '30d' ? 'default' : 'outline'}
           onClick={() => setTimePeriod('30d')}
+          aria-pressed={timePeriod === '30d'}
+          aria-label={t('common:usage.dashboard.timePeriod30Days')}
           className={`h-7 px-3 text-xs font-mono transition-all duration-200 ${
             timePeriod === '30d'
               ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0'
@@ -230,11 +238,13 @@ export function UsageIndicator() {
       </div>
 
       {/* Chart Type Toggle */}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1" role="group" aria-label={t('common:usage.dashboard.filterChartType')}>
         <Button
           size="sm"
           variant={chartType === 'area' ? 'default' : 'outline'}
           onClick={() => setChartType('area')}
+          aria-pressed={chartType === 'area'}
+          aria-label={t('common:usage.dashboard.chartTypeArea')}
           className={`h-7 px-3 text-xs font-mono transition-all duration-200 ${
             chartType === 'area'
               ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0'
@@ -247,6 +257,8 @@ export function UsageIndicator() {
           size="sm"
           variant={chartType === 'line' ? 'default' : 'outline'}
           onClick={() => setChartType('line')}
+          aria-pressed={chartType === 'line'}
+          aria-label={t('common:usage.dashboard.chartTypeLine')}
           className={`h-7 px-3 text-xs font-mono transition-all duration-200 ${
             chartType === 'line'
               ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0'
@@ -259,6 +271,8 @@ export function UsageIndicator() {
           size="sm"
           variant={chartType === 'bar' ? 'default' : 'outline'}
           onClick={() => setChartType('bar')}
+          aria-pressed={chartType === 'bar'}
+          aria-label={t('common:usage.dashboard.chartTypeBar')}
           className={`h-7 px-3 text-xs font-mono transition-all duration-200 ${
             chartType === 'bar'
               ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0'
@@ -270,11 +284,13 @@ export function UsageIndicator() {
       </div>
 
       {/* Metric Toggle */}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1" role="group" aria-label={t('common:usage.dashboard.filterMetric')}>
         <Button
           size="sm"
           variant={metric === 'tokens' ? 'default' : 'outline'}
           onClick={() => setMetric('tokens')}
+          aria-pressed={metric === 'tokens'}
+          aria-label={t('common:usage.dashboard.metricTokens')}
           className={`h-7 px-3 text-xs font-mono transition-all duration-200 ${
             metric === 'tokens'
               ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0'
@@ -287,6 +303,8 @@ export function UsageIndicator() {
           size="sm"
           variant={metric === 'tools' ? 'default' : 'outline'}
           onClick={() => setMetric('tools')}
+          aria-pressed={metric === 'tools'}
+          aria-label={t('common:usage.dashboard.metricTools')}
           className={`h-7 px-3 text-xs font-mono transition-all duration-200 ${
             metric === 'tools'
               ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0'
@@ -312,10 +330,10 @@ export function UsageIndicator() {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-[#161618]">
         {/* Token Usage Card - 5H Quota */}
-        <Card className="border border-white/10 bg-white/5 backdrop-blur-sm">
+        <Card className="border border-white/10 bg-white/5 backdrop-blur-sm" aria-label={t('common:usage.dashboard.ariaLabel.tokenUsageCard')}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2 text-gray-200">
-              <Activity className="h-4 w-4 text-indigo-400" />
+              <Activity className="h-4 w-4 text-indigo-400" aria-hidden="true" />
               {t('common:usage.dashboard.cardTokenUsage')} ({t('common:usage.dashboard.tokenUsageQuota')})
             </CardTitle>
           </CardHeader>
@@ -332,7 +350,7 @@ export function UsageIndicator() {
                   }
                 </span>
               </div>
-              <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+              <div className="h-2 bg-white/5 rounded-full overflow-hidden" role="progressbar" aria-valuenow={usage ? Math.round(usage.sessionPercent) : 0} aria-valuemin={0} aria-valuemax={100} aria-label={`${t('common:usage.dashboard.cardTokenUsage')}: ${usage ? Math.round(usage.sessionPercent) : 0}%`}>
                 <div
                   className={`h-full rounded-full transition-all duration-500 ease-out ${
                     usage && usage.sessionPercent >= 95 ? 'bg-gradient-to-r from-red-500 to-red-400' :
@@ -348,10 +366,10 @@ export function UsageIndicator() {
         </Card>
 
         {/* Tools Usage Card - Monthly */}
-        <Card className="border border-white/10 bg-white/5 backdrop-blur-sm">
+        <Card className="border border-white/10 bg-white/5 backdrop-blur-sm" aria-label={t('common:usage.dashboard.ariaLabel.toolsUsageCard')}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2 text-gray-200">
-              <TrendingUp className="h-4 w-4 text-violet-400" />
+              <TrendingUp className="h-4 w-4 text-violet-400" aria-hidden="true" />
               {t('common:usage.dashboard.cardToolsUsage')} ({t('common:usage.dashboard.toolsUsageMonthly')})
             </CardTitle>
           </CardHeader>
@@ -368,7 +386,7 @@ export function UsageIndicator() {
                   }
                 </span>
               </div>
-              <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+              <div className="h-2 bg-white/5 rounded-full overflow-hidden" role="progressbar" aria-valuenow={usage ? Math.round(usage.weeklyPercent) : 0} aria-valuemin={0} aria-valuemax={100} aria-label={`${t('common:usage.dashboard.cardToolsUsage')}: ${usage ? Math.round(usage.weeklyPercent) : 0}%`}>
                 <div
                   className={`h-full rounded-full transition-all duration-500 ease-out ${
                     usage && usage.weeklyPercent >= 99 ? 'bg-gradient-to-r from-red-500 to-red-400' :
@@ -384,10 +402,10 @@ export function UsageIndicator() {
         </Card>
 
         {/* Reset Schedule Card */}
-        <Card className="border border-white/10 bg-white/5 backdrop-blur-sm">
+        <Card className="border border-white/10 bg-white/5 backdrop-blur-sm" aria-label={t('common:usage.dashboard.ariaLabel.resetScheduleCard')}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2 text-gray-200">
-              <Clock className="h-4 w-4 text-indigo-400" />
+              <Clock className="h-4 w-4 text-indigo-400" aria-hidden="true" />
               {t('common:usage.dashboard.cardResetSchedule')}
             </CardTitle>
           </CardHeader>
@@ -410,10 +428,10 @@ export function UsageIndicator() {
         </Card>
 
         {/* Account Status Card */}
-        <Card className="border border-white/10 bg-white/5 backdrop-blur-sm">
+        <Card className="border border-white/10 bg-white/5 backdrop-blur-sm" aria-label={t('common:usage.dashboard.ariaLabel.accountStatusCard')}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2 text-gray-200">
-              <User className="h-4 w-4 text-violet-400" />
+              <User className="h-4 w-4 text-violet-400" aria-hidden="true" />
               {t('common:usage.dashboard.cardAccountStatus')}
             </CardTitle>
           </CardHeader>
@@ -425,8 +443,8 @@ export function UsageIndicator() {
                   {profileName}
                 </span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <div className="h-2 w-2 rounded-full bg-emerald-500 motion-safe:animate-pulse" />
+              <div className="flex items-center gap-1.5" role="status" aria-live="polite">
+                <div className="h-2 w-2 rounded-full bg-emerald-500 motion-safe:animate-pulse" aria-hidden="true" />
                 <span className="text-xs font-medium text-emerald-400">{t('common:usage.dashboard.statusLive')}</span>
               </div>
             </div>
@@ -530,13 +548,13 @@ export function UsageIndicator() {
     const pathData = generatePathData(chartData);
 
     return (
-      <div className="w-full h-full flex items-center justify-center p-4 bg-[#161618]">
+      <div className="w-full h-full flex items-center justify-center p-4 bg-[#161618]" role="region" aria-label={t('common:usage.dashboard.ariaLabel.chartVisualization')}>
         <svg
           viewBox={`0 0 ${chartWidth} ${chartHeight}`}
           className="w-full h-full transition-all duration-300 ease-out"
           preserveAspectRatio="xMidYMid meet"
           role="img"
-          aria-label={`Usage trend ${chartType} chart`}
+          aria-label={`${t('common:usage.dashboard.ariaLabel.chartVisualization')}: ${t(`common:usage.dashboard.chartType${chartType.charAt(0).toUpperCase() + chartType.slice(1)}`)}`}
         >
           {/* Gradient Definition (only for area chart) */}
           {chartType === 'area' && (
@@ -689,8 +707,9 @@ export function UsageIndicator() {
         <button
           className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-white/10 bg-[#161618] transition-all hover:opacity-80 ${badgeColorClasses}`}
           aria-label={t('common:usage.usageStatusAriaLabel')}
+          aria-haspopup="dialog"
         >
-          <Icon className="h-3.5 w-3.5" />
+          <Icon className="h-3.5 w-3.5" aria-hidden="true" />
           <span className="text-xs font-semibold font-mono text-gray-200">
             {Math.round(badgeUsage)}%
           </span>
@@ -700,7 +719,7 @@ export function UsageIndicator() {
         <div className="p-3 space-y-3">
           {/* Header with overall status */}
           <div className="flex items-center pb-2 border-b border-white/10">
-            <Icon className="h-3.5 w-3.5 text-indigo-400" />
+            <Icon className="h-3.5 w-3.5 text-indigo-400" aria-hidden="true" />
             <span className="font-semibold text-xs text-gray-200">{t('common:usage.usageBreakdown')}</span>
           </div>
 
@@ -719,7 +738,7 @@ export function UsageIndicator() {
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <span className="text-gray-400 font-medium text-[11px] flex items-center gap-1">
-                <Clock className="h-3 w-3" />
+                <Clock className="h-3 w-3" aria-hidden="true" />
                 {sessionLabel}
               </span>
               <span className={`font-semibold font-mono text-xs ${
@@ -733,12 +752,12 @@ export function UsageIndicator() {
             </div>
             {sessionResetTime && (
               <div className="text-[10px] text-gray-400 pl-4 flex items-center gap-1">
-                <Info className="h-2.5 w-2.5" />
+                <Info className="h-2.5 w-2.5" aria-hidden="true" />
                 {sessionResetTime}
               </div>
             )}
             {/* Enhanced progress bar with gradient */}
-            <div className="h-2 bg-white/5 rounded-full overflow-hidden shadow-inner">
+            <div className="h-2 bg-white/5 rounded-full overflow-hidden shadow-inner" role="progressbar" aria-valuenow={Math.round(usage.sessionPercent)} aria-valuemin={0} aria-valuemax={100} aria-label={`${sessionLabel}: ${Math.round(usage.sessionPercent)}%`}>
               <div
                 className={`h-full rounded-full transition-all duration-500 ease-out relative overflow-hidden ${
                   usage.sessionPercent >= 95 ? 'bg-gradient-to-r from-red-500 to-red-400' :
@@ -749,7 +768,7 @@ export function UsageIndicator() {
                 style={{ width: `${Math.min(usage.sessionPercent, 100)}%` }}
               >
                 {/* Subtle shine effect */}
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent motion-safe:animate-pulse" />
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent motion-safe:animate-pulse" aria-hidden="true" />
               </div>
             </div>
             {/* Raw usage value with better styling */}
@@ -767,7 +786,7 @@ export function UsageIndicator() {
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <span className="text-gray-400 font-medium text-[11px] flex items-center gap-1">
-                <TrendingUp className="h-3 w-3" />
+                <TrendingUp className="h-3 w-3" aria-hidden="true" />
                 {weeklyLabel}
               </span>
               <span className={`font-semibold font-mono text-xs ${
@@ -781,12 +800,12 @@ export function UsageIndicator() {
             </div>
             {weeklyResetTime && (
               <div className="text-[10px] text-gray-400 pl-4 flex items-center gap-1">
-                <Info className="h-2.5 w-2.5" />
+                <Info className="h-2.5 w-2.5" aria-hidden="true" />
                 {weeklyResetTime}
               </div>
             )}
             {/* Enhanced progress bar with gradient */}
-            <div className="h-2 bg-white/5 rounded-full overflow-hidden shadow-inner">
+            <div className="h-2 bg-white/5 rounded-full overflow-hidden shadow-inner" role="progressbar" aria-valuenow={Math.round(usage.weeklyPercent)} aria-valuemin={0} aria-valuemax={100} aria-label={`${weeklyLabel}: ${Math.round(usage.weeklyPercent)}%`}>
               <div
                 className={`h-full rounded-full transition-all duration-500 ease-out relative overflow-hidden ${
                   usage.weeklyPercent >= 99 ? 'bg-gradient-to-r from-red-500 to-red-400' :
@@ -797,7 +816,7 @@ export function UsageIndicator() {
                 style={{ width: `${Math.min(usage.weeklyPercent, 100)}%` }}
               >
                 {/* Subtle shine effect */}
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent motion-safe:animate-pulse" />
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent motion-safe:animate-pulse" aria-hidden="true" />
               </div>
             </div>
             {/* Raw usage value with better styling */}
@@ -814,13 +833,14 @@ export function UsageIndicator() {
           {/* Profile selector */}
           <div className="pt-2 border-t border-white/10 space-y-2">
             <div className="flex items-center gap-1.5 text-[10px] text-gray-400">
-              <User className="h-3 w-3" />
+              <User className="h-3 w-3" aria-hidden="true" />
               <span>{t('common:usage.activeAccount')}</span>
             </div>
             <Select
               value={activeProfileId || undefined}
               onValueChange={handleProfileChange}
               disabled={!profiles || profiles.length === 0}
+              aria-label={t('common:usage.dashboard.ariaLabel.profileDropdown')}
             >
               <SelectTrigger className="h-8 text-xs bg-white/5 border-white/10 text-gray-200">
                 <SelectValue placeholder={t('tasks:apiProfile.placeholder')} />
@@ -830,7 +850,7 @@ export function UsageIndicator() {
                   profiles.map((profile: APIProfile) => (
                     <SelectItem key={profile.id} value={profile.id}>
                       <div className="flex items-center gap-2">
-                        <Key className="h-3 w-3 shrink-0 text-indigo-400" />
+                        <Key className="h-3 w-3 shrink-0 text-indigo-400" aria-hidden="true" />
                         <div>
                           <span className="font-medium text-xs text-gray-200">{profile.name}</span>
                           <span className="ml-2 text-[10px] text-gray-400">
