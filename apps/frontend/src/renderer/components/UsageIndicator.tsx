@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue
 } from './ui/select';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from './ui/card';
 import { useTranslation } from 'react-i18next';
 import { formatTimeRemaining, localizeUsageWindowLabel, hasHardcodedText } from '../../shared/utils/format-time';
 import type { ClaudeUsageSnapshot } from '../../shared/types/agent';
@@ -260,6 +261,143 @@ export function UsageIndicator() {
       </div>
     </div>
   );
+
+  /**
+   * Dashboard Cards Component
+   * 4-card grid layout: Token Usage, Tools Usage, Reset Schedule, Account Status
+   * TODO: Wire up real data in Phase 2 (subtask-2-2)
+   */
+  const renderDashboardCards = () => {
+    // Get active profile name
+    const activeProfile = profiles?.find(p => p.id === activeProfileId);
+    const profileName = activeProfile?.name || t('tasks:apiProfile.placeholder');
+
+    return (
+      <div className="grid grid-cols-2 gap-3 p-4">
+        {/* Token Usage Card - 5H Quota */}
+        <Card className="border-border/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              Token Usage (5H Quota)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex items-baseline justify-between">
+                <span className="text-2xl font-semibold tabular-nums">
+                  {usage ? Math.round(usage.sessionPercent) : 0}%
+                </span>
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  {usage && usage.sessionUsageValue != null && usage.sessionUsageLimit != null
+                    ? `${formatUsageValue(usage.sessionUsageValue)} / ${formatUsageValue(usage.sessionUsageLimit)}`
+                    : 'N/A'
+                  }
+                </span>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ease-out ${
+                    usage && usage.sessionPercent >= 95 ? 'bg-gradient-to-r from-red-600 to-red-500' :
+                    usage && usage.sessionPercent >= 91 ? 'bg-gradient-to-r from-orange-600 to-orange-500' :
+                    usage && usage.sessionPercent >= 71 ? 'bg-gradient-to-r from-yellow-600 to-yellow-500' :
+                    'bg-gradient-to-r from-green-600 to-green-500'
+                  }`}
+                  style={{ width: `${usage ? Math.min(usage.sessionPercent, 100) : 0}%` }}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Tools Usage Card - Monthly */}
+        <Card className="border-border/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Tools Usage (Monthly)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex items-baseline justify-between">
+                <span className="text-2xl font-semibold tabular-nums">
+                  {usage ? Math.round(usage.weeklyPercent) : 0}%
+                </span>
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  {usage && usage.weeklyUsageValue != null && usage.weeklyUsageLimit != null
+                    ? `${formatUsageValue(usage.weeklyUsageValue)} / ${formatUsageValue(usage.weeklyUsageLimit)}`
+                    : 'N/A'
+                  }
+                </span>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ease-out ${
+                    usage && usage.weeklyPercent >= 99 ? 'bg-gradient-to-r from-red-600 to-red-500' :
+                    usage && usage.weeklyPercent >= 91 ? 'bg-gradient-to-r from-orange-600 to-orange-500' :
+                    usage && usage.weeklyPercent >= 71 ? 'bg-gradient-to-r from-yellow-600 to-yellow-500' :
+                    'bg-gradient-to-r from-green-600 to-green-500'
+                  }`}
+                  style={{ width: `${usage ? Math.min(usage.weeklyPercent, 100) : 0}%` }}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Reset Schedule Card */}
+        <Card className="border-border/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Reset Schedule
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-1.5 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Session:</span>
+                <span className="font-medium tabular-nums">
+                  {sessionResetTime || 'Calculating...'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Weekly:</span>
+                <span className="font-medium tabular-nums">
+                  {weeklyResetTime || 'Calculating...'}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Account Status Card */}
+        <Card className="border-border/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Account Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Profile:</span>
+                <span className="text-xs font-medium truncate ml-2" title={profileName}>
+                  {profileName}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="h-2 w-2 rounded-full bg-green-500 motion-safe:animate-pulse" />
+                <span className="text-xs font-medium text-green-600">Live</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
 
   return (
     <TooltipProvider delayDuration={200}>
