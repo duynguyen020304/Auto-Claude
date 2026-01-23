@@ -200,7 +200,7 @@ export function UsageIndicator() {
    * TODO: Integrate into dashboard layout in Phase 4
    */
   const renderFilterBar = () => (
-    <div className="flex items-center gap-2 p-2 border-b border-white/10 bg-[#161618]">
+    <div className="flex flex-wrap items-center gap-2 p-2 border-b border-white/10 bg-[#161618]">
       {/* Time Period Toggle */}
       <div className="flex items-center gap-1">
         <Button
@@ -310,7 +310,7 @@ export function UsageIndicator() {
     const profileName = usage?.profileName || activeProfile?.name || t('tasks:apiProfile.placeholder');
 
     return (
-      <div className="grid grid-cols-2 gap-3 p-4 bg-[#161618]">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-[#161618]">
         {/* Token Usage Card - 5H Quota */}
         <Card className="border border-white/10 bg-white/5 backdrop-blur-sm">
           <CardHeader className="pb-2">
@@ -696,7 +696,7 @@ export function UsageIndicator() {
           </span>
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" sideOffset={4} className="text-xs w-[600px] p-0 bg-[#161618] border border-white/10 max-h-[600px] overflow-y-auto">
+      <PopoverContent align="start" sideOffset={4} className="text-xs w-[min(600px,calc(100vw-32px))] p-0 bg-[#161618] border border-white/10 max-h-[600px] overflow-y-auto">
         <div className="p-3 space-y-3">
           {/* Header with overall status */}
           <div className="flex items-center pb-2 border-b border-white/10">
@@ -708,7 +708,7 @@ export function UsageIndicator() {
           {renderFilterBar()}
 
           {/* Chart Visualization */}
-          <div className="h-[200px] border border-white/10 rounded-lg overflow-hidden">
+          <div className="h-[min(200px,40vw)] border border-white/10 rounded-lg overflow-hidden">
             {renderChart()}
           </div>
 
