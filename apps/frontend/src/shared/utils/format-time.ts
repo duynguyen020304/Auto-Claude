@@ -201,3 +201,70 @@ export function formatTimeRemainingSimple(timestamp: string | undefined): string
     return 'Unknown';
   }
 }
+
+/**
+ * Format a timestamp as a relative "time ago" string
+ *
+ * Calculates the time difference between now and the given timestamp,
+ * then formats it using the provided translation function.
+ *
+ * @param timestamp - ISO timestamp string or Date object
+ * @param t - i18next translation function
+ * @returns Formatted time ago string, or undefined if timestamp is invalid
+ *
+ * @example
+ * formatTimeAgo('2025-01-20T15:00:00Z', t)
+ * // Returns: "Just now", "5m ago", "2h ago", "3d ago" depending on time difference
+ */
+export function formatTimeAgo(
+  timestamp: string | Date | undefined,
+  t: (key: string, params?: Record<string, unknown>) => string
+): string | undefined {
+  if (!timestamp) return undefined;
+
+  try {
+    const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
+
+    // Handle invalid dates (isNaN check before using getTime())
+    if (isNaN(date.getTime())) return undefined;
+
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+
+    // Handle future dates
+    if (diffMs < 0) {
+      // Future timestamp - treat as "just now"
+      return t('common:time.justNow');
+    }
+
+    const diffSeconds = Math.floor(diffMs / 1000);
+    const diffMins = Math.floor(diffSeconds / 60);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    // Less than 1 minute
+    if (diffMins < 1) {
+      return t('common:time.justNow');
+    }
+
+    // Less than 1 hour
+    if (diffHours < 1) {
+      return t('common:time.minutesAgo', { count: diffMins });
+    }
+
+    // Less than 24 hours
+    if (diffHours < 24) {
+      return t('common:time.hoursAgo', { count: diffHours });
+    }
+
+    // Less than 2 days (show "Yesterday")
+    if (diffDays < 2) {
+      return t('common:time.yesterday');
+    }
+
+    // 2 or more days
+    return t('common:time.daysAgo', { count: diffDays });
+  } catch (_error) {
+    return undefined;
+  }
+}
