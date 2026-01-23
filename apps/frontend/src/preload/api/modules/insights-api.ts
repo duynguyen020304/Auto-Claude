@@ -17,8 +17,8 @@ import { createIpcListener, invokeIpc, sendIpc, IpcListenerCleanup } from './ipc
 export interface InsightsAPI {
   // Operations
   getInsightsSession: (projectId: string) => Promise<IPCResult<InsightsSession | null>>;
-  sendInsightsMessage: (projectId: string, message: string, modelConfig?: InsightsModelConfig) => void;
-  clearInsightsSession: (projectId: string) => Promise<IPCResult>;
+  sendInsightsMessage: (sessionId: string, projectId: string, message: string, modelConfig?: InsightsModelConfig) => void;
+  clearInsightsSession: (sessionId: string, projectId: string) => Promise<IPCResult>;
   createTaskFromInsights: (
     projectId: string,
     title: string,
@@ -54,11 +54,11 @@ export const createInsightsAPI = (): InsightsAPI => ({
   getInsightsSession: (projectId: string): Promise<IPCResult<InsightsSession | null>> =>
     invokeIpc(IPC_CHANNELS.INSIGHTS_GET_SESSION, projectId),
 
-  sendInsightsMessage: (projectId: string, message: string, modelConfig?: InsightsModelConfig): void =>
-    sendIpc(IPC_CHANNELS.INSIGHTS_SEND_MESSAGE, projectId, message, modelConfig),
+  sendInsightsMessage: (sessionId: string, projectId: string, message: string, modelConfig?: InsightsModelConfig): void =>
+    sendIpc(IPC_CHANNELS.INSIGHTS_SEND_MESSAGE, sessionId, projectId, message, modelConfig),
 
-  clearInsightsSession: (projectId: string): Promise<IPCResult> =>
-    invokeIpc(IPC_CHANNELS.INSIGHTS_CLEAR_SESSION, projectId),
+  clearInsightsSession: (sessionId: string, projectId: string): Promise<IPCResult> =>
+    invokeIpc(IPC_CHANNELS.INSIGHTS_CLEAR_SESSION, sessionId, projectId),
 
   createTaskFromInsights: (
     projectId: string,

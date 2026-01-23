@@ -935,11 +935,19 @@ export function sendMessage(projectId: string, message: string, modelConfig?: In
   const configToUse = modelConfig || session?.modelConfig;
 
   // Send to main process
-  window.electronAPI.sendInsightsMessage(projectId, message, configToUse);
+  window.electronAPI.sendInsightsMessage(session.id, projectId, message, configToUse);
 }
 
 export async function clearSession(projectId: string): Promise<void> {
-  const result = await window.electronAPI.clearInsightsSession(projectId);
+  const store = useInsightsStore.getState();
+  const sessionId = store.currentSessionId;
+
+  if (!sessionId) {
+    console.error('[InsightsStore] clearSession - no current session');
+    return;
+  }
+
+  const result = await window.electronAPI.clearInsightsSession(sessionId, projectId);
   if (result.success) {
     useInsightsStore.getState().clearSession();
     // Reload sessions list and current session
