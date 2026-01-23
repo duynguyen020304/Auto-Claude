@@ -37,5 +37,40 @@
     "deleteTitle": "Xóa Worktree?",
     "deleteDescription": "Thao tác này sẽ xóa vĩnh viễn worktree và nhánh của nó. Bất kỳ thay đổi chưa được commit nào sẽ bị mất.",
     "detached": "(đã tách rời)"
+  },
+  "grid": {
+    "title": "Terminal Agent",
+    "description": "Tạo nhiều terminal để chạy các tác agent song song.",
+    "shortcutHint": "Sử dụng {{shortcut}} để tạo terminal mới.",
+    "terminalCount": "{{count}} / 12 terminal",
+    "newTerminal": "Terminal Mới",
+    "history": "Lịch sử",
+    "restoreFrom": "Khôi phục phiên từ...",
+    "session": "{{count}} phiên",
+    "session_plural": "{{count}} phiên",
+    "invokeClaudeAll": "Gọi Claude Tất cả",
+    "files": "Tệp"
+  },
+  "task": {
+    "currentTask": "Tác vụ hiện tại",
+    "switchTo": "Chuyển sang...",
+    "clearTask": "Xóa tác vụ",
+    "selectTask": "Chọn tác vụ...",
+    "availableTasks": "Tác vụ có sẵn",
+    "addNewTask": "Thêm tác vụ mới",
+    "noTasksAvailable": "Không có tác vụ nào",
+    "createTasksInKanban": "Tạo tác vụ trong bảng Kanban"
+  },
+  "title": {
+    "doubleClickToRename": "Nhấp đúp để đổi tên"
+  },
+  "phases": {
+    "idle": "Sẵn sàng",
+    "planning": "Lập kế hoạch",
+    "coding": "Viết mã",
+    "qaReview": "Xem xét QA",
+    "qaFixing": "Sửa lỗi",
+    "complete": "Hoàn tất",
+    "failed": "Thất bại"
   }
 }

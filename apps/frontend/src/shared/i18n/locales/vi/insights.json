@@ -18,5 +18,73 @@
     "truncatedTooltip": "Đang hiển thị {{lines}} của {{total}} dòng",
     "lines": "{{count}} dòng",
     "linesIncluded": "{{included}} đã bao gồm"
+  },
+  "chatHistory": {
+    "title": "Lịch sử Trò chuyện",
+    "noConversations": "Chưa có cuộc trò chuyện nào",
+    "deleteWarning": "Thao tác này sẽ xóa vĩnh viễn cuộc trò chuyện này và tất cả tin nhắn của nó. Thao tác này không thể hoàn tác.",
+    "deleteTitle": "Xóa cuộc trò chuyện?",
+    "messageCount": "{{count}} tin nhắn",
+    "messageCount_plural": "{{count}} tin nhắn",
+    "searchPlaceholder": "Tìm kiếm cuộc trò chuyện...",
+    "renameConversation": "Đổi tên cuộc trò chuyện",
+    "conversationName": "Tên cuộc trò chuyện",
+    "rename": "Đổi tên",
+    "delete": "Xóa",
+    "today": "Hôm nay",
+    "yesterday": "Hôm qua",
+    "daysAgo": "{{count}} ngày trước"
+  },
+  "search": {
+    "placeholder": "Hỏi về codebase của bạn...",
+    "searchButton": "Tìm kiếm",
+    "searching": "Đang tìm kiếm...",
+    "noResults": "Không tìm thấy kết quả",
+    "resultsCount": "{{count}} kết quả",
+    "resultsCount_plural": "{{count}} kết quả"
+  },
+  "sessions": {
+    "title": "Phiên làm việc",
+    "startNew": "Bắt đầu Phiên Mới",
+    "continueSession": "Tiếp tục Phiên",
+    "noSessions": "Chưa có phiên nào"
+  },
+  "insights": {
+    "title": "Insights",
+    "subtitle": "Đặt câu hỏi về codebase của bạn",
+    "hideSidebar": "Ẩn thanh bên",
+    "showSidebar": "Hiển thị thanh bên",
+    "newChat": "Trò chuyện Mới",
+    "startConversation": "Bắt đầu Cuộc trò chuyện",
+    "startConversationDescription": "Đặt câu hỏi về codebase của bạn, nhận gợi ý cải tiến, hoặc thảo luận về các tính năng bạn muốn triển khai.",
+    "suggestion1": "Kiến trúc của dự án này là gì?",
+    "suggestion2": "Gợi ý cải thiện chất lượng mã",
+    "suggestion3": "Tôi có thể thêm tính năng gì tiếp theo?",
+    "suggestion4": "Có bất kỳ mối quan ngại bảo mật nào không?",
+    "assistant": "Trợ lý",
+    "thinking": "Đang suy nghĩ...",
+    "askAboutCodebase": "Hỏi về codebase của bạn...",
+    "pressEnterToSend": "Nhấn Enter để gửi, Shift+Enter để xuống dòng",
+    "you": "Bạn",
+    "suggestedTask": "Tác vụ Được Gợi ý",
+    "creating": "Đang tạo...",
+    "taskCreated": "Đã Tạo Tác vụ",
+    "retry": "Thử lại",
+    "createTask": "Tạo Tác vụ",
+    "concurrentSessions": "Các Phiên Song song ({{count}})",
+    "current": "Hiện tại",
+    "processing": "Đang xử lý...",
+    "usingTool": "Đang dùng {{toolName}}...",
+    "cancelSession": "Hủy phiên này",
+    "toolsUsed": "{{count}} công cụ đã được dùng",
+    "readingFile": "Đang đọc tệp",
+    "searchingFiles": "Đang tìm kiếm tệp",
+    "searchingCode": "Đang tìm kiếm mã"
+  },
+  "modelSelector": {
+    "agentProfile": "Hồ sơ Agent",
+    "custom": "Tùy chỉnh...",
+    "chooseModelThinking": "Chọn mô hình & mức độ suy nghĩ",
+    "balanced": "Cân bằng"
   }
 }

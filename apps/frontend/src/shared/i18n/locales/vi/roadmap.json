@@ -1,0 +1,111 @@
+{
+  "emptyState": {
+    "title": "Chưa Có Roadmap",
+    "description": "Tạo một roadmap được hỗ trợ bởi AI để hiểu đối tượng mục tiêu của dự án và tạo kế hoạch tính năng chiến lược.",
+    "generateButton": "Tạo Roadmap"
+  },
+  "header": {
+    "competitorAnalysis": "Phân Tích Đối Thủ",
+    "clickToViewAnalysis": "Nhấn để xem phân tích chi tiết",
+    "analyzedCompetitors": "Đã phân tích {{count}} đối thủ với {{painPoints}} điểm đau được xác định",
+    "addFeature": "Thêm Tính Năng",
+    "addFeatureTooltip": "Thêm một tính năng mới vào roadmap",
+    "regenerateRoadmap": "Tạo Lại Roadmap",
+    "regenerateTooltip": "Tạo lại roadmap",
+    "target": "Mục tiêu",
+    "morePersonas": "+{{count}} persona nữa",
+    "secondaryPersonas": "Persona Phụ:",
+    "features": "tính năng",
+    "phases": "giai đoạn",
+    "priorityMust": "phải",
+    "priorityShould": "nên",
+    "priorityCould": "có thể",
+    "priorityWont": "sẽ không"
+  },
+  "tabs": {
+    "kanban": "Kanban",
+    "phases": "Giai Đoạn",
+    "features": "Tất Cả Tính Năng",
+    "priorities": "Theo Ưu Tiên",
+    "featuresCount": "{{count}} tính năng",
+    "impactLabel": "tác động {{impact}}",
+    "insight": "Thông tin Chi tiết"
+  },
+  "kanban": {
+    "underReview": "Đang Xem Xét",
+    "planned": "Đã Lập Kế Hoạch",
+    "inProgress": "Đang Thực Hiện",
+    "done": "Hoàn Thành",
+    "dropHere": "Thả vào đây",
+    "noFeatures": "Không có tính năng",
+    "dragFeaturesHere": "Kéo tính năng vào đây",
+    "unknownStatus": "Trạng thái Không xác định"
+  },
+  "priority": {
+    "must": "Phải Có",
+    "should": "Nên Có",
+    "could": "Có Thể Có",
+    "wont": "Sẽ Không Có"
+  },
+  "complexity": {
+    "low": "thấp",
+    "medium": "trung bình",
+    "high": "cao"
+  },
+  "impact": {
+    "low": "thấp",
+    "medium": "trung bình",
+    "high": "cao"
+  },
+  "status": {
+    "under_review": "Đang Xem Xét",
+    "planned": "Đã Lập Kế Hoạch",
+    "in_progress": "Đang Thực Hiện",
+    "done": "Hoàn Thành",
+    "completed": "hoàn thành",
+    "in_progress_phase": "đang thực hiện"
+  },
+  "featureDetailPanel": {
+    "description": "Mô tả",
+    "rationale": "Lý do",
+    "complexity": "Độ Phức Tạp",
+    "impact": "Tác Động",
+    "dependencies": "Phụ Thuộc",
+    "userStories": "Câu Chuyện Người Dùng",
+    "acceptanceCriteria": "Tiêu Chức Chấp Nhận",
+    "addressesCompetitorPainPoints": "Giải Quyết Điểm Đau Của Đối Thủ",
+    "severity": "mức độ {{severity}}",
+    "goToTask": "Đi đến Tác vụ",
+    "convertToSpec": "Chuyển thành Tác vụ Auto-Build",
+    "deleteFeature": "Xóa Tính Năng?",
+    "deleteFeatureDescription": "Thao tác này sẽ xóa vĩnh viễn \"{{title}}\" khỏi roadmap của bạn.",
+    "cancel": "Hủy",
+    "delete": "Xóa"
+  },
+  "featureCard": {
+    "impactLabel": "tác động {{impact}}",
+    "competitorInsight": "Thông tin Đối thủ",
+    "competitorInsightTooltip": "Tính năng này giải quyết điểm đau của đối thủ",
+    "goToTask": "Đi đến Tác vụ",
+    "build": "Xây Dựng"
+  },
+  "phaseCard": {
+    "progress": "Tiến độ",
+    "featuresCount": "{{completed}}/{{total}} tính năng",
+    "milestones": "Cột mốc",
+    "features": "Tính Năng ({{count}})",
+    "moreFeatures": "+{{count}} tính năng nữa",
+    "viewTask": "Xem Tác vụ",
+    "build": "Xây Dựng"
+  },
+  "generation": {
+    "title": "Đang Tạo Roadmap",
+    "analyzingProject": "Đang phân tích cấu trúc dự án và codebase...",
+    "understandingRequirements": "Đang hiểu yêu cầu và mục tiêu dự án...",
+    "identifyingAudience": "Đang xác định đối tượng mục tiêu và trường hợp sử dụng...",
+    "generatingFeatures": "Đang tạo kế hoạch tính năng chiến lược...",
+    "organizingPhases": "Đang sắp xếp tính năng thành các giai đoạn thực hiện...",
+    "finalizing": "Đang hoàn thiện roadmap...",
+    "complete": "Đã hoàn thành tạo roadmap!"
+  }
+}

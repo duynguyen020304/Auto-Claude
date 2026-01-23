@@ -44,7 +44,7 @@ export function IdeationHeader({
   hasActiveIdeas,
   canAddMore
 }: IdeationHeaderProps) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation(['ideation', 'common']);
   const hasSelection = selectedCount > 0;
 
   // Generate Fresh dialog state
@@ -75,11 +75,11 @@ export function IdeationHeader({
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Lightbulb className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold">Ideation</h2>
-            <Badge variant="outline">{totalIdeas} ideas</Badge>
+            <h2 className="text-lg font-semibold">{t('ideation:header.title')}</h2>
+            <Badge variant="outline">{t('ideation:header.ideasBadge', { count: totalIdeas })}</Badge>
           </div>
           <p className="text-sm text-muted-foreground">
-            AI-generated feature ideas for your project
+            {t('ideation:header.subtitle')}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -87,7 +87,7 @@ export function IdeationHeader({
           {hasSelection ? (
             <>
               <Badge variant="secondary" className="mr-1">
-                {selectedCount} selected
+                {t('ideation:header.selectedBadge', { count: selectedCount })}
               </Badge>
               <Button
                 variant="outline"
@@ -96,7 +96,7 @@ export function IdeationHeader({
                 onClick={onDeleteSelected}
               >
                 <Trash2 className="h-4 w-4 mr-1" />
-                Delete
+                {t('ideation:header.deleteButton')}
               </Button>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -218,7 +218,7 @@ export function IdeationHeader({
           </Badge>
         ))}
         <Badge variant="outline" className="text-muted-foreground">
-          Max: {maxIdeasPerType} ideas/type
+          {t('ideation:header.maxBadge', { max: maxIdeasPerType })}
         </Badge>
       </div>
 

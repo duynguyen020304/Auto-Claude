@@ -2,6 +2,7 @@ import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
 import type { Task, ExecutionPhase } from '../../../shared/types';
 import type { TerminalStatus } from '../../stores/terminal-store';
 import { Circle, Search, Code2, Wrench, CheckCircle2, AlertCircle } from 'lucide-react';
+import type { TFunction } from 'i18next';
 
 export interface TerminalProps {
   id: string;
@@ -51,3 +52,17 @@ export const PHASE_CONFIG: Record<ExecutionPhase, { label: string; color: string
   complete: { label: 'Complete', color: 'bg-success/20 text-success', icon: CheckCircle2 },
   failed: { label: 'Failed', color: 'bg-destructive/20 text-destructive', icon: AlertCircle },
 };
+
+/**
+ * Get phase configuration with translated labels
+ * @param t - i18n translation function
+ * @param phase - Execution phase
+ * @returns Phase configuration with translated label
+ */
+export function getPhaseConfig(t: TFunction, phase: ExecutionPhase): { label: string; color: string; icon: React.ElementType } {
+  const baseConfig = PHASE_CONFIG[phase];
+  return {
+    ...baseConfig,
+    label: t(`phases.${phase}`),
+  };
+}

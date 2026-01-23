@@ -1,25 +1,129 @@
 {
+  "header": {
+    "title": "Ideation",
+    "subtitle": "AI-generated feature ideas for your project",
+    "ideasBadge": "{{count}} ideas",
+    "selectedBadge": "{{count}} selected",
+    "maxBadge": "Max: {{max}} ideas/type",
+    "deleteButton": "Delete"
+  },
+  "empty": {
+    "title": "No Ideas Yet",
+    "description": "Generate AI-powered feature ideas based on your project's context, existing patterns, and target audience.",
+    "enabledTypes": "Enabled Ideation Types",
+    "generateButton": "Generate Ideas",
+    "tokenWarning": "Claude token not configured. You'll be prompted to enter it when generating.",
+    "noIdeas": "No ideas to display"
+  },
+  "types": {
+    "code_improvements": "Code Improvements",
+    "ui_ux_improvements": "UI/UX Improvements",
+    "documentation_gaps": "Documentation",
+    "security_hardening": "Security",
+    "performance_optimizations": "Performance",
+    "code_quality": "Code Quality",
+    "all": "All",
+    "code_short": "Code",
+    "uiux_short": "UI/UX",
+    "docs_short": "Docs",
+    "security_short": "Security",
+    "performance_short": "Performance",
+    "code_quality_short": "Quality"
+  },
+  "dialogs": {
+    "configTitle": "Ideation Configuration",
+    "configDescription": "Configure which types of ideas to generate",
+    "typesSection": "Ideation Types",
+    "maxIdeas": "Max Ideas per Type",
+    "maxIdeasDescription": "Number of ideas to generate for each type",
+    "contextSources": "Context Sources",
+    "includeRoadmap": "Include Roadmap Context",
+    "includeKanban": "Include Kanban Context",
+    "closeButton": "Close",
+    "addMoreTitle": "Add More Ideas",
+    "addMoreDescription": "Select additional ideation types to generate. Your existing ideas will be preserved.",
+    "allGenerated": "You've already generated all ideation types!",
+    "regenerateHint": "Use 'Regenerate' to refresh existing ideas.",
+    "selectedCount": "{{count}} selected",
+    "cancelButton": "Cancel",
+    "generateTypes": "Generate {{count}} Types",
+    "generateIdeas": "Generate Ideas"
+  },
+  "generating": {
+    "title": "Generating Ideas",
+    "progressBadge": "{{completed}}/{{total}} complete",
+    "showLogs": "Show Logs",
+    "hideLogs": "Hide Logs",
+    "stopButton": "Stop",
+    "stoppingButton": "Stopping...",
+    "stopTooltip": "Stop generation",
+    "ideasCount": "{{count}} ideas",
+    "waiting": "Waiting to start...",
+    "failed": "Failed to generate ideas for this category",
+    "noIdeas": "No ideas generated for this category"
+  },
+  "auth": {
+    "required": "Claude Authentication Required",
+    "description": "A Claude Code OAuth token is required to generate AI-powered feature ideas."
+  },
+  "status": {
+    "draft": "Draft",
+    "selected": "Selected",
+    "converted": "Converted",
+    "dismissed": "Dismissed",
+    "archived": "Archived"
+  },
   "buttons": {
-    "generate": "Generate",
+    "generate": "Generate Ideas",
     "addMore": "Add More Ideas",
     "save": "Save Ideas",
     "clear": "Clear All"
   },
-  "dialogs": {
-    "configuration": "Ideation Configuration",
-    "addMoreIdeas": "Add More Ideas"
+  "categories": {
+    "usability": "Usability",
+    "accessibility": "Accessibility",
+    "performance": "Performance",
+    "visual": "Visual Design",
+    "interaction": "Interaction",
+    "readme": "README",
+    "api_docs": "API Documentation",
+    "inline_comments": "Inline Comments",
+    "examples": "Examples & Tutorials",
+    "architecture": "Architecture Docs",
+    "troubleshooting": "Troubleshooting Guide",
+    "authentication": "Authentication",
+    "authorization": "Authorization",
+    "input_validation": "Input Validation",
+    "data_protection": "Data Protection",
+    "dependencies": "Dependencies",
+    "configuration": "Configuration",
+    "secrets_management": "Secrets Management",
+    "bundle_size": "Bundle Size",
+    "runtime": "Runtime Performance",
+    "memory": "Memory Usage",
+    "database": "Database Queries",
+    "network": "Network Requests",
+    "rendering": "Rendering",
+    "caching": "Caching",
+    "large_files": "Large Files",
+    "code_smells": "Code Smells",
+    "complexity": "High Complexity",
+    "duplication": "Code Duplication",
+    "naming": "Naming Conventions",
+    "structure": "File Structure",
+    "linting": "Linting Issues",
+    "testing": "Test Coverage",
+    "types": "Type Safety",
+    "dependency_issues": "Dependency Issues",
+    "dead_code": "Dead Code",
+    "git_hygiene": "Git Hygiene"
   },
-  "labels": {
-    "ideas": "Ideas",
-    "requirements": "Requirements",
-    "constraints": "Constraints"
-  },
-  "placeholders": {
-    "enterIdea": "Enter your idea...",
-    "describeRequirements": "Describe your requirements..."
-  },
-  "empty": {
-    "noIdeas": "No ideas yet",
-    "generateFirst": "Generate your first idea"
+  "descriptions": {
+    "code_improvements": "Code-revealed opportunities from patterns, architecture, and infrastructure analysis",
+    "ui_ux_improvements": "Visual and interaction improvements identified through app analysis",
+    "documentation_gaps": "Missing or outdated documentation that needs attention",
+    "security_hardening": "Security vulnerabilities and hardening opportunities",
+    "performance_optimizations": "Performance bottlenecks and optimization opportunities",
+    "code_quality": "Refactoring opportunities, large files, code smells, and best practice violations"
   }
 }

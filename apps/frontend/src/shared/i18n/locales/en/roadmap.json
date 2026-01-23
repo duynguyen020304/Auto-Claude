@@ -1,0 +1,111 @@
+{
+  "emptyState": {
+    "title": "No Roadmap Yet",
+    "description": "Generate an AI-powered roadmap that understands your project's target audience and creates a strategic feature plan.",
+    "generateButton": "Generate Roadmap"
+  },
+  "header": {
+    "competitorAnalysis": "Competitor Analysis",
+    "clickToViewAnalysis": "Click to view detailed analysis",
+    "analyzedCompetitors": "Analyzed {{count}} competitors with {{painPoints}} pain points identified",
+    "addFeature": "Add Feature",
+    "addFeatureTooltip": "Add a new feature to the roadmap",
+    "regenerateRoadmap": "Regenerate Roadmap",
+    "regenerateTooltip": "Regenerate the roadmap",
+    "target": "Target",
+    "morePersonas": "+{{count}} more personas",
+    "secondaryPersonas": "Secondary Personas:",
+    "features": "features",
+    "phases": "phases",
+    "priorityMust": "must",
+    "priorityShould": "should",
+    "priorityCould": "could",
+    "priorityWont": "wont"
+  },
+  "tabs": {
+    "kanban": "Kanban",
+    "phases": "Phases",
+    "features": "All Features",
+    "priorities": "By Priority",
+    "featuresCount": "{{count}} features",
+    "impactLabel": "{{impact}} impact",
+    "insight": "Insight"
+  },
+  "kanban": {
+    "underReview": "Under Review",
+    "planned": "Planned",
+    "inProgress": "In Progress",
+    "done": "Done",
+    "dropHere": "Drop here",
+    "noFeatures": "No features",
+    "dragFeaturesHere": "Drag features here",
+    "unknownStatus": "Unknown Status"
+  },
+  "priority": {
+    "must": "Must Have",
+    "should": "Should Have",
+    "could": "Could Have",
+    "wont": "Won't Have"
+  },
+  "complexity": {
+    "low": "low",
+    "medium": "medium",
+    "high": "high"
+  },
+  "impact": {
+    "low": "low",
+    "medium": "medium",
+    "high": "high"
+  },
+  "status": {
+    "under_review": "Under Review",
+    "planned": "Planned",
+    "in_progress": "In Progress",
+    "done": "Done",
+    "completed": "completed",
+    "in_progress_phase": "in_progress"
+  },
+  "featureDetailPanel": {
+    "description": "Description",
+    "rationale": "Rationale",
+    "complexity": "Complexity",
+    "impact": "Impact",
+    "dependencies": "Dependencies",
+    "userStories": "User Stories",
+    "acceptanceCriteria": "Acceptance Criteria",
+    "addressesCompetitorPainPoints": "Addresses Competitor Pain Points",
+    "severity": "{{severity}} severity",
+    "goToTask": "Go to Task",
+    "convertToSpec": "Convert to Auto-Build Task",
+    "deleteFeature": "Delete Feature?",
+    "deleteFeatureDescription": "This will permanently remove \"{{title}}\" from your roadmap.",
+    "cancel": "Cancel",
+    "delete": "Delete"
+  },
+  "featureCard": {
+    "impactLabel": "{{impact}} impact",
+    "competitorInsight": "Competitor Insight",
+    "competitorInsightTooltip": "This feature addresses competitor pain points",
+    "goToTask": "Go to Task",
+    "build": "Build"
+  },
+  "phaseCard": {
+    "progress": "Progress",
+    "featuresCount": "{{completed}}/{{total}} features",
+    "milestones": "Milestones",
+    "features": "Features ({{count}})",
+    "moreFeatures": "+{{count}} more features",
+    "viewTask": "View Task",
+    "build": "Build"
+  },
+  "generation": {
+    "title": "Generating Roadmap",
+    "analyzingProject": "Analyzing project structure and codebase...",
+    "understandingRequirements": "Understanding project requirements and goals...",
+    "identifyingAudience": "Identifying target audience and use cases...",
+    "generatingFeatures": "Generating strategic feature plan...",
+    "organizingPhases": "Organizing features into implementation phases...",
+    "finalizing": "Finalizing roadmap...",
+    "complete": "Roadmap generation complete!"
+  }
+}

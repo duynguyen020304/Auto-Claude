@@ -92,7 +92,7 @@ interface InsightsProps {
 }
 
 export function Insights({ projectId }: InsightsProps) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation(['common', 'insights']);
   const session = useInsightsStore((state) => state.session);
   const currentSessionId = useInsightsStore((state) => state.currentSessionId);
   const sessions = useInsightsStore((state) => state.sessions);
@@ -246,7 +246,7 @@ export function Insights({ projectId }: InsightsProps) {
               size="icon"
               className="h-8 w-8"
               onClick={() => setShowSidebar(!showSidebar)}
-              title={showSidebar ? 'Hide sidebar' : 'Show sidebar'}
+              title={showSidebar ? t('insights:insights.hideSidebar') : t('insights:insights.showSidebar')}
             >
               {showSidebar ? (
                 <PanelLeftClose className="h-4 w-4" />
@@ -258,9 +258,9 @@ export function Insights({ projectId }: InsightsProps) {
               <Sparkles className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h2 className="font-semibold text-foreground">Insights</h2>
+              <h2 className="font-semibold text-foreground">{t('insights:insights.title')}</h2>
               <p className="text-sm text-muted-foreground">
-                Ask questions about your codebase
+                {t('insights:insights.subtitle')}
               </p>
             </div>
           </div>
@@ -276,7 +276,7 @@ export function Insights({ projectId }: InsightsProps) {
               onClick={handleNewSession}
             >
               <Plus className="mr-2 h-4 w-4" />
-              New Chat
+              {t('insights:insights.newChat')}
             </Button>
           </div>
         </div>
@@ -299,18 +299,17 @@ export function Insights({ projectId }: InsightsProps) {
               <MessageSquare className="h-8 w-8 text-muted-foreground" />
             </div>
             <h3 className="mb-2 text-lg font-medium text-foreground">
-              Start a Conversation
+              {t('insights:insights.startConversation')}
             </h3>
             <p className="max-w-md text-sm text-muted-foreground">
-              Ask questions about your codebase, get suggestions for improvements,
-              or discuss features you'd like to implement.
+              {t('insights:insights.startConversationDescription')}
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-2">
               {[
-                'What is the architecture of this project?',
-                'Suggest improvements for code quality',
-                'What features could I add next?',
-                'Are there any security concerns?'
+                t('insights:insights.suggestion1'),
+                t('insights:insights.suggestion2'),
+                t('insights:insights.suggestion3'),
+                t('insights:insights.suggestion4')
               ].map((suggestion) => (
                 <Button
                   key={suggestion}
@@ -349,7 +348,7 @@ export function Insights({ projectId }: InsightsProps) {
                 </div>
                 <div className="flex-1">
                   <div className="mb-1 text-sm font-medium text-foreground">
-                    Assistant
+                    {t('insights:insights.assistant')}
                   </div>
                   {streamingContent && (
                     <div className="prose prose-sm dark:prose-invert max-w-none">
@@ -374,7 +373,7 @@ export function Insights({ projectId }: InsightsProps) {
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Thinking...
+                  {t('insights:insights.thinking')}
                 </div>
               </div>
             )}
@@ -400,7 +399,7 @@ export function Insights({ projectId }: InsightsProps) {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask about your codebase..."
+            placeholder={t('insights:insights.askAboutCodebase')}
             className="min-h-[80px] resize-none"
             disabled={isLoading}
           />
@@ -417,7 +416,7 @@ export function Insights({ projectId }: InsightsProps) {
           </Button>
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
-          Press Enter to send, Shift+Enter for new line
+          {t('insights:insights.pressEnterToSend')}
         </p>
       </div>
       </div>
@@ -442,6 +441,7 @@ function MessageBubble({
   taskCreated,
   taskCreationError
 }: MessageBubbleProps) {
+  const { t } = useTranslation(['common', 'insights']);
   const isUser = message.role === 'user';
 
   return (
@@ -460,7 +460,7 @@ function MessageBubble({
       </div>
       <div className="flex-1 space-y-2">
         <div className="text-sm font-medium text-foreground">
-          {isUser ? 'You' : 'Assistant'}
+          {isUser ? t('insights:insights.you') : t('insights:insights.assistant')}
         </div>
         <div className="prose prose-sm dark:prose-invert max-w-none">
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
@@ -480,7 +480,7 @@ function MessageBubble({
               <div className="mb-2 flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-primary" />
                 <span className="text-sm font-medium text-primary">
-                  Suggested Task
+                  {t('insights:insights.suggestedTask')}
                 </span>
               </div>
               <h4 className="mb-2 font-medium text-foreground">
@@ -534,21 +534,21 @@ function MessageBubble({
                   {isCreatingTask ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating...
+                      {t('insights:insights.creating')}
                     </>
                   ) : taskCreated ? (
                     <>
                       <CheckCircle2 className="mr-2 h-4 w-4" />
-                      Task Created
+                      {t('insights:insights.taskCreated')}
                     </>
                   ) : taskCreationError ? (
                     <>
-                      Retry
+                      {t('insights:insights.retry')}
                     </>
                   ) : (
                     <>
                       <Plus className="mr-2 h-4 w-4" />
-                      Create Task
+                      {t('insights:insights.createTask')}
                     </>
                   )}
                 </Button>
@@ -571,6 +571,7 @@ interface ToolUsageHistoryProps {
 }
 
 function ToolUsageHistory({ tools }: ToolUsageHistoryProps) {
+  const { t } = useTranslation('insights');
   const [expanded, setExpanded] = useState(false);
 
   if (tools.length === 0) return null;
@@ -624,7 +625,7 @@ function ToolUsageHistory({ tools }: ToolUsageHistoryProps) {
             );
           })}
         </span>
-        <span>{tools.length} tool{tools.length !== 1 ? 's' : ''} used</span>
+        <span>{t('insights:insights.toolsUsed', { count: tools.length, s: tools.length !== 1 ? 's' : '' })}</span>
         <span className="text-[10px]">{expanded ? '▲' : '▼'}</span>
       </button>
 
@@ -660,25 +661,26 @@ interface ToolIndicatorProps {
 }
 
 function ToolIndicator({ name, input }: ToolIndicatorProps) {
+  const { t } = useTranslation('insights');
   // Get friendly name and icon for each tool
   const getToolInfo = (toolName: string) => {
     switch (toolName) {
       case 'Read':
         return {
           icon: FileText,
-          label: 'Reading file',
+          label: t('insights:insights.readingFile'),
           color: 'text-blue-500 bg-blue-500/10'
         };
       case 'Glob':
         return {
           icon: FolderSearch,
-          label: 'Searching files',
+          label: t('insights:insights.searchingFiles'),
           color: 'text-amber-500 bg-amber-500/10'
         };
       case 'Grep':
         return {
           icon: Search,
-          label: 'Searching code',
+          label: t('insights:insights.searchingCode'),
           color: 'text-green-500 bg-green-500/10'
         };
       default:
@@ -726,6 +728,7 @@ function ConcurrentSessions({
   onAbortSession,
   onSelectSession
 }: ConcurrentSessionsProps) {
+  const { t } = useTranslation('insights');
   // Get all active generating session IDs (sessions with abort controllers are generating)
   const activeSessionIds = Array.from(abortControllers.keys());
 
@@ -753,7 +756,7 @@ function ConcurrentSessions({
     <div className="mb-4 rounded-lg border border-primary/20 bg-primary/5 p-3">
       <div className="mb-2 flex items-center gap-2 text-sm font-medium text-primary">
         <Loader2 className="h-4 w-4 animate-spin" />
-        <span>Concurrent Sessions ({activeSessions.length})</span>
+        <span>{t('insights:insights.concurrentSessions', { count: activeSessions.length })}</span>
       </div>
       <div className="space-y-2">
         {activeSessions.map((activeSession) => {
@@ -774,7 +777,7 @@ function ConcurrentSessions({
                   <span className="font-medium truncate">{activeSession.title}</span>
                   {activeSession.isCurrent && (
                     <Badge variant="outline" className="text-xs shrink-0">
-                      Current
+                      {t('insights:insights.current')}
                     </Badge>
                   )}
                 </div>
@@ -782,8 +785,8 @@ function ConcurrentSessions({
                   {isStreaming && <Loader2 className="h-3 w-3 animate-spin" />}
                   <span className="truncate">
                     {activeSession.currentTool
-                      ? `Using ${activeSession.currentTool.name}...`
-                      : activeSession.status?.message || 'Processing...'}
+                      ? t('insights:insights.usingTool', { toolName: activeSession.currentTool.name })
+                      : activeSession.status?.message || t('insights:insights.processing')}
                   </span>
                 </div>
               </div>
@@ -796,7 +799,7 @@ function ConcurrentSessions({
                     e.stopPropagation();
                     onAbortSession(activeSession.id);
                   }}
-                  title="Cancel this session"
+                  title={t('insights:insights.cancelSession')}
                 >
                   <X className="h-3 w-3" />
                 </Button>

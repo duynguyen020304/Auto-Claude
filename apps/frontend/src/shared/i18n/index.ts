@@ -14,6 +14,9 @@ import enTaskReview from './locales/en/taskReview.json';
 import enTerminal from './locales/en/terminal.json';
 import enErrors from './locales/en/errors.json';
 import enInsights from './locales/en/insights.json';
+import enChangelog from './locales/en/changelog.json';
+import enRoadmap from './locales/en/roadmap.json';
+import enIdeation from './locales/en/ideation.json';
 
 // Import French translation resources
 import frCommon from './locales/fr/common.json';
@@ -28,6 +31,9 @@ import frTaskReview from './locales/fr/taskReview.json';
 import frTerminal from './locales/fr/terminal.json';
 import frErrors from './locales/fr/errors.json';
 import frInsights from './locales/fr/insights.json';
+import frChangelog from './locales/fr/changelog.json';
+import frRoadmap from './locales/fr/roadmap.json';
+import frIdeation from './locales/fr/ideation.json';
 
 // Import Vietnamese translation resources
 import viCommon from './locales/vi/common.json';
@@ -42,11 +48,15 @@ import viTaskReview from './locales/vi/taskReview.json';
 import viTerminal from './locales/vi/terminal.json';
 import viErrors from './locales/vi/errors.json';
 import viInsights from './locales/vi/insights.json';
+import viChangelog from './locales/vi/changelog.json';
+import viRoadmap from './locales/vi/roadmap.json';
+import viIdeation from './locales/vi/ideation.json';
 
 export const defaultNS = 'common';
 
 export const resources = {
   en: {
+    changelog: enChangelog,
     common: enCommon,
     navigation: enNavigation,
     settings: enSettings,
@@ -58,9 +68,12 @@ export const resources = {
     taskReview: enTaskReview,
     terminal: enTerminal,
     errors: enErrors,
-    insights: enInsights
+    insights: enInsights,
+    roadmap: enRoadmap,
+    ideation: enIdeation
   },
   fr: {
+    changelog: frChangelog,
     common: frCommon,
     navigation: frNavigation,
     settings: frSettings,
@@ -72,9 +85,12 @@ export const resources = {
     taskReview: frTaskReview,
     terminal: frTerminal,
     errors: frErrors,
-    insights: frInsights
+    insights: frInsights,
+    roadmap: frRoadmap,
+    ideation: frIdeation
   },
   vi: {
+    changelog: viChangelog,
     common: viCommon,
     navigation: viNavigation,
     settings: viSettings,
@@ -86,7 +102,9 @@ export const resources = {
     taskReview: viTaskReview,
     terminal: viTerminal,
     errors: viErrors,
-    insights: viInsights
+    insights: viInsights,
+    roadmap: viRoadmap,
+    ideation: viIdeation
   }
 } as const;
 
@@ -97,7 +115,7 @@ i18n
     lng: 'en', // Default language (will be overridden by settings)
     fallbackLng: 'en',
     defaultNS,
-    ns: ['common', 'navigation', 'settings', 'tasks', 'welcome', 'onboarding', 'dialogs', 'gitlab', 'taskReview', 'terminal', 'errors', 'insights'],
+    ns: ['changelog', 'common', 'navigation', 'onboarding', 'roadmap', 'settings', 'tasks', 'welcome', 'dialogs', 'gitlab', 'taskReview', 'terminal', 'errors', 'insights', 'ideation'],
     interpolation: {
       escapeValue: false // React already escapes values
     },

@@ -1,0 +1,192 @@
+{
+  "title": "Trình Tạo Nhật Ký Thay Đổi",
+  "buttons": {
+    "generate": "Tạo Nhật Ký Thay Đổi",
+    "apply": "Áp dụng",
+    "preview": "Xem trước",
+    "refresh": "Làm mới",
+    "back": "Quay lại Chọn",
+    "continue": "Tiếp tục",
+    "save": "Lưu vào CHANGELOG.md",
+    "copy": "Sao chép",
+    "done": "Hoàn thành",
+    "select": "Chọn",
+    "generateRelease": "Tạo Phát Hành {{tag}}",
+    "viewRelease": "Xem Phát Hành trên GitHub",
+    "archive": "Lưu Trữ {{count}} Công Việc{{plural}}",
+    "selectAll": "Chọn Tất Cả",
+    "clear": "Xóa",
+    "loadCommits": "Tải Commits"
+  },
+  "labels": {
+    "format": "Định dạng",
+    "audience": "Đối tượng",
+    "emojis": "Emojis",
+    "includeCommitList": "Bao gồm Danh sách Commit",
+    "changelogSource": "Nguồn Nhật Ký Thay Đổi",
+    "gitHistoryOptions": "Tùy chọn Lịch sử Git",
+    "branchComparison": "So sánh Nhánh",
+    "historyType": "Kiểu Lịch sử",
+    "numberOfCommits": "Số lượng Commit",
+    "sinceDate": "Từ Ngày",
+    "fromTag": "Từ Tag",
+    "toTag": "Đến Tag (tùy chọn)",
+    "toTagPlaceholder": "HEAD (mới nhất)",
+    "lastVersion": "Phiên bản Cuối",
+    "includeMergeCommits": "Bao gồm commit merge",
+    "baseBranch": "Nhánh Cơ sở",
+    "compareBranch": "Nhánh So sánh",
+    "version": "Phiên bản",
+    "date": "Ngày",
+    "releaseInfo": "Thông tin Phát hành",
+    "outputStyle": "Kiểu Đầu ra",
+    "advancedOptions": "Tùy chọn Nâng cao",
+    "customInstructions": "Hướng dẫn Tùy chỉnh",
+    "preview": "Xem trước",
+    "markdown": "Markdown",
+    "previous": "Trước: {{version}}"
+  },
+  "placeholders": {
+    "selectTag": "Chọn tag...",
+    "version": "1.0.0",
+    "selectBaseBranch": "Chọn nhánh cơ sở...",
+    "selectCompareBranch": "Chọn nhánh so sánh...",
+    "customInstructions": "Thêm các hướng dẫn đặc biệt cho AI...",
+    "generatedChangelog": "Nhật ký thay đổi được tạo sẽ xuất hiện ở đây..."
+  },
+  "format": {
+    "keep-a-changelog": "Keep a Changelog",
+    "simple-list": "Danh sách Đơn giản",
+    "github-release": "Phát hành GitHub"
+  },
+  "formatDescriptions": {
+    "keep-a-changelog": "Định dạng có cấu trúc với các phần Thêm/Thay đổi/Sửa/Xóa",
+    "simple-list": "Danh sách gọn gàng với các danh mục",
+    "github-release": "Ghi chú phát hành kiểu GitHub"
+  },
+  "audience": {
+    "technical": "Kỹ thuật",
+    "user-facing": "Người dùng",
+    "marketing": "Tiếp thị"
+  },
+  "audienceDescriptions": {
+    "technical": "Thay đổi kỹ thuật chi tiết cho nhà phát triển",
+    "user-facing": "Mô tả rõ ràng, không kỹ thuật cho người dùng cuối",
+    "marketing": "Nội dung tập trung vào giá trị, nhấn mạnh lợi ích"
+  },
+  "emojiLevel": {
+    "none": "Không",
+    "little": "Chỉ Tiêu đề",
+    "medium": "Tiêu đề + Nổi bật",
+    "high": "Mọi thứ"
+  },
+  "emojiLevelDescriptions": {
+    "none": "Không có emoji",
+    "little": "Emoji chỉ trên tiêu đề phần",
+    "medium": "Emoji trên tiêu đề và mục chính",
+    "high": "Emoji trên tiêu đề và mỗi dòng"
+  },
+  "sourceMode": {
+    "tasks": "Công việc Hoàn thành",
+    "git-history": "Lịch sử Git",
+    "branch-diff": "So sánh Nhánh"
+  },
+  "sourceModeDescriptions": {
+    "tasks": "Tạo từ các công việc spec hoàn thành",
+    "git-history": "Tạo từ các commit gần đây hoặc phạm vi tag",
+    "branch-diff": "Tạo từ các commit giữa hai nhánh"
+  },
+  "historyType": {
+    "since-version": "Từ Phiên bản",
+    "recent": "Commits Gần đây",
+    "since-date": "Từ Ngày",
+    "tag-range": "Phạm vi Tag"
+  },
+  "steps": {
+    "select": "Chọn",
+    "generate": "Tạo",
+    "release": "Phát hành"
+  },
+  "stepDescriptions": {
+    "step1": "Bước 1: Chọn các công việc hoàn thành để bao gồm",
+    "step2": "Bước 2: Cấu hình và tạo nhật ký thay đổi",
+    "step3": "Bước 3: Phát hành và lưu trữ công việc"
+  },
+  "messages": {
+    "noProjectSelected": "Chưa Chọn Dự án",
+    "noProjectSelectedDesc": "Chọn một dự án từ thanh bên để tạo nhật ký thay đổi.",
+    "noCompletedTasks": "Không có Công việc Hoàn thành",
+    "noCompletedTasksDesc": "Hoàn thành công việc trên bảng Kanban và đánh dấu là \"Hoàn thành\" để bao gồm chúng trong nhật ký thay đổi.",
+    "noCommitsFound": "Không tìm thấy Commit",
+    "noCommitsFoundGitHistory": "Cấu hình tùy chọn lịch sử và nhấp \"Tải Commits\" để xem trước.",
+    "noCommitsFoundBranchDiff": "Chọn cả hai nhánh và nhấp \"Tải Commits\" để xem các thay đổi.",
+    "loadingCommits": "Đang tải commits...",
+    "loading": "Đang tải...",
+    "generating": "Đang tạo...",
+    "generatingChangelog": "Đang Tạo Nhật Ký Thay Đổi",
+    "changelogSaved": "Đã Lưu Nhật Ký Thay Đổi!",
+    "changelogSavedDesc": "Phiên bản {{tag}} đã được thêm vào CHANGELOG.md",
+    "including": "Bao gồm {{count}} {{label}}{{plural}}",
+    "allCommitsSince": "Tất cả commits kể từ phiên bản này sẽ được bao gồm",
+    "theBranchMergingInto": "Nhánh bạn đang merge vào",
+    "theBranchWithChanges": "Nhánh có các thay đổi của bạn",
+    "branchesMustBeDifferent": "Các nhánh phải khác nhau",
+    "optionalGuide": "Tùy chọn. Hướng dẫn AI về giọng điệu, chi tiết cụ thể để bao gồm, v.v.",
+    "clickGenerateToCreate": "Nhấp \"Tạo Nhật Ký Thay Đổi\" để tạo ghi chú phát hành.",
+    "pasteImagesDesc": "Dán hình ảnh vào mô tả để lưu chúng vào nhật ký thay đổi",
+    "dropImagesHere": "Thả hình ảnh vào đây để thêm vào nhật ký thay đổi",
+    "loadingImage": "Đang tải hình ảnh...",
+    "imageNotFound": "Không tìm thấy hình ảnh",
+    "cannotLoadLocalImage": "Không thể tải hình ảnh cục bộ: không có đường dẫn dự án"
+  },
+  "summary": {
+    "selectedCount": "{{count}} của {{total}} công việc được chọn",
+    "commitsFound": "tìm thấy {{count}} commit{{plural}}",
+    "tasksSelected": "{{count}} công việc{{plural}} được chọn",
+    "commitsSelected": "{{count}} commit{{plural}} được chọn"
+  },
+  "badges": {
+    "default": "mặc định",
+    "current": "hiện tại",
+    "hasSpecs": "Có Specs"
+  },
+  "status": {
+    "copied": "Đã sao chép!",
+    "saved": "Đã lưu!",
+    "releaseCreated": "Đã tạo phát hành thành công!",
+    "tasksArchived": "Đã lưu trữ {{count}} công việc{{plural}}!"
+  },
+  "tooltip": {
+    "copyToClipboard": "Sao chép vào clipboard",
+    "prependToChangelog": "Thêm vào CHANGELOG.md trong thư mục gốc dự án"
+  },
+  "actions": {
+    "createRelease": "Tạo Phát hành GitHub",
+    "createReleaseDesc": "Tạo phát hành mới {{tag}} trên GitHub với nhật ký thay đổi làm ghi chú phát hành.",
+    "archiveTasks": "Lưu trữ Công việc Hoàn thành",
+    "archiveTasksDesc": "Lưu trữ {{count}} công việc{{plural}} để dọn sạch bảng Kanban của bạn. Các công việc đã lưu trữ có thể được xem bằng cách bật \"Hiển thị Đã lưu trữ\".",
+    "creatingRelease": "Đang tạo Phát hành...",
+    "archiving": "Đang lưu trữ..."
+  },
+  "errors": {
+    "failedToCreateRelease": "Không thể tạo phát hành",
+    "failedToArchive": "Không thể lưu trữ công việc",
+    "cannotLoadLocalImage": "Không thể tải hình ảnh cục bộ: không có đường dẫn dự án",
+    "failedToLoadImage": "Không thể tải hình ảnh"
+  },
+  "stages": {
+    "loading_specs": "Đang tải tệp spec...",
+    "loading_commits": "Đang tải commits...",
+    "generating": "Đang tạo nhật ký thay đổi...",
+    "formatting": "Đang định dạng đầu ra...",
+    "complete": "Hoàn thành",
+    "error": "Lỗi"
+  },
+  "emptyState": {
+    "clickToGenerate": "Nhấp \"Tạo Nhật Ký Thay Đổi\" để tạo ghi chú phát hành.",
+    "pasteImagesTip": "Dán hình ảnh vào mô tả để lưu chúng vào nhật ký thay đổi"
+  },
+  "commitCard": {
+    "filesChanged": "{{count}} tệp{{plural}}"
+  }
+}

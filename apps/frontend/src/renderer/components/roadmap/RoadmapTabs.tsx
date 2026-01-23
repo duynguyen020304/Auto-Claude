@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { TrendingUp } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { Card } from '../ui/card';
@@ -25,13 +26,14 @@ export function RoadmapTabs({
   onGoToTask,
   onSave,
 }: RoadmapTabsProps) {
+  const { t } = useTranslation('roadmap');
   return (
     <Tabs value={activeTab} onValueChange={onTabChange} className="h-full flex flex-col">
       <TabsList className="shrink-0 mx-4 mt-4">
-        <TabsTrigger value="kanban">Kanban</TabsTrigger>
-        <TabsTrigger value="phases">Phases</TabsTrigger>
-        <TabsTrigger value="features">All Features</TabsTrigger>
-        <TabsTrigger value="priorities">By Priority</TabsTrigger>
+        <TabsTrigger value="kanban">{t('tabs.kanban')}</TabsTrigger>
+        <TabsTrigger value="phases">{t('tabs.phases')}</TabsTrigger>
+        <TabsTrigger value="features">{t('tabs.features')}</TabsTrigger>
+        <TabsTrigger value="priorities">{t('tabs.priorities')}</TabsTrigger>
       </TabsList>
 
       {/* Kanban View */}
@@ -88,9 +90,9 @@ export function RoadmapTabs({
               <Card key={priority} className="p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <Badge variant="outline" className={ROADMAP_PRIORITY_COLORS[priority]}>
-                    {ROADMAP_PRIORITY_LABELS[priority]}
+                    {t(`priority.${priority}`)}
                   </Badge>
-                  <span className="text-sm text-muted-foreground">{features.length} features</span>
+                  <span className="text-sm text-muted-foreground">{t('tabs.featuresCount', { count: features.length })}</span>
                 </div>
                 <div className="space-y-2">
                   {features.map((feature: RoadmapFeature) => (
@@ -105,18 +107,18 @@ export function RoadmapTabs({
                           variant="outline"
                           className={`text-xs ${ROADMAP_COMPLEXITY_COLORS[feature.complexity]}`}
                         >
-                          {feature.complexity}
+                          {t(`complexity.${feature.complexity}`)}
                         </Badge>
                         <Badge
                           variant="outline"
                           className={`text-xs ${ROADMAP_IMPACT_COLORS[feature.impact]}`}
                         >
-                          {feature.impact} impact
+                          {t('tabs.impactLabel', { impact: t(`impact.${feature.impact}`) })}
                         </Badge>
                         {hasCompetitorInsight(feature) && (
                           <Badge variant="outline" className="text-xs text-primary border-primary/50">
                             <TrendingUp className="h-3 w-3 mr-1" />
-                            Insight
+                            {t('tabs.insight')}
                           </Badge>
                         )}
                       </div>

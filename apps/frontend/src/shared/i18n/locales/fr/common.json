@@ -109,7 +109,8 @@
     "all": "Tous",
     "branch": "Branche",
     "token": "Jeton",
-    "important": "Important"
+    "important": "Important",
+    "impact": "impact"
   },
   "selection": {
     "select": "Sélectionner",

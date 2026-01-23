@@ -8,7 +8,8 @@ import {
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
 import { cn } from '../../lib/utils';
-import { PHASE_CONFIG } from './types';
+import { PHASE_CONFIG, getPhaseConfig } from './types';
+import { useTranslation } from 'react-i18next';
 
 interface TaskSelectorProps {
   terminalId: string;
@@ -27,8 +28,9 @@ export function TaskSelector({
   onClearTask,
   onNewTaskClick,
 }: TaskSelectorProps) {
+  const { t } = useTranslation('terminal');
   const executionPhase = associatedTask?.executionProgress?.phase || 'idle';
-  const phaseConfig = PHASE_CONFIG[executionPhase];
+  const phaseConfig = getPhaseConfig(t, executionPhase);
   const PhaseIcon = phaseConfig.icon;
 
   if (associatedTask) {
@@ -54,7 +56,7 @@ export function TaskSelector({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-56">
           <div className="px-2 py-1.5 text-xs text-muted-foreground">
-            Current task
+            {t('task.currentTask')}
           </div>
           <div className="px-2 py-1 text-sm font-medium truncate">
             {associatedTask.title}
@@ -68,7 +70,7 @@ export function TaskSelector({
           {backlogTasks.length > 0 && (
             <>
               <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                Switch to...
+                {t('task.switchTo')}
               </div>
               {backlogTasks.filter(t => t.id !== associatedTask.id).slice(0, 5).map((task) => (
                 <DropdownMenuItem
@@ -88,7 +90,7 @@ export function TaskSelector({
             className="text-xs text-muted-foreground"
           >
             <X className="h-3 w-3 mr-2" />
-            Clear task
+            {t('task.clearTask')}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -103,7 +105,7 @@ export function TaskSelector({
           onClick={(e) => e.stopPropagation()}
         >
           <ListTodo className="h-3 w-3" />
-          <span>Select task...</span>
+          <span>{t('task.selectTask')}</span>
           <ChevronDown className="h-2.5 w-2.5 opacity-60" />
         </button>
       </DropdownMenuTrigger>
@@ -111,7 +113,7 @@ export function TaskSelector({
         {backlogTasks.length > 0 ? (
           <>
             <div className="px-2 py-1.5 text-xs text-muted-foreground">
-              Available tasks
+              {t('task.availableTasks')}
             </div>
             {backlogTasks.slice(0, 8).map((task) => (
               <DropdownMenuItem
@@ -134,7 +136,7 @@ export function TaskSelector({
                   className="text-xs text-primary"
                 >
                   <Plus className="h-3 w-3 mr-2" />
-                  Add new task
+                  {t('task.addNewTask')}
                 </DropdownMenuItem>
               </>
             )}
@@ -142,7 +144,7 @@ export function TaskSelector({
         ) : (
           <>
             <div className="px-2 py-1.5 text-xs text-muted-foreground">
-              No tasks available
+              {t('task.noTasksAvailable')}
             </div>
             {onNewTaskClick ? (
               <DropdownMenuItem
@@ -153,11 +155,11 @@ export function TaskSelector({
                 className="text-xs text-primary"
               >
                 <Plus className="h-3 w-3 mr-2" />
-                Add new task
+                {t('task.addNewTask')}
               </DropdownMenuItem>
             ) : (
               <div className="px-2 py-1.5 text-xs text-muted-foreground italic">
-                Create tasks in the Kanban board
+                {t('task.createTasksInKanban')}
               </div>
             )}
           </>

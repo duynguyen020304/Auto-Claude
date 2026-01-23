@@ -23,11 +23,17 @@
     "title": "Chat History",
     "noConversations": "No conversations yet",
     "deleteWarning": "This will permanently delete this conversation and all its messages. This action cannot be undone.",
+    "deleteTitle": "Delete conversation?",
     "messageCount": "{{count}} message",
     "messageCount_plural": "{{count}} messages",
     "searchPlaceholder": "Search conversations...",
     "renameConversation": "Rename conversation",
-    "conversationName": "Conversation name"
+    "conversationName": "Conversation name",
+    "rename": "Rename",
+    "delete": "Delete",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "daysAgo": "{{count}} days ago"
   },
   "search": {
     "placeholder": "Ask about your codebase...",
@@ -42,5 +48,43 @@
     "startNew": "Start New Session",
     "continueSession": "Continue Session",
     "noSessions": "No sessions yet"
+  },
+  "insights": {
+    "title": "Insights",
+    "subtitle": "Ask questions about your codebase",
+    "hideSidebar": "Hide sidebar",
+    "showSidebar": "Show sidebar",
+    "newChat": "New Chat",
+    "startConversation": "Start a Conversation",
+    "startConversationDescription": "Ask questions about your codebase, get suggestions for improvements, or discuss features you'd like to implement.",
+    "suggestion1": "What is the architecture of this project?",
+    "suggestion2": "Suggest improvements for code quality",
+    "suggestion3": "What features could I add next?",
+    "suggestion4": "Are there any security concerns?",
+    "assistant": "Assistant",
+    "thinking": "Thinking...",
+    "askAboutCodebase": "Ask about your codebase...",
+    "pressEnterToSend": "Press Enter to send, Shift+Enter for new line",
+    "you": "You",
+    "suggestedTask": "Suggested Task",
+    "creating": "Creating...",
+    "taskCreated": "Task Created",
+    "retry": "Retry",
+    "createTask": "Create Task",
+    "concurrentSessions": "Concurrent Sessions ({{count}})",
+    "current": "Current",
+    "processing": "Processing...",
+    "usingTool": "Using {{toolName}}...",
+    "cancelSession": "Cancel this session",
+    "toolsUsed": "{{count}} tool{{s}} used",
+    "readingFile": "Reading file",
+    "searchingFiles": "Searching files",
+    "searchingCode": "Searching code"
+  },
+  "modelSelector": {
+    "agentProfile": "Agent Profile",
+    "custom": "Custom...",
+    "chooseModelThinking": "Choose model & thinking level",
+    "balanced": "Balanced"
   }
 }

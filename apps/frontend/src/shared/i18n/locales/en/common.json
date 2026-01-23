@@ -114,7 +114,8 @@
     "value": "Value",
     "name": "Name",
     "status": "Status",
-    "important": "Important"
+    "important": "Important",
+    "impact": "impact"
   },
   "selection": {
     "select": "Select",

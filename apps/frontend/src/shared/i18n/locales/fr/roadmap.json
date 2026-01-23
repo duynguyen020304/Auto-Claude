@@ -1,0 +1,111 @@
+{
+  "emptyState": {
+    "title": "Aucune Roadmap Encore",
+    "description": "Générez une roadmap alimentée par l'IA qui comprend le public cible de votre projet et crée un plan de fonctionnalités stratégique.",
+    "generateButton": "Générer la Roadmap"
+  },
+  "header": {
+    "competitorAnalysis": "Analyse Concurrentielle",
+    "clickToViewAnalysis": "Cliquez pour voir l'analyse détaillée",
+    "analyzedCompetitors": "Analysé {{count}} concurrents avec {{painPoints}} points de douleur identifiés",
+    "addFeature": "Ajouter une Fonctionnalité",
+    "addFeatureTooltip": "Ajouter une nouvelle fonctionnalité à la roadmap",
+    "regenerateRoadmap": "Régénérer la Roadmap",
+    "regenerateTooltip": "Régénérer la roadmap",
+    "target": "Cible",
+    "morePersonas": "+{{count}} autres personas",
+    "secondaryPersonas": "Personas Secondaires:",
+    "features": "fonctionnalités",
+    "phases": "phases",
+    "priorityMust": "doit",
+    "priorityShould": "devrait",
+    "priorityCould": "pourrait",
+    "priorityWont": "ne sera pas"
+  },
+  "tabs": {
+    "kanban": "Kanban",
+    "phases": "Phases",
+    "features": "Toutes les Fonctionnalités",
+    "priorities": "Par Priorité",
+    "featuresCount": "{{count}} fonctionnalités",
+    "impactLabel": "impact {{impact}}",
+    "insight": "Perspective"
+  },
+  "kanban": {
+    "underReview": "En Révision",
+    "planned": "Planifié",
+    "inProgress": "En Cours",
+    "done": "Terminé",
+    "dropHere": "Déposer ici",
+    "noFeatures": "Aucune fonctionnalité",
+    "dragFeaturesHere": "Glisser les fonctionnalités ici",
+    "unknownStatus": "Statut Inconnu"
+  },
+  "priority": {
+    "must": "Doit Avoir",
+    "should": "Devrait Avoir",
+    "could": "Pourrait Avoir",
+    "wont": "N'Aura Pas"
+  },
+  "complexity": {
+    "low": "faible",
+    "medium": "moyen",
+    "high": "élevé"
+  },
+  "impact": {
+    "low": "faible",
+    "medium": "moyen",
+    "high": "élevé"
+  },
+  "status": {
+    "under_review": "En Révision",
+    "planned": "Planifié",
+    "in_progress": "En Cours",
+    "done": "Terminé",
+    "completed": "terminé",
+    "in_progress_phase": "en_cours"
+  },
+  "featureDetailPanel": {
+    "description": "Description",
+    "rationale": "Justification",
+    "complexity": "Complexité",
+    "impact": "Impact",
+    "dependencies": "Dépendances",
+    "userStories": "User Stories",
+    "acceptanceCriteria": "Critères d'Acceptation",
+    "addressesCompetitorPainPoints": "Adresse les Points de Douleur des Concurrents",
+    "severity": "gravité {{severity}}",
+    "goToTask": "Aller à la Tâche",
+    "convertToSpec": "Convertir en Tâche Auto-Build",
+    "deleteFeature": "Supprimer la Fonctionnalité?",
+    "deleteFeatureDescription": "Cela supprimera définitivement \"{{title}}\" de votre roadmap.",
+    "cancel": "Annuler",
+    "delete": "Supprimer"
+  },
+  "featureCard": {
+    "impactLabel": "impact {{impact}}",
+    "competitorInsight": "Aperçu Concurrent",
+    "competitorInsightTooltip": "Cette fonctionnalité adresse les points de douleur des concurrents",
+    "goToTask": "Aller à la Tâche",
+    "build": "Construire"
+  },
+  "phaseCard": {
+    "progress": "Progrès",
+    "featuresCount": "{{completed}}/{{total}} fonctionnalités",
+    "milestones": "Jalons",
+    "features": "Fonctionnalités ({{count}})",
+    "moreFeatures": "+{{count}} autres fonctionnalités",
+    "viewTask": "Voir la Tâche",
+    "build": "Construire"
+  },
+  "generation": {
+    "title": "Génération de la Roadmap",
+    "analyzingProject": "Analyse de la structure du projet et de la base de code...",
+    "understandingRequirements": "Compréhension des exigences et objectifs du projet...",
+    "identifyingAudience": "Identification du public cible et des cas d'usage...",
+    "generatingFeatures": "Génération du plan de fonctionnalités stratégique...",
+    "organizingPhases": "Organisation des fonctionnalités en phases de mise en œuvre...",
+    "finalizing": "Finalisation de la roadmap...",
+    "complete": "Génération de la roadmap terminée !"
+  }
+}

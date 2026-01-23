@@ -91,7 +91,8 @@
     "noData": "Không có dữ liệu",
     "optional": "Tùy chọn",
     "required": "Bắt buộc",
-    "dismiss": "Loại bỏ"
+    "dismiss": "Loại bỏ",
+    "impact": "tác động"
   },
   "selection": {
     "select": "Chọn",
