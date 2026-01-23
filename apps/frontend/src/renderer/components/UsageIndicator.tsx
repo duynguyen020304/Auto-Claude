@@ -125,7 +125,7 @@ export function UsageIndicator() {
   // Show loading state initially
   if (isLoading) {
     return (
-      <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border bg-muted/50 text-muted-foreground">
+      <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-white/10 bg-[#161618] text-gray-400">
         <Activity className="h-3.5 w-3.5 motion-safe:animate-pulse" />
         <span className="text-xs font-semibold">{t('common:usage.loading')}</span>
       </div>
@@ -138,15 +138,15 @@ export function UsageIndicator() {
       <TooltipProvider delayDuration={200}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border bg-muted/50 text-muted-foreground cursor-help">
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-white/10 bg-[#161618] text-gray-400 cursor-help">
               <Activity className="h-3.5 w-3.5" />
               <span className="text-xs font-semibold">{t('common:usage.notAvailable')}</span>
             </div>
           </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs w-64">
+          <TooltipContent side="bottom" className="text-xs w-64 bg-[#161618] border border-white/10">
             <div className="space-y-1">
               <p className="font-medium">{t('common:usage.dataUnavailable')}</p>
-              <p className="text-muted-foreground text-[10px]">
+              <p className="text-gray-400 text-[10px]">
                 {t('common:usage.dataUnavailableDescription')}
               </p>
             </div>
@@ -160,10 +160,10 @@ export function UsageIndicator() {
   // This is what should be shown on the badge per QA feedback
   const badgeUsage = usage.sessionPercent;
   const badgeColorClasses =
-    badgeUsage >= 95 ? 'text-red-500 bg-red-500/10 border-red-500/20' :
-    badgeUsage >= 91 ? 'text-orange-500 bg-orange-500/10 border-orange-500/20' :
-    badgeUsage >= 71 ? 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20' :
-    'text-green-500 bg-green-500/10 border-green-500/20';
+    badgeUsage >= 95 ? 'text-red-400 bg-red-500/10 border-red-500/20' :
+    badgeUsage >= 91 ? 'text-orange-400 bg-orange-500/10 border-orange-500/20' :
+    badgeUsage >= 71 ? 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' :
+    'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
 
   // Get window labels for display
   // Map backend-provided labels to localized versions with appropriate defaults
@@ -191,14 +191,18 @@ export function UsageIndicator() {
    * TODO: Integrate into dashboard layout in Phase 4
    */
   const renderFilterBar = () => (
-    <div className="flex items-center gap-2 p-2 border-b border-white/10">
+    <div className="flex items-center gap-2 p-2 border-b border-white/10 bg-[#161618]">
       {/* Time Period Toggle */}
       <div className="flex items-center gap-1">
         <Button
           size="sm"
           variant={timePeriod === '7d' ? 'default' : 'outline'}
           onClick={() => setTimePeriod('7d')}
-          className="h-7 px-3 text-xs"
+          className={`h-7 px-3 text-xs font-mono ${
+            timePeriod === '7d'
+              ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0'
+              : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
+          }`}
         >
           7 Days
         </Button>
@@ -206,7 +210,11 @@ export function UsageIndicator() {
           size="sm"
           variant={timePeriod === '30d' ? 'default' : 'outline'}
           onClick={() => setTimePeriod('30d')}
-          className="h-7 px-3 text-xs"
+          className={`h-7 px-3 text-xs font-mono ${
+            timePeriod === '30d'
+              ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0'
+              : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
+          }`}
         >
           30 Days
         </Button>
@@ -218,7 +226,11 @@ export function UsageIndicator() {
           size="sm"
           variant={chartType === 'area' ? 'default' : 'outline'}
           onClick={() => setChartType('area')}
-          className="h-7 px-3 text-xs"
+          className={`h-7 px-3 text-xs font-mono ${
+            chartType === 'area'
+              ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0'
+              : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
+          }`}
         >
           Area
         </Button>
@@ -226,7 +238,11 @@ export function UsageIndicator() {
           size="sm"
           variant={chartType === 'line' ? 'default' : 'outline'}
           onClick={() => setChartType('line')}
-          className="h-7 px-3 text-xs"
+          className={`h-7 px-3 text-xs font-mono ${
+            chartType === 'line'
+              ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0'
+              : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
+          }`}
         >
           Line
         </Button>
@@ -234,7 +250,11 @@ export function UsageIndicator() {
           size="sm"
           variant={chartType === 'bar' ? 'default' : 'outline'}
           onClick={() => setChartType('bar')}
-          className="h-7 px-3 text-xs"
+          className={`h-7 px-3 text-xs font-mono ${
+            chartType === 'bar'
+              ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0'
+              : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
+          }`}
         >
           Bar
         </Button>
@@ -246,7 +266,11 @@ export function UsageIndicator() {
           size="sm"
           variant={metric === 'tokens' ? 'default' : 'outline'}
           onClick={() => setMetric('tokens')}
-          className="h-7 px-3 text-xs"
+          className={`h-7 px-3 text-xs font-mono ${
+            metric === 'tokens'
+              ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0'
+              : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
+          }`}
         >
           Tokens
         </Button>
@@ -254,7 +278,11 @@ export function UsageIndicator() {
           size="sm"
           variant={metric === 'tools' ? 'default' : 'outline'}
           onClick={() => setMetric('tools')}
-          className="h-7 px-3 text-xs"
+          className={`h-7 px-3 text-xs font-mono ${
+            metric === 'tools'
+              ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0'
+              : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
+          }`}
         >
           Tools
         </Button>
@@ -273,35 +301,35 @@ export function UsageIndicator() {
     const profileName = activeProfile?.name || t('tasks:apiProfile.placeholder');
 
     return (
-      <div className="grid grid-cols-2 gap-3 p-4">
+      <div className="grid grid-cols-2 gap-3 p-4 bg-[#161618]">
         {/* Token Usage Card - 5H Quota */}
-        <Card className="border-border/50">
+        <Card className="border border-white/10 bg-white/5 backdrop-blur-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Activity className="h-4 w-4" />
+            <CardTitle className="text-sm font-medium flex items-center gap-2 text-gray-200">
+              <Activity className="h-4 w-4 text-indigo-400" />
               Token Usage (5H Quota)
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               <div className="flex items-baseline justify-between">
-                <span className="text-2xl font-semibold tabular-nums">
+                <span className="text-2xl font-semibold font-mono text-gray-100">
                   {usage ? Math.round(usage.sessionPercent) : 0}%
                 </span>
-                <span className="text-xs text-muted-foreground tabular-nums">
+                <span className="text-xs text-gray-400 font-mono">
                   {usage && usage.sessionUsageValue != null && usage.sessionUsageLimit != null
                     ? `${formatUsageValue(usage.sessionUsageValue)} / ${formatUsageValue(usage.sessionUsageLimit)}`
                     : 'N/A'
                   }
                 </span>
               </div>
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
+              <div className="h-2 bg-white/5 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-500 ease-out ${
-                    usage && usage.sessionPercent >= 95 ? 'bg-gradient-to-r from-red-600 to-red-500' :
-                    usage && usage.sessionPercent >= 91 ? 'bg-gradient-to-r from-orange-600 to-orange-500' :
-                    usage && usage.sessionPercent >= 71 ? 'bg-gradient-to-r from-yellow-600 to-yellow-500' :
-                    'bg-gradient-to-r from-green-600 to-green-500'
+                    usage && usage.sessionPercent >= 95 ? 'bg-gradient-to-r from-red-500 to-red-400' :
+                    usage && usage.sessionPercent >= 91 ? 'bg-gradient-to-r from-orange-500 to-orange-400' :
+                    usage && usage.sessionPercent >= 71 ? 'bg-gradient-to-r from-yellow-500 to-yellow-400' :
+                    'bg-gradient-to-r from-emerald-500 to-emerald-400'
                   }`}
                   style={{ width: `${usage ? Math.min(usage.sessionPercent, 100) : 0}%` }}
                 />
@@ -311,33 +339,33 @@ export function UsageIndicator() {
         </Card>
 
         {/* Tools Usage Card - Monthly */}
-        <Card className="border-border/50">
+        <Card className="border border-white/10 bg-white/5 backdrop-blur-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
+            <CardTitle className="text-sm font-medium flex items-center gap-2 text-gray-200">
+              <TrendingUp className="h-4 w-4 text-violet-400" />
               Tools Usage (Monthly)
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               <div className="flex items-baseline justify-between">
-                <span className="text-2xl font-semibold tabular-nums">
+                <span className="text-2xl font-semibold font-mono text-gray-100">
                   {usage ? Math.round(usage.weeklyPercent) : 0}%
                 </span>
-                <span className="text-xs text-muted-foreground tabular-nums">
+                <span className="text-xs text-gray-400 font-mono">
                   {usage && usage.weeklyUsageValue != null && usage.weeklyUsageLimit != null
                     ? `${formatUsageValue(usage.weeklyUsageValue)} / ${formatUsageValue(usage.weeklyUsageLimit)}`
                     : 'N/A'
                   }
                 </span>
               </div>
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
+              <div className="h-2 bg-white/5 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-500 ease-out ${
-                    usage && usage.weeklyPercent >= 99 ? 'bg-gradient-to-r from-red-600 to-red-500' :
-                    usage && usage.weeklyPercent >= 91 ? 'bg-gradient-to-r from-orange-600 to-orange-500' :
-                    usage && usage.weeklyPercent >= 71 ? 'bg-gradient-to-r from-yellow-600 to-yellow-500' :
-                    'bg-gradient-to-r from-green-600 to-green-500'
+                    usage && usage.weeklyPercent >= 99 ? 'bg-gradient-to-r from-red-500 to-red-400' :
+                    usage && usage.weeklyPercent >= 91 ? 'bg-gradient-to-r from-orange-500 to-orange-400' :
+                    usage && usage.weeklyPercent >= 71 ? 'bg-gradient-to-r from-yellow-500 to-yellow-400' :
+                    'bg-gradient-to-r from-emerald-500 to-emerald-400'
                   }`}
                   style={{ width: `${usage ? Math.min(usage.weeklyPercent, 100) : 0}%` }}
                 />
@@ -347,24 +375,24 @@ export function UsageIndicator() {
         </Card>
 
         {/* Reset Schedule Card */}
-        <Card className="border-border/50">
+        <Card className="border border-white/10 bg-white/5 backdrop-blur-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Clock className="h-4 w-4" />
+            <CardTitle className="text-sm font-medium flex items-center gap-2 text-gray-200">
+              <Clock className="h-4 w-4 text-indigo-400" />
               Reset Schedule
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-1.5 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Session:</span>
-                <span className="font-medium tabular-nums">
+                <span className="text-gray-400">Session:</span>
+                <span className="font-medium font-mono text-gray-200">
                   {sessionResetTime || 'Calculating...'}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Weekly:</span>
-                <span className="font-medium tabular-nums">
+                <span className="text-gray-400">Weekly:</span>
+                <span className="font-medium font-mono text-gray-200">
                   {weeklyResetTime || 'Calculating...'}
                 </span>
               </div>
@@ -373,24 +401,24 @@ export function UsageIndicator() {
         </Card>
 
         {/* Account Status Card */}
-        <Card className="border-border/50">
+        <Card className="border border-white/10 bg-white/5 backdrop-blur-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <User className="h-4 w-4" />
+            <CardTitle className="text-sm font-medium flex items-center gap-2 text-gray-200">
+              <User className="h-4 w-4 text-violet-400" />
               Account Status
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Profile:</span>
-                <span className="text-xs font-medium truncate ml-2" title={profileName}>
+                <span className="text-xs text-gray-400">Profile:</span>
+                <span className="text-xs font-medium truncate ml-2 text-gray-200" title={profileName}>
                   {profileName}
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="h-2 w-2 rounded-full bg-green-500 motion-safe:animate-pulse" />
-                <span className="text-xs font-medium text-green-600">Live</span>
+                <div className="h-2 w-2 rounded-full bg-emerald-500 motion-safe:animate-pulse" />
+                <span className="text-xs font-medium text-emerald-400">Live</span>
               </div>
             </div>
           </CardContent>
@@ -439,7 +467,7 @@ export function UsageIndicator() {
     const pathData = generatePathData(dataPoints);
 
     return (
-      <div className="w-full h-full flex items-center justify-center p-4">
+      <div className="w-full h-full flex items-center justify-center p-4 bg-[#161618]">
         <svg
           viewBox={`0 0 ${chartWidth} ${chartHeight}`}
           className="w-full h-full"
@@ -450,8 +478,8 @@ export function UsageIndicator() {
           {/* Gradient Definition */}
           <defs>
             <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.6" />
-              <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.05" />
+              <stop offset="0%" stopColor="#6366F1" stopOpacity="0.6" />
+              <stop offset="100%" stopColor="#6366F1" stopOpacity="0.05" />
             </linearGradient>
           </defs>
 
@@ -468,13 +496,13 @@ export function UsageIndicator() {
                   stroke="currentColor"
                   strokeOpacity="0.1"
                   strokeWidth="1"
-                  className="text-muted-foreground"
+                  className="text-gray-500"
                 />
                 <text
                   x={padding.left - 10}
                   y={y + 4}
                   textAnchor="end"
-                  className="text-[10px] fill-muted-foreground tabular-nums"
+                  className="text-[10px] fill-gray-400 font-mono"
                 >
                   {percent}%
                 </text>
@@ -493,7 +521,7 @@ export function UsageIndicator() {
           <path
             d={pathData.replace(' Z', '')}
             fill="none"
-            stroke="#3b82f6"
+            stroke="#6366F1"
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -511,8 +539,8 @@ export function UsageIndicator() {
                 cx={x}
                 cy={y}
                 r="4"
-                fill="#3b82f6"
-                stroke="white"
+                fill="#6366F1"
+                stroke="#8B5CF6"
                 strokeWidth="2"
                 className="hover:r-6 transition-all duration-150"
               />
@@ -530,7 +558,7 @@ export function UsageIndicator() {
                 x={x}
                 y={chartHeight - padding.bottom + 20}
                 textAnchor="middle"
-                className="text-[10px] fill-muted-foreground"
+                className="text-[10px] fill-gray-400 font-mono"
               >
                 Day {index + 1}
               </text>
@@ -546,53 +574,53 @@ export function UsageIndicator() {
       <Tooltip>
         <TooltipTrigger asChild>
           <button
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border transition-all hover:opacity-80 ${badgeColorClasses}`}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-white/10 bg-[#161618] transition-all hover:opacity-80 ${badgeColorClasses}`}
             aria-label={t('common:usage.usageStatusAriaLabel')}
           >
             <Icon className="h-3.5 w-3.5" />
-            <span className="text-xs font-semibold font-mono">
+            <span className="text-xs font-semibold font-mono text-gray-200">
               {Math.round(badgeUsage)}%
             </span>
           </button>
         </TooltipTrigger>
-        <TooltipContent side="bottom" className="text-xs w-72 p-0">
+        <TooltipContent side="bottom" className="text-xs w-72 p-0 bg-[#161618] border border-white/10">
           <div className="p-3 space-y-3">
             {/* Header with overall status */}
-            <div className="flex items-center pb-2 border-b">
-              <Icon className="h-3.5 w-3.5" />
-              <span className="font-semibold text-xs">{t('common:usage.usageBreakdown')}</span>
+            <div className="flex items-center pb-2 border-b border-white/10">
+              <Icon className="h-3.5 w-3.5 text-indigo-400" />
+              <span className="font-semibold text-xs text-gray-200">{t('common:usage.usageBreakdown')}</span>
             </div>
 
             {/* Session/5-hour usage */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground font-medium text-[11px] flex items-center gap-1">
+                <span className="text-gray-400 font-medium text-[11px] flex items-center gap-1">
                   <Clock className="h-3 w-3" />
                   {sessionLabel}
                 </span>
-                <span className={`font-semibold tabular-nums text-xs ${
-                  usage.sessionPercent >= 95 ? 'text-red-500' :
-                  usage.sessionPercent >= 91 ? 'text-orange-500' :
-                  usage.sessionPercent >= 71 ? 'text-yellow-600' :
-                  'text-green-600'
+                <span className={`font-semibold font-mono text-xs ${
+                  usage.sessionPercent >= 95 ? 'text-red-400' :
+                  usage.sessionPercent >= 91 ? 'text-orange-400' :
+                  usage.sessionPercent >= 71 ? 'text-yellow-400' :
+                  'text-emerald-400'
                 }`}>
                   {Math.round(usage.sessionPercent)}%
                 </span>
               </div>
               {sessionResetTime && (
-                <div className="text-[10px] text-muted-foreground pl-4 flex items-center gap-1">
+                <div className="text-[10px] text-gray-400 pl-4 flex items-center gap-1">
                   <Info className="h-2.5 w-2.5" />
                   {sessionResetTime}
                 </div>
               )}
               {/* Enhanced progress bar with gradient */}
-              <div className="h-2 bg-muted rounded-full overflow-hidden shadow-inner">
+              <div className="h-2 bg-white/5 rounded-full overflow-hidden shadow-inner">
                 <div
                   className={`h-full rounded-full transition-all duration-500 ease-out relative overflow-hidden ${
-                    usage.sessionPercent >= 95 ? 'bg-gradient-to-r from-red-600 to-red-500' :
-                    usage.sessionPercent >= 91 ? 'bg-gradient-to-r from-orange-600 to-orange-500' :
-                    usage.sessionPercent >= 71 ? 'bg-gradient-to-r from-yellow-600 to-yellow-500' :
-                    'bg-gradient-to-r from-green-600 to-green-500'
+                    usage.sessionPercent >= 95 ? 'bg-gradient-to-r from-red-500 to-red-400' :
+                    usage.sessionPercent >= 91 ? 'bg-gradient-to-r from-orange-500 to-orange-400' :
+                    usage.sessionPercent >= 71 ? 'bg-gradient-to-r from-yellow-500 to-yellow-400' :
+                    'bg-gradient-to-r from-emerald-500 to-emerald-400'
                   }`}
                   style={{ width: `${Math.min(usage.sessionPercent, 100)}%` }}
                 >
@@ -603,9 +631,9 @@ export function UsageIndicator() {
               {/* Raw usage value with better styling */}
               {usage.sessionUsageValue != null && usage.sessionUsageLimit != null && (
                 <div className="flex items-center justify-between text-[10px]">
-                  <span className="text-muted-foreground">{t('common:usage.used')}</span>
-                  <span className="font-medium tabular-nums">
-                    {formatUsageValue(usage.sessionUsageValue)} <span className="text-muted-foreground mx-1">/</span> {formatUsageValue(usage.sessionUsageLimit)}
+                  <span className="text-gray-400">{t('common:usage.used')}</span>
+                  <span className="font-medium font-mono text-gray-200">
+                    {formatUsageValue(usage.sessionUsageValue)} <span className="text-gray-400 mx-1">/</span> {formatUsageValue(usage.sessionUsageLimit)}
                   </span>
                 </div>
               )}
@@ -614,33 +642,33 @@ export function UsageIndicator() {
             {/* Weekly/Monthly usage */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground font-medium text-[11px] flex items-center gap-1">
+                <span className="text-gray-400 font-medium text-[11px] flex items-center gap-1">
                   <TrendingUp className="h-3 w-3" />
                   {weeklyLabel}
                 </span>
-                <span className={`font-semibold tabular-nums text-xs ${
-                  usage.weeklyPercent >= 99 ? 'text-red-500' :
-                  usage.weeklyPercent >= 91 ? 'text-orange-500' :
-                  usage.weeklyPercent >= 71 ? 'text-yellow-600' :
-                  'text-green-600'
+                <span className={`font-semibold font-mono text-xs ${
+                  usage.weeklyPercent >= 99 ? 'text-red-400' :
+                  usage.weeklyPercent >= 91 ? 'text-orange-400' :
+                  usage.weeklyPercent >= 71 ? 'text-yellow-400' :
+                  'text-emerald-400'
                 }`}>
                   {Math.round(usage.weeklyPercent)}%
                 </span>
               </div>
               {weeklyResetTime && (
-                <div className="text-[10px] text-muted-foreground pl-4 flex items-center gap-1">
+                <div className="text-[10px] text-gray-400 pl-4 flex items-center gap-1">
                   <Info className="h-2.5 w-2.5" />
                   {weeklyResetTime}
                 </div>
               )}
               {/* Enhanced progress bar with gradient */}
-              <div className="h-2 bg-muted rounded-full overflow-hidden shadow-inner">
+              <div className="h-2 bg-white/5 rounded-full overflow-hidden shadow-inner">
                 <div
                   className={`h-full rounded-full transition-all duration-500 ease-out relative overflow-hidden ${
-                    usage.weeklyPercent >= 99 ? 'bg-gradient-to-r from-red-600 to-red-500' :
-                    usage.weeklyPercent >= 91 ? 'bg-gradient-to-r from-orange-600 to-orange-500' :
-                    usage.weeklyPercent >= 71 ? 'bg-gradient-to-r from-yellow-600 to-yellow-500' :
-                    'bg-gradient-to-r from-green-600 to-green-500'
+                    usage.weeklyPercent >= 99 ? 'bg-gradient-to-r from-red-500 to-red-400' :
+                    usage.weeklyPercent >= 91 ? 'bg-gradient-to-r from-orange-500 to-orange-400' :
+                    usage.weeklyPercent >= 71 ? 'bg-gradient-to-r from-yellow-500 to-yellow-400' :
+                    'bg-gradient-to-r from-emerald-500 to-emerald-400'
                   }`}
                   style={{ width: `${Math.min(usage.weeklyPercent, 100)}%` }}
                 >
@@ -651,17 +679,17 @@ export function UsageIndicator() {
               {/* Raw usage value with better styling */}
               {usage.weeklyUsageValue != null && usage.weeklyUsageLimit != null && (
                 <div className="flex items-center justify-between text-[10px]">
-                  <span className="text-muted-foreground">{t('common:usage.used')}</span>
-                  <span className="font-medium tabular-nums">
-                    {formatUsageValue(usage.weeklyUsageValue)} <span className="text-muted-foreground mx-1">/</span> {formatUsageValue(usage.weeklyUsageLimit)}
+                  <span className="text-gray-400">{t('common:usage.used')}</span>
+                  <span className="font-medium font-mono text-gray-200">
+                    {formatUsageValue(usage.weeklyUsageValue)} <span className="text-gray-400 mx-1">/</span> {formatUsageValue(usage.weeklyUsageLimit)}
                   </span>
                 </div>
               )}
             </div>
 
             {/* Profile selector */}
-            <div className="pt-2 border-t space-y-2">
-              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+            <div className="pt-2 border-t border-white/10 space-y-2">
+              <div className="flex items-center gap-1.5 text-[10px] text-gray-400">
                 <User className="h-3 w-3" />
                 <span>{t('common:usage.activeAccount')}</span>
               </div>
@@ -670,18 +698,18 @@ export function UsageIndicator() {
                 onValueChange={handleProfileChange}
                 disabled={!profiles || profiles.length === 0}
               >
-                <SelectTrigger className="h-8 text-xs">
+                <SelectTrigger className="h-8 text-xs bg-white/5 border-white/10 text-gray-200">
                   <SelectValue placeholder={t('tasks:apiProfile.placeholder')} />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-[#161618] border-white/10">
                   {profiles && profiles.length > 0 ? (
                     profiles.map((profile: APIProfile) => (
                       <SelectItem key={profile.id} value={profile.id}>
                         <div className="flex items-center gap-2">
-                          <Key className="h-3 w-3 shrink-0" />
+                          <Key className="h-3 w-3 shrink-0 text-indigo-400" />
                           <div>
-                            <span className="font-medium text-xs">{profile.name}</span>
-                            <span className="ml-2 text-[10px] text-muted-foreground">
+                            <span className="font-medium text-xs text-gray-200">{profile.name}</span>
+                            <span className="ml-2 text-[10px] text-gray-400">
                               ({profile.baseUrl})
                             </span>
                           </div>
