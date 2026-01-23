@@ -49,8 +49,22 @@ export class SessionManager {
 
   /**
    * Create a new session
+   * If an empty session (no messages) already exists, redirects to that session instead of creating a duplicate
    */
   createNewSession(projectId: string, projectPath: string): InsightsSession {
+    // Check for existing empty session first
+    const emptySessionId = this.storage.findEmptySession(projectPath);
+    if (emptySessionId) {
+      const emptySession = this.storage.loadSessionById(projectPath, emptySessionId);
+      if (emptySession) {
+        // Switch to existing empty session instead of creating a new one
+        this.storage.saveCurrentSessionId(projectPath, emptySessionId);
+        this.sessions.set(projectId, emptySession);
+        return emptySession;
+      }
+    }
+
+    // No empty session exists, create a new one
     const sessionId = `session-${Date.now()}`;
     const session: InsightsSession = {
       id: sessionId,
