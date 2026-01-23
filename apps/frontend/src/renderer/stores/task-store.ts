@@ -191,11 +191,21 @@ function mergeTaskStates(refreshedTasks: Task[], existingTasks: Task[]): Task[] 
 // localStorage key prefix for task order persistence
 const TASK_ORDER_KEY_PREFIX = 'task-order-state';
 
+// localStorage key prefix for task execution progress persistence
+const TASK_PROGRESS_KEY_PREFIX = 'task-execution-progress';
+
 /**
  * Get the localStorage key for a project's task order
  */
 function getTaskOrderKey(projectId: string): string {
   return `${TASK_ORDER_KEY_PREFIX}-${projectId}`;
+}
+
+/**
+ * Get the localStorage key for a project's task execution progress cache
+ */
+function getTaskProgressKey(projectId: string): string {
+  return `${TASK_PROGRESS_KEY_PREFIX}-${projectId}`;
 }
 
 /**
@@ -212,6 +222,89 @@ function createEmptyTaskOrder(): TaskOrderState {
     pr_created: [],
     error: []
   };
+}
+
+/**
+ * Type for task execution progress cache map
+ */
+type TaskProgressCache = Record<string, ExecutionProgress>;
+
+/**
+ * Save executionProgress for all running tasks in a project to localStorage.
+ * This preserves progress when switching between project tabs.
+ *
+ * @param projectId - The project ID to save progress for
+ * @param tasks - The current task list
+ */
+function saveTaskProgress(projectId: string, tasks: Task[]): void {
+  const progressMap: TaskProgressCache = {};
+
+  for (const task of tasks) {
+    // Only cache progress for actively running tasks in this project
+    if (task.projectId === projectId && task.executionProgress && isTaskInActivePhase(task)) {
+      progressMap[task.id] = cloneExecutionProgress(task.executionProgress);
+    }
+  }
+
+  try {
+    const key = getTaskProgressKey(projectId);
+    localStorage.setItem(key, JSON.stringify(progressMap));
+  } catch (error) {
+    console.error('Failed to save task progress:', error);
+  }
+}
+
+/**
+ * Load cached executionProgress for a project from localStorage.
+ * Returns a map of taskId → executionProgress.
+ *
+ * @param projectId - The project ID to load progress for
+ * @returns Cached progress map
+ */
+function loadTaskProgress(projectId: string): TaskProgressCache {
+  try {
+    const key = getTaskProgressKey(projectId);
+    const stored = localStorage.getItem(key);
+    if (!stored) return {};
+
+    const parsed = JSON.parse(stored);
+    if (!parsed || typeof parsed !== 'object') {
+      console.warn('Invalid task progress data in localStorage');
+      return {};
+    }
+
+    return parsed as TaskProgressCache;
+  } catch (error) {
+    console.error('Failed to load task progress:', error);
+    return {};
+  }
+}
+
+/**
+ * Clear cached executionProgress for a project or specific task.
+ * Call this when a task completes or a project is deleted.
+ *
+ * @param projectId - The project ID to clear progress for
+ * @param taskId - Optional task ID to clear only that task's progress
+ */
+function clearTaskProgress(projectId: string, taskId?: string): void {
+  try {
+    const key = getTaskProgressKey(projectId);
+    if (taskId) {
+      // Clear specific task's progress
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        const progressMap = JSON.parse(stored) as TaskProgressCache;
+        delete progressMap[taskId];
+        localStorage.setItem(key, JSON.stringify(progressMap));
+      }
+    } else {
+      // Clear all progress for project
+      localStorage.removeItem(key);
+    }
+  } catch (error) {
+    console.error('Failed to clear task progress:', error);
+  }
 }
 
 export const useTaskStore = create<TaskState>((set, get) => ({
@@ -324,6 +417,13 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         })
       };
     });
+
+    // Clear cached progress when task reaches terminal status (done, error, pr_created)
+    // This prevents stale progress data from persisting in localStorage
+    const terminalStatuses: TaskStatus[] = ['done', 'error', 'pr_created'];
+    if (terminalStatuses.includes(status)) {
+      clearTaskProgress(oldTask.projectId, taskId);
+    }
 
     // Notify listeners after state update (schedule after current tick)
     queueMicrotask(() => {
@@ -605,7 +705,17 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
   setError: (error) => set({ error }),
 
-  clearTasks: () => set({ tasks: [], selectedTaskId: null, taskOrder: null }),
+  clearTasks: () => {
+    const state = get();
+    // Save progress for all tasks before clearing
+    if (state.tasks.length > 0) {
+      const projectIds = new Set(state.tasks.map(t => t.projectId));
+      for (const projectId of projectIds) {
+        saveTaskProgress(projectId, state.tasks);
+      }
+    }
+    set({ tasks: [], selectedTaskId: null, taskOrder: null });
+  },
 
   // Task order actions for kanban drag-and-drop reordering
   setTaskOrder: (order) => set({ taskOrder: order }),
@@ -761,12 +871,35 @@ export async function loadTasks(projectId: string, options?: { forceRefresh?: bo
     store.setLoading(true);
     store.setError(null);
 
+    // Save executionProgress for all tasks currently in the store before switching projects
+    // Group tasks by projectId and save progress for each project
+    if (store.tasks.length > 0) {
+      const projectIds = new Set(store.tasks.map(t => t.projectId));
+      for (const currentProjectId of projectIds) {
+        saveTaskProgress(currentProjectId, store.tasks);
+      }
+    }
+
     try {
       const result = await window.electronAPI.getTasks(projectId, options);
       if (result.success && result.data) {
-        // Use functional update to explicitly merge refreshed tasks with existing state
-        // This preserves executionProgress for tasks that are actively running
-        store.setTasks(prevTasks => mergeTaskStates(result.data ?? [], prevTasks));
+        // Load cached executionProgress for the target project
+        const cachedProgress = loadTaskProgress(projectId);
+
+        // Merge cached progress with loaded tasks
+        const tasksWithProgress = result.data.map(task => {
+          const cached = cachedProgress[task.id];
+          if (cached) {
+            // Task has cached progress - restore it
+            return { ...task, executionProgress: cached };
+          }
+          // No cached progress - return task as-is
+          return task;
+        });
+
+        // Use functional update to explicitly merge tasks with existing state
+        // This preserves any in-memory executionProgress that wasn't cached
+        store.setTasks(prevTasks => mergeTaskStates(tasksWithProgress, prevTasks));
       } else {
         store.setError(result.error || 'Failed to load tasks');
       }
@@ -1002,6 +1135,10 @@ export async function deleteTask(
     const store = useTaskStore.getState();
 
     try {
+      // Find the task to get its projectId before deleting
+      const taskToDelete = store.tasks.find(t => t.id === taskId || t.specId === taskId);
+      const projectId = taskToDelete?.projectId;
+
       const result = await window.electronAPI.deleteTask(taskId);
 
       if (result.success) {
@@ -1010,6 +1147,10 @@ export async function deleteTask(
         // Clear selection if this task was selected
         if (store.selectedTaskId === taskId) {
           store.selectTask(null);
+        }
+        // Clear cached progress for this task if we know the projectId
+        if (projectId) {
+          clearTaskProgress(projectId, taskId);
         }
         return { success: true };
       }
