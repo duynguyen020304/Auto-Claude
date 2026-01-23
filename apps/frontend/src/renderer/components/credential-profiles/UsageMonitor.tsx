@@ -8,14 +8,14 @@
  * Currently shows placeholder values that will be replaced with backend data.
  */
 
-import { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Activity, TrendingUp, AlertCircle, RefreshCw } from 'lucide-react';
-import { useSettingsStore } from '../../stores/settings-store';
-import { useTaskStore } from '../../stores/task-store';
-import { cn } from '../../lib/utils';
-import { Button } from '../ui/button';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';
+import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { Activity, TrendingUp, AlertCircle, RefreshCw } from "lucide-react";
+import { useSettingsStore } from "../../stores/settings-store";
+import { useTaskStore } from "../../stores/task-store";
+import { cn } from "../../lib/utils";
+import { Button } from "../ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "../ui/tabs";
 
 /**
  * Usage statistics interface
@@ -31,7 +31,7 @@ export function UsageMonitor() {
   const { credentialProfiles, pools } = useSettingsStore();
   const { tasks } = useTaskStore();
 
-  const [activeTab, setActiveTab] = useState<'profiles' | 'pools'>('profiles');
+  const [activeTab, setActiveTab] = useState<"profiles" | "pools">("profiles");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
@@ -44,11 +44,11 @@ export function UsageMonitor() {
   const getProfileUsage = (profileId: string): UsageStats => {
     // Count tasks using this profile
     const currentTasks = tasks.filter(
-      task => task.metadata?.apiProfileId === profileId
+      (task) => task.metadata?.apiProfileId === profileId,
     ).length;
 
     // Get limit from profile metadata (only for API profiles)
-    const profile = credentialProfiles.find(p => p.id === profileId);
+    const profile = credentialProfiles.find((p) => p.id === profileId);
     const limit = profile?.metadata?.usage_limit
       ? parseInt(profile.metadata.usage_limit, 10)
       : 0;
@@ -58,7 +58,7 @@ export function UsageMonitor() {
       return {
         current: currentTasks,
         limit: 0,
-        percentage: 0
+        percentage: 0,
       };
     }
 
@@ -67,7 +67,7 @@ export function UsageMonitor() {
     return {
       current: currentTasks,
       limit,
-      percentage
+      percentage,
     };
   };
 
@@ -83,7 +83,7 @@ export function UsageMonitor() {
     // Pool selection not yet implemented in tasks (subtask-7-1)
     const currentTasks = 0;
 
-    const pool = pools.find(p => p.id === poolId);
+    const pool = pools.find((p) => p.id === poolId);
     const limit = pool?.limit ?? 0;
 
     // limit = 0 means unlimited
@@ -91,7 +91,7 @@ export function UsageMonitor() {
       return {
         current: currentTasks,
         limit: 0,
-        percentage: 0
+        percentage: 0,
       };
     }
 
@@ -100,7 +100,7 @@ export function UsageMonitor() {
     return {
       current: currentTasks,
       limit,
-      percentage
+      percentage,
     };
   };
 
@@ -110,25 +110,25 @@ export function UsageMonitor() {
   const getUsageColor = (percentage: number) => {
     if (percentage >= 90) {
       return {
-        bar: 'bg-red-500',
-        text: 'text-red-500',
+        bar: "bg-red-500",
+        text: "text-red-500",
         icon: AlertCircle,
-        label: 'critical'
+        label: "critical",
       };
     }
     if (percentage >= 70) {
       return {
-        bar: 'bg-yellow-500',
-        text: 'text-yellow-600',
+        bar: "bg-yellow-500",
+        text: "text-yellow-600",
         icon: TrendingUp,
-        label: 'warning'
+        label: "warning",
       };
     }
     return {
-      bar: 'bg-green-500',
-      text: 'text-green-600',
+      bar: "bg-green-500",
+      text: "text-green-600",
       icon: Activity,
-      label: 'healthy'
+      label: "healthy",
     };
   };
 
@@ -162,9 +162,11 @@ export function UsageMonitor() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold">{t('settings:usageMonitor.title')}</h3>
+          <h3 className="text-lg font-semibold">
+            {t("settings:usageMonitor.title")}
+          </h3>
           <p className="text-sm text-muted-foreground">
-            {t('settings:usageMonitor.description')}
+            {t("settings:usageMonitor.description")}
           </p>
         </div>
         <Button
@@ -173,29 +175,31 @@ export function UsageMonitor() {
           onClick={handleRefresh}
           disabled={isRefreshing}
         >
-          <RefreshCw className={cn(
-            'h-4 w-4 mr-2',
-            isRefreshing && 'animate-spin'
-          )} />
-          {t('settings:usageMonitor.refresh')}
+          <RefreshCw
+            className={cn("h-4 w-4 mr-2", isRefreshing && "animate-spin")}
+          />
+          {t("settings:usageMonitor.refresh")}
         </Button>
       </div>
 
       {/* Last update timestamp */}
       <div className="text-xs text-muted-foreground">
-        {t('settings:usageMonitor.lastUpdate', {
-          time: lastUpdate.toLocaleTimeString()
+        {t("settings:usageMonitor.lastUpdate", {
+          time: lastUpdate.toLocaleTimeString(),
         })}
       </div>
 
       {/* Tabs for Profiles vs Pools */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'profiles' | 'pools')}>
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as "profiles" | "pools")}
+      >
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="profiles">
-            {t('settings:usageMonitor.tabs.profiles')}
+            {t("settings:usageMonitor.tabs.profiles")}
           </TabsTrigger>
           <TabsTrigger value="pools">
-            {t('settings:usageMonitor.tabs.pools')}
+            {t("settings:usageMonitor.tabs.pools")}
           </TabsTrigger>
         </TabsList>
 
@@ -205,7 +209,7 @@ export function UsageMonitor() {
             <div className="text-center py-8 px-4 border border-dashed rounded-lg">
               <Activity className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
               <p className="text-sm text-muted-foreground">
-                {t('settings:usageMonitor.profiles.empty')}
+                {t("settings:usageMonitor.profiles.empty")}
               </p>
             </div>
           ) : (
@@ -213,73 +217,31 @@ export function UsageMonitor() {
               const usage = getProfileUsage(profile.id);
               const colors = getUsageColor(usage.percentage);
               const Icon = colors.icon;
-              const isOAuth = profile.type === 'oauth';
+              const isOAuth = profile.type === "oauth";
 
               return (
-                <div
-                  key={profile.id}
-                  className="p-4 rounded-lg border bg-card"
-                >
+                <div key={profile.id} className="p-4 rounded-lg border bg-card">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <Icon className={cn('h-4 w-4', colors.text)} />
+                        <Icon className={cn("h-4 w-4", colors.text)} />
                         <h4 className="font-medium truncate">{profile.name}</h4>
                         {/* Profile type badge */}
-                        <span className={cn(
-                          'text-xs px-2 py-0.5 rounded-full font-medium',
-                          isOAuth
-                            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                            : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                        )}>
+                        <span
+                          className={cn(
+                            "text-xs px-2 py-0.5 rounded-full font-medium",
+                            isOAuth
+                              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                              : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+                          )}
+                        >
                           {isOAuth
-                            ? t('settings:profiles.type.oauth')
-                            : t('settings:profiles.type.apiKey')
-                          }
+                            ? t("settings:profiles.type.oauth")
+                            : t("settings:profiles.type.apiKey")}
                         </span>
                       </div>
                     </div>
                   </div>
-
-                  {/* Usage display */}
-                  {!isOAuth && usage.limit > 0 ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-muted-foreground">
-                          {t('settings:usageMonitor.usage.label')}
-                        </span>
-                        <span className={cn('font-medium tabular-nums', colors.text)}>
-                          {usage.current} / {usage.limit}
-                          ({Math.round(usage.percentage)}%)
-                        </span>
-                      </div>
-
-                      {/* Progress bar */}
-                      <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
-                        <div
-                          className={cn(
-                            'h-full transition-all duration-500',
-                            colors.bar
-                          )}
-                          style={{ width: `${Math.min(usage.percentage, 100)}%` }}
-                        />
-                      </div>
-
-                      {/* Status label */}
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Icon className={cn('h-3 w-3', colors.text)} />
-                        <span>{t(`settings:usageMonitor.status.${colors.label}`)}</span>
-                      </div>
-                    </div>
-                  ) : isOAuth ? (
-                    <div className="text-xs text-muted-foreground">
-                      {t('settings:usageMonitor.unlimited')}
-                    </div>
-                  ) : (
-                    <div className="text-xs text-muted-foreground">
-                      {t('settings:usageMonitor.noLimit')}
-                    </div>
-                  )}
                 </div>
               );
             })
@@ -292,7 +254,7 @@ export function UsageMonitor() {
             <div className="text-center py-8 px-4 border border-dashed rounded-lg">
               <Activity className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
               <p className="text-sm text-muted-foreground">
-                {t('settings:usageMonitor.pools.empty')}
+                {t("settings:usageMonitor.pools.empty")}
               </p>
             </div>
           ) : (
@@ -305,61 +267,25 @@ export function UsageMonitor() {
               const profileCount = pool.profile_ids.length;
 
               return (
-                <div
-                  key={pool.id}
-                  className="p-4 rounded-lg border bg-card"
-                >
+                <div key={pool.id} className="p-4 rounded-lg border bg-card">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <Icon className={cn('h-4 w-4', colors.text)} />
+                        <Icon className={cn("h-4 w-4", colors.text)} />
                         <h4 className="font-medium truncate">{pool.name}</h4>
                         {/* Profile count badge */}
                         <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
                           {profileCount === 1
-                            ? t('settings:pools.profileCount.single', { count: profileCount })
-                            : t('settings:pools.profileCount.multiple', { count: profileCount })
-                          }
+                            ? t("settings:pools.profileCount.single", {
+                                count: profileCount,
+                              })
+                            : t("settings:pools.profileCount.multiple", {
+                                count: profileCount,
+                              })}
                         </span>
                       </div>
                     </div>
                   </div>
-
-                  {/* Usage display */}
-                  {usage.limit > 0 ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-muted-foreground">
-                          {t('settings:usageMonitor.usage.label')}
-                        </span>
-                        <span className={cn('font-medium tabular-nums', colors.text)}>
-                          {usage.current} / {usage.limit}
-                          ({Math.round(usage.percentage)}%)
-                        </span>
-                      </div>
-
-                      {/* Progress bar */}
-                      <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
-                        <div
-                          className={cn(
-                            'h-full transition-all duration-500',
-                            colors.bar
-                          )}
-                          style={{ width: `${Math.min(usage.percentage, 100)}%` }}
-                        />
-                      </div>
-
-                      {/* Status label */}
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Icon className={cn('h-3 w-3', colors.text)} />
-                        <span>{t(`settings:usageMonitor.status.${colors.label}`)}</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-xs text-muted-foreground">
-                      {t('settings:usageMonitor.unlimited')}
-                    </div>
-                  )}
                 </div>
               );
             })

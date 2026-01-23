@@ -5,38 +5,45 @@
  * Shows detailed usage analytics dashboard in a popover on click.
  */
 
-import React, { useState, useEffect } from 'react';
-import { Activity, TrendingUp, AlertCircle, Clock, User, Info, Key } from 'lucide-react';
+import React, { useState, useEffect } from "react";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from './ui/popover';
-import { Button } from './ui/button';
+  Activity,
+  TrendingUp,
+  AlertCircle,
+  Clock,
+  User,
+  Key,
+} from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Button } from "./ui/button";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
-} from './ui/select';
-import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
-import { useTranslation } from 'react-i18next';
-import { formatTimeRemaining, localizeUsageWindowLabel, hasHardcodedText } from '../../shared/utils/format-time';
-import type { ClaudeUsageSnapshot } from '../../shared/types/agent';
-import type { APIProfile } from '../../shared/types/profile';
-import { useSettingsStore } from '../stores/settings-store';
+  SelectValue,
+} from "./ui/select";
+import { Card, CardHeader, CardTitle, CardContent } from "./ui/card";
+import { useTranslation } from "react-i18next";
+import {
+  formatTimeRemaining,
+  localizeUsageWindowLabel,
+  hasHardcodedText,
+} from "../../shared/utils/format-time";
+import type { ClaudeUsageSnapshot } from "../../shared/types/agent";
+import type { APIProfile } from "../../shared/types/profile";
+import { useSettingsStore } from "../stores/settings-store";
 
 export function UsageIndicator() {
-  const { t, i18n } = useTranslation(['common', 'tasks']);
+  const { t, i18n } = useTranslation(["common", "tasks"]);
   const [usage, setUsage] = useState<ClaudeUsageSnapshot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAvailable, setIsAvailable] = useState(false);
 
   // Filter bar state
-  const [timePeriod, setTimePeriod] = useState<'7d' | '30d'>('7d');
-  const [chartType, setChartType] = useState<'area' | 'line' | 'bar'>('area');
-  const [metric, setMetric] = useState<'tokens' | 'tools'>('tokens');
+  const [timePeriod, setTimePeriod] = useState<"7d" | "30d">("7d");
+  const [chartType, setChartType] = useState<"area" | "line" | "bar">("area");
+  const [metric, setMetric] = useState<"tokens" | "tools">("tokens");
 
   // Profile selection state
   const { profiles, activeProfileId, setActiveProfile } = useSettingsStore();
@@ -63,8 +70,8 @@ export function UsageIndicator() {
       }
     } catch (error) {
       // Profile switching failed - revert and show error
-      console.warn('[UsageIndicator] Failed to switch profile:', error);
-      setProfileError(t('common:usage.dashboard.profileSwitchFailed'));
+      console.warn("[UsageIndicator] Failed to switch profile:", error);
+      setProfileError(t("common:usage.dashboard.profileSwitchFailed"));
       setIsAvailable(false);
 
       // Revert to previous profile after a short delay
@@ -101,12 +108,12 @@ export function UsageIndicator() {
 
     // Use Intl.NumberFormat for locale-aware compact number formatting
     // Fallback to toString() if Intl is not available
-    if (typeof Intl !== 'undefined' && Intl.NumberFormat) {
+    if (typeof Intl !== "undefined" && Intl.NumberFormat) {
       try {
         return new Intl.NumberFormat(i18n.language, {
-          notation: 'compact',
-          compactDisplay: 'short',
-          maximumFractionDigits: 2
+          notation: "compact",
+          compactDisplay: "short",
+          maximumFractionDigits: 2,
         }).format(value);
       } catch {
         // Intl may fail in some environments, fall back to toString()
@@ -119,37 +126,50 @@ export function UsageIndicator() {
   // Only fall back to sessionResetTime/weeklyResetTime if they don't contain placeholder/hardcoded text
   const sessionResetTime = usage?.sessionResetTimestamp
     ? (formatTimeRemaining(usage.sessionResetTimestamp, t) ??
-      (hasHardcodedText(usage?.sessionResetTime) ? undefined : usage?.sessionResetTime))
-    : (hasHardcodedText(usage?.sessionResetTime) ? undefined : usage?.sessionResetTime);
+      (hasHardcodedText(usage?.sessionResetTime)
+        ? undefined
+        : usage?.sessionResetTime))
+    : hasHardcodedText(usage?.sessionResetTime)
+      ? undefined
+      : usage?.sessionResetTime;
   const weeklyResetTime = usage?.weeklyResetTimestamp
     ? (formatTimeRemaining(usage.weeklyResetTimestamp, t) ??
-      (hasHardcodedText(usage?.weeklyResetTime) ? undefined : usage?.weeklyResetTime))
-    : (hasHardcodedText(usage?.weeklyResetTime) ? undefined : usage?.weeklyResetTime);
+      (hasHardcodedText(usage?.weeklyResetTime)
+        ? undefined
+        : usage?.weeklyResetTime))
+    : hasHardcodedText(usage?.weeklyResetTime)
+      ? undefined
+      : usage?.weeklyResetTime;
 
   useEffect(() => {
     // Listen for usage updates from main process
-    const unsubscribe = window.electronAPI.onUsageUpdated((snapshot: ClaudeUsageSnapshot) => {
-      setUsage(snapshot);
-      setIsAvailable(true);
-      setIsLoading(false);
-    });
+    const unsubscribe = window.electronAPI.onUsageUpdated(
+      (snapshot: ClaudeUsageSnapshot) => {
+        setUsage(snapshot);
+        setIsAvailable(true);
+        setIsLoading(false);
+      },
+    );
 
     // Request initial usage on mount
-    window.electronAPI.requestUsageUpdate().then((result) => {
-      setIsLoading(false);
-      if (result.success && result.data) {
-        setUsage(result.data);
-        setIsAvailable(true);
-      } else {
-        // No usage data available (endpoint not supported or error)
+    window.electronAPI
+      .requestUsageUpdate()
+      .then((result) => {
+        setIsLoading(false);
+        if (result.success && result.data) {
+          setUsage(result.data);
+          setIsAvailable(true);
+        } else {
+          // No usage data available (endpoint not supported or error)
+          setIsAvailable(false);
+        }
+      })
+      .catch((error) => {
+        // Handle errors (IPC failure, network issues, etc.)
+        console.warn("[UsageIndicator] Failed to fetch initial usage:", error);
+        setIsLoading(false);
         setIsAvailable(false);
-      }
-    }).catch((error) => {
-      // Handle errors (IPC failure, network issues, etc.)
-      console.warn('[UsageIndicator] Failed to fetch initial usage:', error);
-      setIsLoading(false);
-      setIsAvailable(false);
-    });
+      });
 
     return () => {
       unsubscribe();
@@ -160,9 +180,19 @@ export function UsageIndicator() {
   // Show loading state initially
   if (isLoading) {
     return (
-      <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-white/10 bg-[#161618] text-gray-400" role="status" aria-live="polite" aria-label={t('common:usage.loading')}>
-        <Activity className="h-3.5 w-3.5 motion-safe:animate-pulse" aria-hidden="true" />
-        <span className="text-xs font-semibold">{t('common:usage.loading')}</span>
+      <div
+        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-white/10 bg-[#161618] text-gray-400"
+        role="status"
+        aria-live="polite"
+        aria-label={t("common:usage.loading")}
+      >
+        <Activity
+          className="h-3.5 w-3.5 motion-safe:animate-pulse"
+          aria-hidden="true"
+        />
+        <span className="text-xs font-semibold">
+          {t("common:usage.loading")}
+        </span>
       </div>
     );
   }
@@ -174,18 +204,26 @@ export function UsageIndicator() {
         <PopoverTrigger asChild>
           <button
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-white/10 bg-[#161618] text-gray-400 cursor-help transition-all hover:opacity-80"
-            aria-label={t('common:usage.notAvailable')}
+            aria-label={t("common:usage.notAvailable")}
             aria-haspopup="dialog"
           >
             <Activity className="h-3.5 w-3.5" aria-hidden="true" />
-            <span className="text-xs font-semibold">{t('common:usage.notAvailable')}</span>
+            <span className="text-xs font-semibold">
+              {t("common:usage.notAvailable")}
+            </span>
           </button>
         </PopoverTrigger>
-        <PopoverContent align="start" sideOffset={4} className="text-xs w-64 bg-[#161618] border border-white/10" role="dialog" aria-modal="false">
+        <PopoverContent
+          align="start"
+          sideOffset={4}
+          className="text-xs w-64 bg-[#161618] border border-white/10"
+          role="dialog"
+          aria-modal="false"
+        >
           <div className="space-y-1">
-            <p className="font-medium">{t('common:usage.dataUnavailable')}</p>
+            <p className="font-medium">{t("common:usage.dataUnavailable")}</p>
             <p className="text-gray-400 text-[10px]">
-              {t('common:usage.dataUnavailableDescription')}
+              {t("common:usage.dataUnavailableDescription")}
             </p>
           </div>
         </PopoverContent>
@@ -197,30 +235,31 @@ export function UsageIndicator() {
   // This is what should be shown on the badge per QA feedback
   const badgeUsage = usage.sessionPercent;
   const badgeColorClasses =
-    badgeUsage >= 95 ? 'text-red-400 bg-red-500/10 border-red-500/20' :
-    badgeUsage >= 91 ? 'text-orange-400 bg-orange-500/10 border-orange-500/20' :
-    badgeUsage >= 71 ? 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' :
-    'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
+    badgeUsage >= 95
+      ? "text-red-400 bg-red-500/10 border-red-500/20"
+      : badgeUsage >= 91
+        ? "text-orange-400 bg-orange-500/10 border-orange-500/20"
+        : badgeUsage >= 71
+          ? "text-yellow-400 bg-yellow-500/10 border-yellow-500/20"
+          : "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
 
   // Get window labels for display
   // Map backend-provided labels to localized versions with appropriate defaults
   const sessionLabel = localizeUsageWindowLabel(
     usage?.usageWindows?.sessionWindowLabel,
     t,
-    'common:usage.sessionDefault'
+    "common:usage.sessionDefault",
   );
   const weeklyLabel = localizeUsageWindowLabel(
     usage?.usageWindows?.weeklyWindowLabel,
     t,
-    'common:usage.weeklyDefault'
+    "common:usage.weeklyDefault",
   );
 
   // For icon, use the highest of the two windows
   const maxUsage = Math.max(usage.sessionPercent, usage.weeklyPercent);
   const Icon =
-    maxUsage >= 91 ? AlertCircle :
-    maxUsage >= 71 ? TrendingUp :
-    Activity;
+    maxUsage >= 91 ? AlertCircle : maxUsage >= 71 ? TrendingUp : Activity;
 
   /**
    * Filter Bar Component
@@ -228,114 +267,130 @@ export function UsageIndicator() {
    * TODO: Integrate into dashboard layout in Phase 4
    */
   const renderFilterBar = () => (
-    <div className="flex flex-wrap items-center gap-2 p-2 border-b border-white/10 bg-[#161618]" role="toolbar" aria-label={t('common:usage.dashboard.ariaLabel.filterTimePeriod')}>
+    <div
+      className="flex flex-wrap items-center gap-2 p-2 border-b border-white/10 bg-[#161618]"
+      role="toolbar"
+      aria-label={t("common:usage.dashboard.ariaLabel.filterTimePeriod")}
+    >
       {/* Time Period Toggle */}
-      <div className="flex items-center gap-1" role="group" aria-label={t('common:usage.dashboard.filterTimePeriod')}>
+      <div
+        className="flex items-center gap-1"
+        role="group"
+        aria-label={t("common:usage.dashboard.filterTimePeriod")}
+      >
         <Button
           size="sm"
-          variant={timePeriod === '7d' ? 'default' : 'outline'}
-          onClick={() => setTimePeriod('7d')}
-          aria-pressed={timePeriod === '7d'}
-          aria-label={t('common:usage.dashboard.timePeriod7Days')}
+          variant={timePeriod === "7d" ? "default" : "outline"}
+          onClick={() => setTimePeriod("7d")}
+          aria-pressed={timePeriod === "7d"}
+          aria-label={t("common:usage.dashboard.timePeriod7Days")}
           className={`h-7 px-3 text-xs font-mono transition-all duration-200 ${
-            timePeriod === '7d'
-              ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0'
-              : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
+            timePeriod === "7d"
+              ? "bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0"
+              : "bg-white/5 border-white/10 text-gray-300 hover:bg-white/10"
           }`}
         >
-          {t('common:usage.dashboard.timePeriod7Days')}
+          {t("common:usage.dashboard.timePeriod7Days")}
         </Button>
         <Button
           size="sm"
-          variant={timePeriod === '30d' ? 'default' : 'outline'}
-          onClick={() => setTimePeriod('30d')}
-          aria-pressed={timePeriod === '30d'}
-          aria-label={t('common:usage.dashboard.timePeriod30Days')}
+          variant={timePeriod === "30d" ? "default" : "outline"}
+          onClick={() => setTimePeriod("30d")}
+          aria-pressed={timePeriod === "30d"}
+          aria-label={t("common:usage.dashboard.timePeriod30Days")}
           className={`h-7 px-3 text-xs font-mono transition-all duration-200 ${
-            timePeriod === '30d'
-              ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0'
-              : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
+            timePeriod === "30d"
+              ? "bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0"
+              : "bg-white/5 border-white/10 text-gray-300 hover:bg-white/10"
           }`}
         >
-          {t('common:usage.dashboard.timePeriod30Days')}
+          {t("common:usage.dashboard.timePeriod30Days")}
         </Button>
       </div>
 
       {/* Chart Type Toggle */}
-      <div className="flex items-center gap-1" role="group" aria-label={t('common:usage.dashboard.filterChartType')}>
+      <div
+        className="flex items-center gap-1"
+        role="group"
+        aria-label={t("common:usage.dashboard.filterChartType")}
+      >
         <Button
           size="sm"
-          variant={chartType === 'area' ? 'default' : 'outline'}
-          onClick={() => setChartType('area')}
-          aria-pressed={chartType === 'area'}
-          aria-label={t('common:usage.dashboard.chartTypeArea')}
+          variant={chartType === "area" ? "default" : "outline"}
+          onClick={() => setChartType("area")}
+          aria-pressed={chartType === "area"}
+          aria-label={t("common:usage.dashboard.chartTypeArea")}
           className={`h-7 px-3 text-xs font-mono transition-all duration-200 ${
-            chartType === 'area'
-              ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0'
-              : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
+            chartType === "area"
+              ? "bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0"
+              : "bg-white/5 border-white/10 text-gray-300 hover:bg-white/10"
           }`}
         >
-          {t('common:usage.dashboard.chartTypeArea')}
+          {t("common:usage.dashboard.chartTypeArea")}
         </Button>
         <Button
           size="sm"
-          variant={chartType === 'line' ? 'default' : 'outline'}
-          onClick={() => setChartType('line')}
-          aria-pressed={chartType === 'line'}
-          aria-label={t('common:usage.dashboard.chartTypeLine')}
+          variant={chartType === "line" ? "default" : "outline"}
+          onClick={() => setChartType("line")}
+          aria-pressed={chartType === "line"}
+          aria-label={t("common:usage.dashboard.chartTypeLine")}
           className={`h-7 px-3 text-xs font-mono transition-all duration-200 ${
-            chartType === 'line'
-              ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0'
-              : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
+            chartType === "line"
+              ? "bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0"
+              : "bg-white/5 border-white/10 text-gray-300 hover:bg-white/10"
           }`}
         >
-          {t('common:usage.dashboard.chartTypeLine')}
+          {t("common:usage.dashboard.chartTypeLine")}
         </Button>
         <Button
           size="sm"
-          variant={chartType === 'bar' ? 'default' : 'outline'}
-          onClick={() => setChartType('bar')}
-          aria-pressed={chartType === 'bar'}
-          aria-label={t('common:usage.dashboard.chartTypeBar')}
+          variant={chartType === "bar" ? "default" : "outline"}
+          onClick={() => setChartType("bar")}
+          aria-pressed={chartType === "bar"}
+          aria-label={t("common:usage.dashboard.chartTypeBar")}
           className={`h-7 px-3 text-xs font-mono transition-all duration-200 ${
-            chartType === 'bar'
-              ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0'
-              : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
+            chartType === "bar"
+              ? "bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0"
+              : "bg-white/5 border-white/10 text-gray-300 hover:bg-white/10"
           }`}
         >
-          {t('common:usage.dashboard.chartTypeBar')}
+          {t("common:usage.dashboard.chartTypeBar")}
         </Button>
       </div>
 
       {/* Metric Toggle */}
-      <div className="flex items-center gap-1" role="group" aria-label={t('common:usage.dashboard.filterMetric')}>
+      <div
+        className="flex items-center gap-1"
+        role="group"
+        aria-label={t("common:usage.dashboard.filterMetric")}
+      >
         <Button
           size="sm"
-          variant={metric === 'tokens' ? 'default' : 'outline'}
-          onClick={() => setMetric('tokens')}
-          aria-pressed={metric === 'tokens'}
-          aria-label={t('common:usage.dashboard.metricTokens')}
+          variant={metric === "tokens" ? "default" : "outline"}
+          onClick={() => setMetric("tokens")}
+          aria-pressed={metric === "tokens"}
+          aria-label={t("common:usage.dashboard.metricTokens")}
           className={`h-7 px-3 text-xs font-mono transition-all duration-200 ${
-            metric === 'tokens'
-              ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0'
-              : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
+            metric === "tokens"
+              ? "bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0"
+              : "bg-white/5 border-white/10 text-gray-300 hover:bg-white/10"
           }`}
         >
-          {t('common:usage.dashboard.metricTokens')}
+          {t("common:usage.dashboard.metricTokens")}
         </Button>
         <Button
           size="sm"
-          variant={metric === 'tools' ? 'default' : 'outline'}
-          onClick={() => setMetric('tools')}
-          aria-pressed={metric === 'tools'}
-          aria-label={t('common:usage.dashboard.metricTools')}
+          variant={metric === "tools" ? "default" : "outline"}
+          onClick={() => setMetric("tools")}
+          aria-pressed={metric === "tools"}
+          aria-label={t("common:usage.dashboard.metricTools")}
           className={`h-7 px-3 text-xs font-mono transition-all duration-200 ${
-            metric === 'tools'
-              ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0'
-              : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
+            metric === "tools"
+              ? "bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0"
+              : "bg-white/5 border-white/10 text-gray-300 hover:bg-white/10"
           }`}
         >
-          {t('common:usage.dashboard.metricTools')}
+          {t("common:usage.dashboard.metricTools")}
         </Button>
       </div>
     </div>
@@ -348,17 +403,27 @@ export function UsageIndicator() {
    */
   const renderDashboardCards = () => {
     // Get active profile name - prioritize usage snapshot profile name, fall back to settings store
-    const activeProfile = profiles?.find(p => p.id === activeProfileId);
-    const profileName = usage?.profileName || activeProfile?.name || t('tasks:apiProfile.placeholder');
+    const activeProfile = profiles?.find((p) => p.id === activeProfileId);
+    const profileName =
+      usage?.profileName ||
+      activeProfile?.name ||
+      t("tasks:apiProfile.placeholder");
 
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-[#161618]">
         {/* Token Usage Card - 5H Quota */}
-        <Card className="border border-white/10 bg-white/5 backdrop-blur-sm" aria-label={t('common:usage.dashboard.ariaLabel.tokenUsageCard')}>
+        <Card
+          className="border border-white/10 bg-white/5 backdrop-blur-sm"
+          aria-label={t("common:usage.dashboard.ariaLabel.tokenUsageCard")}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2 text-gray-200">
-              <Activity className="h-4 w-4 text-indigo-400" aria-hidden="true" />
-              {t('common:usage.dashboard.cardTokenUsage')} ({t('common:usage.dashboard.tokenUsageQuota')})
+              <Activity
+                className="h-4 w-4 text-indigo-400"
+                aria-hidden="true"
+              />
+              {t("common:usage.dashboard.cardTokenUsage")} (
+              {t("common:usage.dashboard.tokenUsageQuota")})
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -368,21 +433,34 @@ export function UsageIndicator() {
                   {usage ? Math.round(usage.sessionPercent) : 0}%
                 </span>
                 <span className="text-xs text-gray-400 font-mono">
-                  {usage && usage.sessionUsageValue != null && usage.sessionUsageLimit != null
+                  {usage &&
+                  usage.sessionUsageValue != null &&
+                  usage.sessionUsageLimit != null
                     ? `${formatUsageValue(usage.sessionUsageValue)} / ${formatUsageValue(usage.sessionUsageLimit)}`
-                    : t('common:usage.notAvailable')
-                  }
+                    : t("common:usage.notAvailable")}
                 </span>
               </div>
-              <div className="h-2 bg-white/5 rounded-full overflow-hidden" role="progressbar" aria-valuenow={usage ? Math.round(usage.sessionPercent) : 0} aria-valuemin={0} aria-valuemax={100} aria-label={`${t('common:usage.dashboard.cardTokenUsage')}: ${usage ? Math.round(usage.sessionPercent) : 0}%`}>
+              <div
+                className="h-2 bg-white/5 rounded-full overflow-hidden"
+                role="progressbar"
+                aria-valuenow={usage ? Math.round(usage.sessionPercent) : 0}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={`${t("common:usage.dashboard.cardTokenUsage")}: ${usage ? Math.round(usage.sessionPercent) : 0}%`}
+              >
                 <div
                   className={`h-full rounded-full transition-all duration-500 ease-out ${
-                    usage && usage.sessionPercent >= 95 ? 'bg-gradient-to-r from-red-500 to-red-400' :
-                    usage && usage.sessionPercent >= 91 ? 'bg-gradient-to-r from-orange-500 to-orange-400' :
-                    usage && usage.sessionPercent >= 71 ? 'bg-gradient-to-r from-yellow-500 to-yellow-400' :
-                    'bg-gradient-to-r from-emerald-500 to-emerald-400'
+                    usage && usage.sessionPercent >= 95
+                      ? "bg-gradient-to-r from-red-500 to-red-400"
+                      : usage && usage.sessionPercent >= 91
+                        ? "bg-gradient-to-r from-orange-500 to-orange-400"
+                        : usage && usage.sessionPercent >= 71
+                          ? "bg-gradient-to-r from-yellow-500 to-yellow-400"
+                          : "bg-gradient-to-r from-emerald-500 to-emerald-400"
                   }`}
-                  style={{ width: `${usage ? Math.min(usage.sessionPercent, 100) : 0}%` }}
+                  style={{
+                    width: `${usage ? Math.min(usage.sessionPercent, 100) : 0}%`,
+                  }}
                 />
               </div>
             </div>
@@ -390,11 +468,18 @@ export function UsageIndicator() {
         </Card>
 
         {/* Tools Usage Card - Monthly */}
-        <Card className="border border-white/10 bg-white/5 backdrop-blur-sm" aria-label={t('common:usage.dashboard.ariaLabel.toolsUsageCard')}>
+        <Card
+          className="border border-white/10 bg-white/5 backdrop-blur-sm"
+          aria-label={t("common:usage.dashboard.ariaLabel.toolsUsageCard")}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2 text-gray-200">
-              <TrendingUp className="h-4 w-4 text-violet-400" aria-hidden="true" />
-              {t('common:usage.dashboard.cardToolsUsage')} ({t('common:usage.dashboard.toolsUsageMonthly')})
+              <TrendingUp
+                className="h-4 w-4 text-violet-400"
+                aria-hidden="true"
+              />
+              {t("common:usage.dashboard.cardToolsUsage")} (
+              {t("common:usage.dashboard.toolsUsageMonthly")})
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -404,21 +489,34 @@ export function UsageIndicator() {
                   {usage ? Math.round(usage.weeklyPercent) : 0}%
                 </span>
                 <span className="text-xs text-gray-400 font-mono">
-                  {usage && usage.weeklyUsageValue != null && usage.weeklyUsageLimit != null
+                  {usage &&
+                  usage.weeklyUsageValue != null &&
+                  usage.weeklyUsageLimit != null
                     ? `${formatUsageValue(usage.weeklyUsageValue)} / ${formatUsageValue(usage.weeklyUsageLimit)}`
-                    : t('common:usage.notAvailable')
-                  }
+                    : t("common:usage.notAvailable")}
                 </span>
               </div>
-              <div className="h-2 bg-white/5 rounded-full overflow-hidden" role="progressbar" aria-valuenow={usage ? Math.round(usage.weeklyPercent) : 0} aria-valuemin={0} aria-valuemax={100} aria-label={`${t('common:usage.dashboard.cardToolsUsage')}: ${usage ? Math.round(usage.weeklyPercent) : 0}%`}>
+              <div
+                className="h-2 bg-white/5 rounded-full overflow-hidden"
+                role="progressbar"
+                aria-valuenow={usage ? Math.round(usage.weeklyPercent) : 0}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label={`${t("common:usage.dashboard.cardToolsUsage")}: ${usage ? Math.round(usage.weeklyPercent) : 0}%`}
+              >
                 <div
                   className={`h-full rounded-full transition-all duration-500 ease-out ${
-                    usage && usage.weeklyPercent >= 99 ? 'bg-gradient-to-r from-red-500 to-red-400' :
-                    usage && usage.weeklyPercent >= 91 ? 'bg-gradient-to-r from-orange-500 to-orange-400' :
-                    usage && usage.weeklyPercent >= 71 ? 'bg-gradient-to-r from-yellow-500 to-yellow-400' :
-                    'bg-gradient-to-r from-emerald-500 to-emerald-400'
+                    usage && usage.weeklyPercent >= 99
+                      ? "bg-gradient-to-r from-red-500 to-red-400"
+                      : usage && usage.weeklyPercent >= 91
+                        ? "bg-gradient-to-r from-orange-500 to-orange-400"
+                        : usage && usage.weeklyPercent >= 71
+                          ? "bg-gradient-to-r from-yellow-500 to-yellow-400"
+                          : "bg-gradient-to-r from-emerald-500 to-emerald-400"
                   }`}
-                  style={{ width: `${usage ? Math.min(usage.weeklyPercent, 100) : 0}%` }}
+                  style={{
+                    width: `${usage ? Math.min(usage.weeklyPercent, 100) : 0}%`,
+                  }}
                 />
               </div>
             </div>
@@ -426,25 +524,32 @@ export function UsageIndicator() {
         </Card>
 
         {/* Reset Schedule Card */}
-        <Card className="border border-white/10 bg-white/5 backdrop-blur-sm" aria-label={t('common:usage.dashboard.ariaLabel.resetScheduleCard')}>
+        <Card
+          className="border border-white/10 bg-white/5 backdrop-blur-sm"
+          aria-label={t("common:usage.dashboard.ariaLabel.resetScheduleCard")}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2 text-gray-200">
               <Clock className="h-4 w-4 text-indigo-400" aria-hidden="true" />
-              {t('common:usage.dashboard.cardResetSchedule')}
+              {t("common:usage.dashboard.cardResetSchedule")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-1.5 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-gray-400">{t('common:usage.sessionDefault')}:</span>
+                <span className="text-gray-400">
+                  {t("common:usage.sessionDefault")}:
+                </span>
                 <span className="font-medium font-mono text-gray-200">
-                  {sessionResetTime || t('common:usage.dashboard.loadingData')}
+                  {sessionResetTime || t("common:usage.dashboard.loadingData")}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-400">{t('common:usage.weeklyDefault')}:</span>
+                <span className="text-gray-400">
+                  {t("common:usage.weeklyDefault")}:
+                </span>
                 <span className="font-medium font-mono text-gray-200">
-                  {weeklyResetTime || t('common:usage.dashboard.loadingData')}
+                  {weeklyResetTime || t("common:usage.dashboard.loadingData")}
                 </span>
               </div>
             </div>
@@ -452,24 +557,41 @@ export function UsageIndicator() {
         </Card>
 
         {/* Account Status Card */}
-        <Card className="border border-white/10 bg-white/5 backdrop-blur-sm" aria-label={t('common:usage.dashboard.ariaLabel.accountStatusCard')}>
+        <Card
+          className="border border-white/10 bg-white/5 backdrop-blur-sm"
+          aria-label={t("common:usage.dashboard.ariaLabel.accountStatusCard")}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2 text-gray-200">
               <User className="h-4 w-4 text-violet-400" aria-hidden="true" />
-              {t('common:usage.dashboard.cardAccountStatus')}
+              {t("common:usage.dashboard.cardAccountStatus")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-400">{t('common:usage.profile')}:</span>
-                <span className="text-xs font-medium truncate ml-2 text-gray-200" title={profileName}>
+                <span className="text-xs text-gray-400">
+                  {t("common:usage.profile")}:
+                </span>
+                <span
+                  className="text-xs font-medium truncate ml-2 text-gray-200"
+                  title={profileName}
+                >
                   {profileName}
                 </span>
               </div>
-              <div className="flex items-center gap-1.5" role="status" aria-live="polite">
-                <div className="h-2 w-2 rounded-full bg-emerald-500 motion-safe:animate-pulse" aria-hidden="true" />
-                <span className="text-xs font-medium text-emerald-400">{t('common:usage.dashboard.statusLive')}</span>
+              <div
+                className="flex items-center gap-1.5"
+                role="status"
+                aria-live="polite"
+              >
+                <div
+                  className="h-2 w-2 rounded-full bg-emerald-500 motion-safe:animate-pulse"
+                  aria-hidden="true"
+                />
+                <span className="text-xs font-medium text-emerald-400">
+                  {t("common:usage.dashboard.statusLive")}
+                </span>
               </div>
             </div>
           </CardContent>
@@ -492,19 +614,21 @@ export function UsageIndicator() {
    */
   const transformUsageToChartData = (
     snapshot: ClaudeUsageSnapshot | null,
-    timePeriod: '7d' | '30d',
-    metric: 'tokens' | 'tools'
+    timePeriod: "7d" | "30d",
+    metric: "tokens" | "tools",
   ): number[] => {
     if (!snapshot) {
       // Return empty data if no snapshot available
       return [];
     }
 
-    const daysCount = timePeriod === '7d' ? 7 : 30;
-    const currentUsage = metric === 'tokens' ? snapshot.sessionPercent : snapshot.weeklyPercent;
-    const currentLimit = metric === 'tokens'
-      ? (snapshot.sessionUsageLimit ?? 100)
-      : (snapshot.weeklyUsageLimit ?? 100);
+    const daysCount = timePeriod === "7d" ? 7 : 30;
+    const currentUsage =
+      metric === "tokens" ? snapshot.sessionPercent : snapshot.weeklyPercent;
+    const currentLimit =
+      metric === "tokens"
+        ? (snapshot.sessionUsageLimit ?? 100)
+        : (snapshot.weeklyUsageLimit ?? 100);
 
     // Generate realistic trending data ending at current usage
     // This creates plausible historical data that leads to current state
@@ -516,7 +640,7 @@ export function UsageIndicator() {
       // Weight recent days more heavily (trend toward current value)
       const recencyFactor = i / daysCount; // 0 to 1, increasing for later days
       const randomVariation = (Math.random() - 0.5) * 30; // ±15% variation
-      const trend = baseValue * (0.6 + (recencyFactor * 0.4)); // 60% to 100% of current value
+      const trend = baseValue * (0.6 + recencyFactor * 0.4); // 60% to 100% of current value
 
       let value = trend + randomVariation;
 
@@ -543,11 +667,22 @@ export function UsageIndicator() {
     // Show empty state if no data available
     if (!dataPoints || dataPoints.length === 0) {
       return (
-        <div className="w-full h-full flex items-center justify-center p-4 bg-[#161618]" role="region" aria-label={t('common:usage.dashboard.ariaLabel.chartVisualization')}>
+        <div
+          className="w-full h-full flex items-center justify-center p-4 bg-[#161618]"
+          role="region"
+          aria-label={t("common:usage.dashboard.ariaLabel.chartVisualization")}
+        >
           <div className="text-center space-y-2">
-            <Activity className="h-8 w-8 text-gray-600 mx-auto" aria-hidden="true" />
-            <p className="text-sm text-gray-400">{t('common:usage.dashboard.chartEmptyState')}</p>
-            <p className="text-xs text-gray-500">{t('common:usage.dashboard.chartNoDataMessage')}</p>
+            <Activity
+              className="h-8 w-8 text-gray-600 mx-auto"
+              aria-hidden="true"
+            />
+            <p className="text-sm text-gray-400">
+              {t("common:usage.dashboard.chartEmptyState")}
+            </p>
+            <p className="text-xs text-gray-500">
+              {t("common:usage.dashboard.chartNoDataMessage")}
+            </p>
           </div>
         </div>
       );
@@ -571,8 +706,8 @@ export function UsageIndicator() {
 
       // Draw line through each data point
       data.forEach((value, index) => {
-        const x = padding.left + (index * stepX);
-        const y = padding.top + innerHeight - ((value / 100) * innerHeight);
+        const x = padding.left + index * stepX;
+        const y = padding.top + innerHeight - (value / 100) * innerHeight;
         pathD += ` L ${x} ${y}`;
       });
 
@@ -582,18 +717,28 @@ export function UsageIndicator() {
     const pathData = generatePathData(chartData);
 
     return (
-      <div className="w-full h-full flex items-center justify-center p-4 bg-[#161618]" role="region" aria-label={t('common:usage.dashboard.ariaLabel.chartVisualization')}>
+      <div
+        className="w-full h-full flex items-center justify-center p-4 bg-[#161618]"
+        role="region"
+        aria-label={t("common:usage.dashboard.ariaLabel.chartVisualization")}
+      >
         <svg
           viewBox={`0 0 ${chartWidth} ${chartHeight}`}
           className="w-full h-full transition-all duration-300 ease-out"
           preserveAspectRatio="xMidYMid meet"
           role="img"
-          aria-label={`${t('common:usage.dashboard.ariaLabel.chartVisualization')}: ${t(`common:usage.dashboard.chartType${chartType.charAt(0).toUpperCase() + chartType.slice(1)}`)}`}
+          aria-label={`${t("common:usage.dashboard.ariaLabel.chartVisualization")}: ${t(`common:usage.dashboard.chartType${chartType.charAt(0).toUpperCase() + chartType.slice(1)}`)}`}
         >
           {/* Gradient Definition (only for area chart) */}
-          {chartType === 'area' && (
+          {chartType === "area" && (
             <defs>
-              <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+              <linearGradient
+                id="chartGradient"
+                x1="0%"
+                y1="0%"
+                x2="0%"
+                y2="100%"
+              >
                 <stop offset="0%" stopColor="#6366F1" stopOpacity="0.6" />
                 <stop offset="100%" stopColor="#6366F1" stopOpacity="0.05" />
               </linearGradient>
@@ -602,7 +747,7 @@ export function UsageIndicator() {
 
           {/* Grid Lines (horizontal) */}
           {[0, 25, 50, 75, 100].map((percent) => {
-            const y = padding.top + innerHeight - ((percent / 100) * innerHeight);
+            const y = padding.top + innerHeight - (percent / 100) * innerHeight;
             return (
               <g key={`grid-${percent}`}>
                 <line
@@ -628,11 +773,14 @@ export function UsageIndicator() {
           })}
 
           {/* Area Chart: Area + Line Path */}
-          {chartType === 'area' && (
+          {chartType === "area" && (
             <g className="transition-all duration-300 ease-out">
               {/* Area Path */}
               <path
-                d={pathData + ` L ${padding.left + innerWidth} ${chartHeight - padding.bottom} Z`}
+                d={
+                  pathData +
+                  ` L ${padding.left + innerWidth} ${chartHeight - padding.bottom} Z`
+                }
                 fill="url(#chartGradient)"
                 stroke="none"
                 className="transition-all duration-300 ease-out"
@@ -651,7 +799,7 @@ export function UsageIndicator() {
           )}
 
           {/* Line Chart: Stroke Only */}
-          {chartType === 'line' && (
+          {chartType === "line" && (
             <path
               d={pathData}
               fill="none"
@@ -664,59 +812,68 @@ export function UsageIndicator() {
           )}
 
           {/* Bar Chart: Vertical Bars */}
-          {chartType === 'bar' && (() => {
-            const barWidth = (innerWidth / chartData.length) * 0.6; // 60% of available space
-            const barGap = (innerWidth / chartData.length) * 0.4; // 40% gap
+          {chartType === "bar" &&
+            (() => {
+              const barWidth = (innerWidth / chartData.length) * 0.6; // 60% of available space
+              const barGap = (innerWidth / chartData.length) * 0.4; // 40% gap
 
-            return (
-              <g className="transition-all duration-300 ease-out">
-                {chartData.map((value, index) => {
-                  const x = padding.left + (index * (innerWidth / chartData.length)) + (barGap / 2);
-                  const barHeight = ((value / 100) * innerHeight);
-                  const y = padding.top + innerHeight - barHeight;
+              return (
+                <g className="transition-all duration-300 ease-out">
+                  {chartData.map((value, index) => {
+                    const x =
+                      padding.left +
+                      index * (innerWidth / chartData.length) +
+                      barGap / 2;
+                    const barHeight = (value / 100) * innerHeight;
+                    const y = padding.top + innerHeight - barHeight;
 
-                  return (
-                    <rect
-                      key={`bar-${index}`}
-                      x={x}
-                      y={y}
-                      width={barWidth}
-                      height={barHeight}
-                      fill="#6366F1"
-                      className="hover:fill-indigo-400 transition-all duration-200 ease-out"
-                    />
-                  );
-                })}
-              </g>
-            );
-          })()}
+                    return (
+                      <rect
+                        key={`bar-${index}`}
+                        x={x}
+                        y={y}
+                        width={barWidth}
+                        height={barHeight}
+                        fill="#6366F1"
+                        className="hover:fill-indigo-400 transition-all duration-200 ease-out"
+                      />
+                    );
+                  })}
+                </g>
+              );
+            })()}
 
           {/* Data Points (only for area and line charts) */}
-          {chartType !== 'bar' && chartData.map((value, index) => {
-            const stepX = innerWidth / (chartData.length - 1);
-            const x = padding.left + (index * stepX);
-            const y = padding.top + innerHeight - ((value / 100) * innerHeight);
+          {chartType !== "bar" &&
+            chartData.map((value, index) => {
+              const stepX = innerWidth / (chartData.length - 1);
+              const x = padding.left + index * stepX;
+              const y = padding.top + innerHeight - (value / 100) * innerHeight;
 
-            return (
-              <circle
-                key={`point-${index}`}
-                cx={x}
-                cy={y}
-                r="4"
-                fill="#6366F1"
-                stroke="#8B5CF6"
-                strokeWidth="2"
-                className="hover:r-6 transition-all duration-200 ease-out"
-              />
-            );
-          })}
+              return (
+                <circle
+                  key={`point-${index}`}
+                  cx={x}
+                  cy={y}
+                  r="4"
+                  fill="#6366F1"
+                  stroke="#8B5CF6"
+                  strokeWidth="2"
+                  className="hover:r-6 transition-all duration-200 ease-out"
+                />
+              );
+            })}
 
           {/* X-Axis Labels (Days) */}
           {chartData.map((_, index) => {
-            const stepX = chartType === 'bar'
-              ? innerWidth / chartData.length
-              : innerWidth / (chartData.length - 1);
-            const x = padding.left + (index * stepX) + (chartType === 'bar' ? stepX / 2 : 0);
+            const stepX =
+              chartType === "bar"
+                ? innerWidth / chartData.length
+                : innerWidth / (chartData.length - 1);
+            const x =
+              padding.left +
+              index * stepX +
+              (chartType === "bar" ? stepX / 2 : 0);
 
             return (
               <text
@@ -726,7 +883,7 @@ export function UsageIndicator() {
                 textAnchor="middle"
                 className="text-[10px] fill-gray-400 font-mono transition-all duration-300"
               >
-                {t('common:usage.dashboard.chartAxisDay')} {index + 1}
+                {t("common:usage.dashboard.chartAxisDay")} {index + 1}
               </text>
             );
           })}
@@ -740,7 +897,7 @@ export function UsageIndicator() {
       <PopoverTrigger asChild>
         <button
           className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-white/10 bg-[#161618] transition-all hover:opacity-80 ${badgeColorClasses}`}
-          aria-label={t('common:usage.usageStatusAriaLabel')}
+          aria-label={t("common:usage.usageStatusAriaLabel")}
           aria-haspopup="dialog"
         >
           <Icon className="h-3.5 w-3.5" aria-hidden="true" />
@@ -749,12 +906,18 @@ export function UsageIndicator() {
           </span>
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" sideOffset={4} className="text-xs w-[min(600px,calc(100vw-32px))] p-0 bg-[#161618] border border-white/10 max-h-[600px] overflow-y-auto">
+      <PopoverContent
+        align="start"
+        sideOffset={4}
+        className="text-xs w-[min(600px,calc(100vw-32px))] p-0 bg-[#161618] border border-white/10 max-h-[600px] overflow-y-auto"
+      >
         <div className="p-3 space-y-3">
           {/* Header with overall status */}
           <div className="flex items-center pb-2 border-b border-white/10">
             <Icon className="h-3.5 w-3.5 text-indigo-400" aria-hidden="true" />
-            <span className="font-semibold text-xs text-gray-200">{t('common:usage.usageBreakdown')}</span>
+            <span className="font-semibold text-xs text-gray-200">
+              {t("common:usage.usageBreakdown")}
+            </span>
           </div>
 
           {/* Filter Bar */}
@@ -768,139 +931,61 @@ export function UsageIndicator() {
           {/* Dashboard Cards */}
           {renderDashboardCards()}
 
-          {/* Session/5-hour usage */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <span className="text-gray-400 font-medium text-[11px] flex items-center gap-1">
-                <Clock className="h-3 w-3" aria-hidden="true" />
-                {sessionLabel}
-              </span>
-              <span className={`font-semibold font-mono text-xs ${
-                usage.sessionPercent >= 95 ? 'text-red-400' :
-                usage.sessionPercent >= 91 ? 'text-orange-400' :
-                usage.sessionPercent >= 71 ? 'text-yellow-400' :
-                'text-emerald-400'
-              }`}>
-                {Math.round(usage.sessionPercent)}%
-              </span>
-            </div>
-            {sessionResetTime && (
-              <div className="text-[10px] text-gray-400 pl-4 flex items-center gap-1">
-                <Info className="h-2.5 w-2.5" aria-hidden="true" />
-                {sessionResetTime}
-              </div>
-            )}
-            {/* Enhanced progress bar with gradient */}
-            <div className="h-2 bg-white/5 rounded-full overflow-hidden shadow-inner" role="progressbar" aria-valuenow={Math.round(usage.sessionPercent)} aria-valuemin={0} aria-valuemax={100} aria-label={`${sessionLabel}: ${Math.round(usage.sessionPercent)}%`}>
-              <div
-                className={`h-full rounded-full transition-all duration-500 ease-out relative overflow-hidden ${
-                  usage.sessionPercent >= 95 ? 'bg-gradient-to-r from-red-500 to-red-400' :
-                  usage.sessionPercent >= 91 ? 'bg-gradient-to-r from-orange-500 to-orange-400' :
-                  usage.sessionPercent >= 71 ? 'bg-gradient-to-r from-yellow-500 to-yellow-400' :
-                  'bg-gradient-to-r from-emerald-500 to-emerald-400'
-                }`}
-                style={{ width: `${Math.min(usage.sessionPercent, 100)}%` }}
-              >
-                {/* Subtle shine effect */}
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent motion-safe:animate-pulse" aria-hidden="true" />
-              </div>
-            </div>
-            {/* Raw usage value with better styling */}
-            {usage.sessionUsageValue != null && usage.sessionUsageLimit != null && (
-              <div className="flex items-center justify-between text-[10px]">
-                <span className="text-gray-400">{t('common:usage.used')}</span>
-                <span className="font-medium font-mono text-gray-200">
-                  {formatUsageValue(usage.sessionUsageValue)} <span className="text-gray-400 mx-1">/</span> {formatUsageValue(usage.sessionUsageLimit)}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Weekly/Monthly usage */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <span className="text-gray-400 font-medium text-[11px] flex items-center gap-1">
-                <TrendingUp className="h-3 w-3" aria-hidden="true" />
-                {weeklyLabel}
-              </span>
-              <span className={`font-semibold font-mono text-xs ${
-                usage.weeklyPercent >= 99 ? 'text-red-400' :
-                usage.weeklyPercent >= 91 ? 'text-orange-400' :
-                usage.weeklyPercent >= 71 ? 'text-yellow-400' :
-                'text-emerald-400'
-              }`}>
-                {Math.round(usage.weeklyPercent)}%
-              </span>
-            </div>
-            {weeklyResetTime && (
-              <div className="text-[10px] text-gray-400 pl-4 flex items-center gap-1">
-                <Info className="h-2.5 w-2.5" aria-hidden="true" />
-                {weeklyResetTime}
-              </div>
-            )}
-            {/* Enhanced progress bar with gradient */}
-            <div className="h-2 bg-white/5 rounded-full overflow-hidden shadow-inner" role="progressbar" aria-valuenow={Math.round(usage.weeklyPercent)} aria-valuemin={0} aria-valuemax={100} aria-label={`${weeklyLabel}: ${Math.round(usage.weeklyPercent)}%`}>
-              <div
-                className={`h-full rounded-full transition-all duration-500 ease-out relative overflow-hidden ${
-                  usage.weeklyPercent >= 99 ? 'bg-gradient-to-r from-red-500 to-red-400' :
-                  usage.weeklyPercent >= 91 ? 'bg-gradient-to-r from-orange-500 to-orange-400' :
-                  usage.weeklyPercent >= 71 ? 'bg-gradient-to-r from-yellow-500 to-yellow-400' :
-                  'bg-gradient-to-r from-emerald-500 to-emerald-400'
-                }`}
-                style={{ width: `${Math.min(usage.weeklyPercent, 100)}%` }}
-              >
-                {/* Subtle shine effect */}
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent motion-safe:animate-pulse" aria-hidden="true" />
-              </div>
-            </div>
-            {/* Raw usage value with better styling */}
-            {usage.weeklyUsageValue != null && usage.weeklyUsageLimit != null && (
-              <div className="flex items-center justify-between text-[10px]">
-                <span className="text-gray-400">{t('common:usage.used')}</span>
-                <span className="font-medium font-mono text-gray-200">
-                  {formatUsageValue(usage.weeklyUsageValue)} <span className="text-gray-400 mx-1">/</span> {formatUsageValue(usage.weeklyUsageLimit)}
-                </span>
-              </div>
-            )}
-          </div>
-
           {/* Profile selector */}
           <div className="pt-2 border-t border-white/10 space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 text-[10px] text-gray-400">
                 <User className="h-3 w-3" aria-hidden="true" />
-                <span>{t('common:usage.activeAccount')}</span>
+                <span>{t("common:usage.activeAccount")}</span>
               </div>
               {isSwitchingProfile && (
-                <div className="flex items-center gap-1 text-[10px] text-indigo-400" role="status" aria-live="polite">
-                  <Activity className="h-3 w-3 motion-safe:animate-spin" aria-hidden="true" />
-                  <span>{t('common:usage.dashboard.profileSwitching')}</span>
+                <div
+                  className="flex items-center gap-1 text-[10px] text-indigo-400"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <Activity
+                    className="h-3 w-3 motion-safe:animate-spin"
+                    aria-hidden="true"
+                  />
+                  <span>{t("common:usage.dashboard.profileSwitching")}</span>
                 </div>
               )}
             </div>
             {profileError && (
-              <div className="text-[10px] text-red-400 bg-red-500/10 border border-red-500/20 rounded px-2 py-1" role="alert" aria-live="assertive">
+              <div
+                className="text-[10px] text-red-400 bg-red-500/10 border border-red-500/20 rounded px-2 py-1"
+                role="alert"
+                aria-live="assertive"
+              >
                 {profileError}
               </div>
             )}
             <Select
               value={activeProfileId || undefined}
               onValueChange={handleProfileChange}
-              disabled={!profiles || profiles.length === 0 || isSwitchingProfile}
-              aria-label={t('common:usage.dashboard.ariaLabel.profileDropdown')}
+              disabled={
+                !profiles || profiles.length === 0 || isSwitchingProfile
+              }
+              aria-label={t("common:usage.dashboard.ariaLabel.profileDropdown")}
               aria-busy={isSwitchingProfile}
             >
               <SelectTrigger className="h-8 text-xs bg-white/5 border-white/10 text-gray-200">
-                <SelectValue placeholder={t('tasks:apiProfile.placeholder')} />
+                <SelectValue placeholder={t("tasks:apiProfile.placeholder")} />
               </SelectTrigger>
               <SelectContent className="bg-[#161618] border-white/10">
                 {profiles && profiles.length > 0 ? (
                   profiles.map((profile: APIProfile) => (
                     <SelectItem key={profile.id} value={profile.id}>
                       <div className="flex items-center gap-2">
-                        <Key className="h-3 w-3 shrink-0 text-indigo-400" aria-hidden="true" />
+                        <Key
+                          className="h-3 w-3 shrink-0 text-indigo-400"
+                          aria-hidden="true"
+                        />
                         <div>
-                          <span className="font-medium text-xs text-gray-200">{profile.name}</span>
+                          <span className="font-medium text-xs text-gray-200">
+                            {profile.name}
+                          </span>
                           <span className="ml-2 text-[10px] text-gray-400">
                             ({profile.baseUrl})
                           </span>
@@ -910,7 +995,7 @@ export function UsageIndicator() {
                   ))
                 ) : (
                   <SelectItem value="empty" disabled>
-                    {t('common:usage.dashboard.noProfilesConfigured')}
+                    {t("common:usage.dashboard.noProfilesConfigured")}
                   </SelectItem>
                 )}
               </SelectContent>
