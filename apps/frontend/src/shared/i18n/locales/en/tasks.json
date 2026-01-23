@@ -310,7 +310,8 @@
     },
     "validation": {
       "bothSelected": "Cannot select both API profile and pool"
-    },
+    }
+  },
   "screenshot": {
     "title": "Capture Screenshot",
     "description": "Select a screen or window to capture as a reference image",
