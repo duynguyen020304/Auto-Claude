@@ -7,35 +7,35 @@
     }
   },
   "github": {
-    "failedToDetectRepo": "Failed to detect repository",
-    "failedToLoadBranches": "Failed to load branches",
-    "enterRepoName": "Please enter a repository name",
-    "selectOwner": "Please select an owner for the repository",
-    "authenticationFailed": "GitHub authentication failed",
-    "repositoryNotFound": "Repository not found",
-    "branchLoadError": "Unable to load branch information"
+    "failedToDetectRepo": "Échec de la détection du dépôt",
+    "failedToLoadBranches": "Échec du chargement des branches",
+    "enterRepoName": "Veuillez entrer un nom de dépôt",
+    "selectOwner": "Veuillez sélectionner un propriétaire pour le dépôt",
+    "authenticationFailed": "Échec de l'authentification GitHub",
+    "repositoryNotFound": "Dépôt non trouvé",
+    "branchLoadError": "Impossible de charger les informations de la branche"
   },
   "credentialProfiles": {
-    "saveFailed": "Failed to save profile",
-    "deleteFailed": "Failed to delete profile",
-    "createFailed": "Failed to create profile",
-    "invalidCredentials": "Invalid credentials",
-    "tokenRequired": "Token is required"
+    "saveFailed": "Échec de l'enregistrement du profil",
+    "deleteFailed": "Échec de la suppression du profil",
+    "createFailed": "Échec de la création du profil",
+    "invalidCredentials": "Identifiants invalides",
+    "tokenRequired": "Le jeton est requis"
   },
   "workspace": {
-    "createFailed": "Failed to create workspace",
-    "updateFailed": "Failed to update workspace",
-    "deleteFailed": "Failed to delete workspace",
-    "nameRequired": "Workspace name is required"
+    "createFailed": "Échec de la création de l'espace de travail",
+    "updateFailed": "Échec de la mise à jour de l'espace de travail",
+    "deleteFailed": "Échec de la suppression de l'espace de travail",
+    "nameRequired": "Le nom de l'espace de travail est requis"
   },
   "gitlab": {
-    "failedToCreateMR": "Failed to create merge request",
-    "failedToLoadProjects": "Failed to load projects",
-    "authenticationFailed": "GitLab authentication failed"
+    "failedToCreateMR": "Échec de la création de la demande de fusion",
+    "failedToLoadProjects": "Échec du chargement des projets",
+    "authenticationFailed": "Échec de l'authentification GitLab"
   },
   "linear": {
-    "failedToCreateIssue": "Failed to create issue",
-    "failedToLoadTeams": "Failed to load teams",
-    "authenticationFailed": "Linear authentication failed"
+    "failedToCreateIssue": "Échec de la création du ticket",
+    "failedToLoadTeams": "Échec du chargement des équipes",
+    "authenticationFailed": "Échec de l'authentification Linear"
   }
 }

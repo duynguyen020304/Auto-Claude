@@ -1,24 +1,24 @@
 {
-  "title": "GitHub Issues",
+  "title": "Tickets GitHub",
   "buttons": {
-    "createIssue": "Create Issue",
-    "refresh": "Refresh",
-    "filter": "Filter"
+    "createIssue": "Créer un ticket",
+    "refresh": "Actualiser",
+    "filter": "Filtrer"
   },
-  "searchPlaceholder": "Search issues...",
-  "noIssuesFound": "No issues found",
+  "searchPlaceholder": "Rechercher des tickets...",
+  "noIssuesFound": "Aucun ticket trouvé",
   "labels": {
-    "issue": "Issue",
+    "issue": "Ticket",
     "pullRequest": "Pull Request",
-    "open": "Open",
-    "closed": "Closed",
-    "draft": "Draft"
+    "open": "Ouvert",
+    "closed": "Fermé",
+    "draft": "Brouillon"
   },
   "filters": {
-    "all": "All",
-    "open": "Open",
-    "closed": "Closed",
-    "createdByMe": "Created by me",
-    "assignedToMe": "Assigned to me"
+    "all": "Tous",
+    "open": "Ouvert",
+    "closed": "Fermé",
+    "createdByMe": "Créés par moi",
+    "assignedToMe": "Assignés à moi"
   }
 }

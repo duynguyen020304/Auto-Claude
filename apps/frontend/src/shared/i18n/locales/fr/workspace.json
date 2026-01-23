@@ -1,28 +1,28 @@
 {
-  "title": "Workspace",
+  "title": "Espace de travail",
   "buttons": {
-    "addWorkspace": "Add Workspace",
-    "editWorkspace": "Edit Workspace",
-    "deleteWorkspace": "Delete Workspace",
-    "switchWorkspace": "Switch Workspace"
+    "addWorkspace": "Ajouter un espace de travail",
+    "editWorkspace": "Modifier l'espace de travail",
+    "deleteWorkspace": "Supprimer l'espace de travail",
+    "switchWorkspace": "Changer d'espace de travail"
   },
   "dialogs": {
-    "addWorkspace": "Add Workspace",
-    "editWorkspace": "Edit Workspace",
-    "deleteWorkspace": "Delete Workspace?",
-    "deleteWarning": "This will permanently delete this workspace. This action cannot be undone."
+    "addWorkspace": "Ajouter un espace de travail",
+    "editWorkspace": "Modifier l'espace de travail",
+    "deleteWorkspace": "Supprimer l'espace de travail ?",
+    "deleteWarning": "Cela supprimera définitivement cet espace de travail. Cette action ne peut pas être annulée."
   },
   "labels": {
-    "workspaceName": "Workspace Name",
+    "workspaceName": "Nom de l'espace de travail",
     "workspaceDescription": "Description",
-    "defaultWorkspace": "Default Workspace"
+    "defaultWorkspace": "Espace de travail par défaut"
   },
   "placeholders": {
-    "workspaceName": "My App Workspace",
-    "workspaceDescription": "Backend, frontend, and mobile apps for My App"
+    "workspaceName": "Mon espace de travail",
+    "workspaceDescription": "Applications backend, frontend et mobiles pour Mon Application"
   },
   "empty": {
-    "noWorkspaces": "No workspaces yet",
-    "createFirst": "Create your first workspace"
+    "noWorkspaces": "Aucun espace de travail pour le moment",
+    "createFirst": "Créez votre premier espace de travail"
   }
 }

@@ -26,10 +26,10 @@
   "tooltips": {
     "settings": "Paramètres de l'application",
     "help": "Aide & Feedback",
-    "credentialProfiles": "Manage API credentials",
-    "workspace": "Workspace settings",
-    "roadmap": "View project roadmap",
-    "context": "Explore codebase context"
+    "credentialProfiles": "Gérer les identifiants API",
+    "workspace": "Paramètres de l'espace de travail",
+    "roadmap": "Voir la feuille de route du projet",
+    "context": "Explorer le contexte de la base de code"
   },
   "messages": {
     "initializeToCreateTasks": "Initialisez Auto Claude pour créer des tâches"

@@ -272,14 +272,14 @@
       }
     },
     "taskNamePlaceholder": "Enter task name",
-    "taskDescriptionPlaceholder": "Describe your task...",
-    "selectProfile": "Select profile"
+    "taskDescriptionPlaceholder": "Décrivez votre tâche...",
+    "selectProfile": "Sélectionner un profil"
   },
   "subtasks": {
     "untitled": "Sous-tâche sans titre",
-    "label": "Subtask",
-    "addSubtask": "Add Subtask",
-    "noSubtasks": "No subtasks yet"
+    "label": "Sous-tâche",
+    "addSubtask": "Ajouter une sous-tâche",
+    "noSubtasks": "Aucune sous-tâche pour le moment"
   },
   "bulkPR": {
     "selectAllInColumn": "Sélectionner toutes les tâches de la colonne",

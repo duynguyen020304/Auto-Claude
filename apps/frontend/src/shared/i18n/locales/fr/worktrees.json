@@ -1,18 +1,18 @@
 {
-  "title": "Worktrees",
-  "deleteWarning": "This will permanently delete this worktree. This action cannot be undone.",
-  "deleteTerminalWarning": "This will permanently delete this terminal worktree. This action cannot be undone.",
-  "confirmDelete": "Delete Worktree?",
-  "confirmDeleteTerminal": "Delete Terminal Worktree?",
-  "noWorktrees": "No worktrees found",
-  "createWorktree": "Create Worktree",
-  "switchWorktree": "Switch to Worktree",
-  "activeWorktree": "Active Worktree",
-  "worktreeName": "Worktree Name",
-  "branchName": "Branch Name",
+  "title": "Arborescences de travail",
+  "deleteWarning": "Cela supprimera définitivement cette arborescence de travail. Cette action ne peut pas être annulée.",
+  "deleteTerminalWarning": "Cela supprimera définitivement cette arborescence de travail terminale. Cette action ne peut pas être annulée.",
+  "confirmDelete": "Supprimer l'arborescence de travail ?",
+  "confirmDeleteTerminal": "Supprimer l'arborescence de travail terminale ?",
+  "noWorktrees": "Aucune arborescence de travail trouvée",
+  "createWorktree": "Créer une arborescence de travail",
+  "switchWorktree": "Basculer vers l'arborescence de travail",
+  "activeWorktree": "Arborescence de travail active",
+  "worktreeName": "Nom de l'arborescence de travail",
+  "branchName": "Nom de la branche",
   "status": {
-    "active": "Active",
-    "inactive": "Inactive",
-    "dirty": "Has Changes"
+    "active": "Actif",
+    "inactive": "Inactif",
+    "dirty": "Contient des modifications"
   }
 }

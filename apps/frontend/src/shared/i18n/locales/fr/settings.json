@@ -174,8 +174,8 @@
     }
   },
   "credentialProfiles": {
-    "title": "Credential Profiles",
-    "description": "Manage API keys and OAuth credentials for external services",
+    "title": "Profils d'identification",
+    "description": "Gérer les clés API et identifiants OAuth pour les services externes",
     "addButton": "Ajouter un profil",
     "type": {
       "api": "API",

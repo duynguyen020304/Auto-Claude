@@ -1,25 +1,25 @@
 {
   "buttons": {
-    "generate": "Generate",
-    "addMore": "Add More Ideas",
-    "save": "Save Ideas",
-    "clear": "Clear All"
+    "generate": "Générer",
+    "addMore": "Ajouter plus d'idées",
+    "save": "Enregistrer les idées",
+    "clear": "Tout effacer"
   },
   "dialogs": {
-    "configuration": "Ideation Configuration",
-    "addMoreIdeas": "Add More Ideas"
+    "configuration": "Configuration de l'idéation",
+    "addMoreIdeas": "Ajouter plus d'idées"
   },
   "labels": {
-    "ideas": "Ideas",
-    "requirements": "Requirements",
-    "constraints": "Constraints"
+    "ideas": "Idées",
+    "requirements": "Exigences",
+    "constraints": "Contraintes"
   },
   "placeholders": {
-    "enterIdea": "Enter your idea...",
-    "describeRequirements": "Describe your requirements..."
+    "enterIdea": "Entrez votre idée...",
+    "describeRequirements": "Décrivez vos exigences..."
   },
   "empty": {
-    "noIdeas": "No ideas yet",
-    "generateFirst": "Generate your first idea"
+    "noIdeas": "Aucune idée pour le moment",
+    "generateFirst": "Générez votre première idée"
   }
 }

@@ -188,23 +188,23 @@
     "goToSettings": "Aller aux paramètres"
   },
   "chatHistory": {
-    "deleteConversation": "Delete conversation?",
-    "deleteWarning": "This will permanently delete this conversation and all its messages. This action cannot be undone."
+    "deleteConversation": "Supprimer la conversation ?",
+    "deleteWarning": "Cela supprimera définitivement cette conversation et tous ses messages. Cette action ne peut pas être annulée."
   },
   "ideation": {
-    "configuration": "Ideation Configuration",
-    "addMoreIdeas": "Add More Ideas",
-    "generateDescription": "Generate new ideas based on your requirements"
+    "configuration": "Configuration de l'idéation",
+    "addMoreIdeas": "Ajouter plus d'idées",
+    "generateDescription": "Générer de nouvelles idées basées sur vos exigences"
   },
   "envConfig": {
-    "title": "Environment Variables",
-    "enterTokenPlaceholder": "Enter your token...",
-    "tokenLabel": "Token",
-    "addVariable": "Add Variable",
-    "removeVariable": "Remove Variable"
+    "title": "Variables d'environnement",
+    "enterTokenPlaceholder": "Entrez votre jeton...",
+    "tokenLabel": "Jeton",
+    "addVariable": "Ajouter une variable",
+    "removeVariable": "Supprimer la variable"
   },
   "workspace": {
-    "addWorkspace": "Add Workspace",
-    "addWorkspaceDescription": "Add a new workspace to your project"
+    "addWorkspace": "Ajouter un espace de travail",
+    "addWorkspaceDescription": "Ajouter un nouvel espace de travail à votre projet"
   }
 }
