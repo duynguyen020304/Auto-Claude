@@ -91,7 +91,24 @@
     "noData": "Aucune donnée",
     "optional": "Optionnel",
     "required": "Requis",
-    "dismiss": "Ignorer"
+    "dismiss": "Ignorer",
+    "owner": "Owner",
+    "visibility": "Visibility",
+    "format": "Format",
+    "audience": "Audience",
+    "emojis": "Emojis",
+    "team": "Team",
+    "sound": "Sound",
+    "projects": "Projects",
+    "assignees": "Assignees",
+    "milestone": "Milestone",
+    "changes": "Changes",
+    "repository": "Repository",
+    "open": "Open",
+    "closed": "Closed",
+    "all": "All",
+    "branch": "Branch",
+    "token": "Token"
   },
   "selection": {
     "select": "Sélectionner",
@@ -106,7 +123,10 @@
     "justNow": "À l'instant",
     "minutesAgo": "Il y a {{count}} min",
     "hoursAgo": "Il y a {{count}}h",
-    "daysAgo": "Il y a {{count}}j"
+    "daysAgo": "Il y a {{count}}j",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "daysAgoLong": "{{count}} days ago"
   },
   "errors": {
     "generic": "Une erreur s'est produite",
@@ -560,5 +580,20 @@
       "technicalDetails": "Détails techniques",
       "goToSettings": "Aller aux paramètres"
     }
+  },
+  "keyboard": {
+    "fileAutocompleteHint": "↑↓ navigate · Enter select · Esc close",
+    "generalHint": "↑↓ navigate · Enter select · Esc close"
+  },
+  "images": {
+    "largeFileWarning": "Large file - consider compressing",
+    "uploadFailed": "Failed to upload image",
+    "invalidFileType": "Invalid file type"
+  },
+  "providers": {
+    "openai": "OpenAI",
+    "anthropic": "Anthropic",
+    "zai": "z.ai",
+    "zhipu": "ZHIPU AI"
   }
 }

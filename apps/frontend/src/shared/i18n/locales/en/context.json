@@ -1,0 +1,33 @@
+{
+  "memories": {
+    "title": "Memories",
+    "searchPlaceholder": "Search for patterns, insights, gotchas...",
+    "total": "Total",
+    "sessions": "Sessions",
+    "codebase": "Codebase",
+    "patterns": "Patterns",
+    "gotchas": "Gotchas",
+    "source": "Source",
+    "patternType": "Pattern Type",
+    "noMemoriesFound": "No memories found",
+    "viewMemory": "View Memory",
+    "deleteMemory": "Delete Memory"
+  },
+  "services": {
+    "title": "Services",
+    "databases": "Databases",
+    "email": "Email",
+    "payments": "Payments",
+    "cache": "Cache",
+    "storage": "Storage",
+    "api": "API",
+    "auth": "Authentication"
+  },
+  "projectIndex": {
+    "title": "Project Index",
+    "overview": "Overview",
+    "services": "Services",
+    "technologies": "Technologies",
+    "architecture": "Architecture"
+  }
+}

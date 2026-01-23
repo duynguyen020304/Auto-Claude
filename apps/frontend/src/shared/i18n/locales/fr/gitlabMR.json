@@ -1,0 +1,24 @@
+{
+  "title": "GitLab Merge Requests",
+  "buttons": {
+    "createMR": "Create MR",
+    "refresh": "Refresh"
+  },
+  "searchPlaceholder": "Search merge requests...",
+  "noMergeRequestsFound": "No merge requests found",
+  "labels": {
+    "mergeRequest": "Merge Request",
+    "open": "Open",
+    "merged": "Merged",
+    "closed": "Closed",
+    "draft": "Draft"
+  },
+  "form": {
+    "sourceBranch": "Source Branch",
+    "targetBranch": "Target Branch",
+    "title": "Title",
+    "description": "Description",
+    "assignee": "Assignee",
+    "reviewer": "Reviewer"
+  }
+}

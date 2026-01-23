@@ -5,5 +5,37 @@
       "titleSuffix": "(Erreur JSON)",
       "description": "⚠️ Erreur d'analyse JSON : {{error}}\n\nLe fichier implementation_plan.json est malformé. Exécutez la correction automatique du backend ou réparez le fichier manuellement."
     }
+  },
+  "github": {
+    "failedToDetectRepo": "Failed to detect repository",
+    "failedToLoadBranches": "Failed to load branches",
+    "enterRepoName": "Please enter a repository name",
+    "selectOwner": "Please select an owner for the repository",
+    "authenticationFailed": "GitHub authentication failed",
+    "repositoryNotFound": "Repository not found",
+    "branchLoadError": "Unable to load branch information"
+  },
+  "credentialProfiles": {
+    "saveFailed": "Failed to save profile",
+    "deleteFailed": "Failed to delete profile",
+    "createFailed": "Failed to create profile",
+    "invalidCredentials": "Invalid credentials",
+    "tokenRequired": "Token is required"
+  },
+  "workspace": {
+    "createFailed": "Failed to create workspace",
+    "updateFailed": "Failed to update workspace",
+    "deleteFailed": "Failed to delete workspace",
+    "nameRequired": "Workspace name is required"
+  },
+  "gitlab": {
+    "failedToCreateMR": "Failed to create merge request",
+    "failedToLoadProjects": "Failed to load projects",
+    "authenticationFailed": "GitLab authentication failed"
+  },
+  "linear": {
+    "failedToCreateIssue": "Failed to create issue",
+    "failedToLoadTeams": "Failed to load teams",
+    "authenticationFailed": "Linear authentication failed"
   }
 }

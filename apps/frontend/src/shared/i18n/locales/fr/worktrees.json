@@ -1,0 +1,18 @@
+{
+  "title": "Worktrees",
+  "deleteWarning": "This will permanently delete this worktree. This action cannot be undone.",
+  "deleteTerminalWarning": "This will permanently delete this terminal worktree. This action cannot be undone.",
+  "confirmDelete": "Delete Worktree?",
+  "confirmDeleteTerminal": "Delete Terminal Worktree?",
+  "noWorktrees": "No worktrees found",
+  "createWorktree": "Create Worktree",
+  "switchWorktree": "Switch to Worktree",
+  "activeWorktree": "Active Worktree",
+  "worktreeName": "Worktree Name",
+  "branchName": "Branch Name",
+  "status": {
+    "active": "Active",
+    "inactive": "Inactive",
+    "dirty": "Has Changes"
+  }
+}

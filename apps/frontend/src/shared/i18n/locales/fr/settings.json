@@ -174,8 +174,8 @@
     }
   },
   "credentialProfiles": {
-    "title": "Profils d'identifiants",
-    "description": "Gérez les jetons OAuth et les clés API avec des limites d'utilisation",
+    "title": "Credential Profiles",
+    "description": "Manage API keys and OAuth credentials for external services",
     "addButton": "Ajouter un profil",
     "type": {
       "api": "API",
@@ -271,11 +271,13 @@
         "errorTitle": "Échec de la suppression du profil",
         "errorFallback": "Une erreur s'est produite lors de la suppression du profil."
       }
-    }
+    },
+    "noProfiles": "No profiles configured yet",
+    "createFirst": "Create your first profile"
   },
   "pools": {
-    "title": "Pools d'identifiants",
-    "description": "Regroupez plusieurs profils d'identifiants avec des stratégies de rotation et des limites",
+    "title": "Credential Pools",
+    "description": "Organize credentials into pools for different environments",
     "addButton": "Ajouter un pool",
     "empty": {
       "title": "Aucun pool configuré",
@@ -364,7 +366,9 @@
         "errorTitle": "Échec de la suppression du pool",
         "errorFallback": "Une erreur s'est produite lors de la suppression du pool."
       }
-    }
+    },
+    "noPools": "No pools configured yet",
+    "createFirst": "Create your first pool"
   },
   "profiles": {
     "type": {
@@ -655,7 +659,11 @@
       "apiGateway": "Passerelle API",
       "worker": "Worker",
       "other": "Autre"
-    }
+    },
+    "title": "Workspace",
+    "description": "Configure workspace settings and preferences",
+    "workspaceName": "Workspace Name",
+    "workspaceDescription": "Description"
   },
   "integrations": {
     "title": "Intégrations",

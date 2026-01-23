@@ -186,5 +186,25 @@
     "step3": "Cliquez sur « Réauthentifier » sur votre profil",
     "gotIt": "Compris",
     "goToSettings": "Aller aux paramètres"
+  },
+  "chatHistory": {
+    "deleteConversation": "Delete conversation?",
+    "deleteWarning": "This will permanently delete this conversation and all its messages. This action cannot be undone."
+  },
+  "ideation": {
+    "configuration": "Ideation Configuration",
+    "addMoreIdeas": "Add More Ideas",
+    "generateDescription": "Generate new ideas based on your requirements"
+  },
+  "envConfig": {
+    "title": "Environment Variables",
+    "enterTokenPlaceholder": "Enter your token...",
+    "tokenLabel": "Token",
+    "addVariable": "Add Variable",
+    "removeVariable": "Remove Variable"
+  },
+  "workspace": {
+    "addWorkspace": "Add Workspace",
+    "addWorkspaceDescription": "Add a new workspace to your project"
   }
 }

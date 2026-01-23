@@ -18,5 +18,29 @@
     "truncatedTooltip": "Showing {{lines}} of {{total}} lines",
     "lines": "{{count}} lines",
     "linesIncluded": "{{included}} included"
+  },
+  "chatHistory": {
+    "title": "Chat History",
+    "noConversations": "No conversations yet",
+    "deleteWarning": "This will permanently delete this conversation and all its messages. This action cannot be undone.",
+    "messageCount": "{{count}} message",
+    "messageCount_plural": "{{count}} messages",
+    "searchPlaceholder": "Search conversations...",
+    "renameConversation": "Rename conversation",
+    "conversationName": "Conversation name"
+  },
+  "search": {
+    "placeholder": "Ask about your codebase...",
+    "searchButton": "Search",
+    "searching": "Searching...",
+    "noResults": "No results found",
+    "resultsCount": "{{count}} result",
+    "resultsCount_plural": "{{count}} results"
+  },
+  "sessions": {
+    "title": "Sessions",
+    "startNew": "Start New Session",
+    "continueSession": "Continue Session",
+    "noSessions": "No sessions yet"
   }
 }

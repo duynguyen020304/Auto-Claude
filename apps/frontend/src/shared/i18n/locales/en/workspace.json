@@ -1,0 +1,28 @@
+{
+  "title": "Workspace",
+  "buttons": {
+    "addWorkspace": "Add Workspace",
+    "editWorkspace": "Edit Workspace",
+    "deleteWorkspace": "Delete Workspace",
+    "switchWorkspace": "Switch Workspace"
+  },
+  "dialogs": {
+    "addWorkspace": "Add Workspace",
+    "editWorkspace": "Edit Workspace",
+    "deleteWorkspace": "Delete Workspace?",
+    "deleteWarning": "This will permanently delete this workspace. This action cannot be undone."
+  },
+  "labels": {
+    "workspaceName": "Workspace Name",
+    "workspaceDescription": "Description",
+    "defaultWorkspace": "Default Workspace"
+  },
+  "placeholders": {
+    "workspaceName": "My App Workspace",
+    "workspaceDescription": "Backend, frontend, and mobile apps for My App"
+  },
+  "empty": {
+    "noWorkspaces": "No workspaces yet",
+    "createFirst": "Create your first workspace"
+  }
+}

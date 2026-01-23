@@ -91,7 +91,29 @@
     "noData": "No data",
     "optional": "Optional",
     "required": "Required",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "owner": "Owner",
+    "visibility": "Visibility",
+    "format": "Format",
+    "audience": "Audience",
+    "emojis": "Emojis",
+    "team": "Team",
+    "sound": "Sound",
+    "projects": "Projects",
+    "assignees": "Assignees",
+    "milestone": "Milestone",
+    "changes": "Changes",
+    "repository": "Repository",
+    "open": "Open",
+    "closed": "Closed",
+    "all": "All",
+    "branch": "Branch",
+    "token": "Token",
+    "description": "Description",
+    "type": "Type",
+    "value": "Value",
+    "name": "Name",
+    "status": "Status"
   },
   "selection": {
     "select": "Select",
@@ -106,7 +128,25 @@
     "justNow": "Just now",
     "minutesAgo": "{{count}}m ago",
     "hoursAgo": "{{count}}h ago",
-    "daysAgo": "{{count}}d ago"
+    "daysAgo": "{{count}}d ago",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "daysAgoLong": "{{count}} days ago"
+  },
+  "keyboard": {
+    "fileAutocompleteHint": "↑↓ navigate · Enter select · Esc close",
+    "generalHint": "↑↓ navigate · Enter select · Esc close"
+  },
+  "images": {
+    "largeFileWarning": "Large file - consider compressing",
+    "uploadFailed": "Failed to upload image",
+    "invalidFileType": "Invalid file type"
+  },
+  "providers": {
+    "openai": "OpenAI",
+    "anthropic": "Anthropic",
+    "zai": "z.ai",
+    "zhipu": "ZHIPU AI"
   },
   "errors": {
     "generic": "An error occurred",
