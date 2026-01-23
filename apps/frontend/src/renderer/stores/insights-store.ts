@@ -697,11 +697,31 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
   /**
    * Aborts an ongoing generation for the specified session.
    * Cleans up the abort controller, generating session tracking, and resets session status.
+   * Also cancels the backend Python process via IPC.
    *
    * @param sessionId - The ID of the session whose generation should be aborted
+   * @param projectId - The project ID for the session (required for IPC cancel)
    */
-  abortGeneration: (sessionId) =>
+  abortGeneration: (sessionId, projectId?) =>
     set((state) => {
+      // Find projectId if not provided
+      let targetProjectId = projectId;
+      if (!targetProjectId) {
+        for (const [pid, sid] of state.generatingSessionIds.entries()) {
+          if (sid === sessionId) {
+            targetProjectId = pid;
+            break;
+          }
+        }
+      }
+
+      // Cancel the backend session via IPC if we have a projectId and are in browser environment
+      if (targetProjectId && typeof window !== 'undefined' && window.electronAPI?.cancelInsightsSession) {
+        window.electronAPI.cancelInsightsSession(targetProjectId, sessionId).catch((err) => {
+          console.error('[InsightsStore] Failed to cancel backend session:', err);
+        });
+      }
+
       // Abort the controller for this session
       const abortController = state.abortControllers.get(sessionId);
       if (abortController) {
@@ -714,9 +734,9 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
 
       // Remove from generating session IDs
       const newGeneratingSessionIds = new Map<string, string>();
-      for (const [projectId, generatingSessionId] of state.generatingSessionIds.entries()) {
+      for (const [pid, generatingSessionId] of state.generatingSessionIds.entries()) {
         if (generatingSessionId !== sessionId) {
-          newGeneratingSessionIds.set(projectId, generatingSessionId);
+          newGeneratingSessionIds.set(pid, generatingSessionId);
         }
       }
 
@@ -784,17 +804,36 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
   /**
    * Removes a session from the store completely.
    * This includes:
-   * - Aborting any active generation for the session
+   * - Aborting any active generation for the session (including backend cancellation)
    * - Removing the session state from sessionStates
    * - Removing the session from generatingSessionIds
    * - Removing the session from abortControllers
    * - Clearing the current session if it's the one being removed
    *
    * @param sessionId - The ID of the session to remove
+   * @param projectId - The project ID for the session (optional, will be looked up if not provided)
    */
-  removeSession: (sessionId) =>
+  removeSession: (sessionId, projectId?) =>
     set((state) => {
       const updates: Partial<InsightsState> = {};
+
+      // Find projectId if not provided
+      let targetProjectId = projectId;
+      if (!targetProjectId) {
+        for (const [pid, sid] of state.generatingSessionIds.entries()) {
+          if (sid === sessionId) {
+            targetProjectId = pid;
+            break;
+          }
+        }
+      }
+
+      // Cancel the backend session via IPC if we have a projectId and are in browser environment
+      if (targetProjectId && typeof window !== 'undefined' && window.electronAPI?.cancelInsightsSession) {
+        window.electronAPI.cancelInsightsSession(targetProjectId, sessionId).catch((err) => {
+          console.error('[InsightsStore] Failed to cancel backend session during remove:', err);
+        });
+      }
 
       // Abort any active generation for this session
       const abortController = state.abortControllers.get(sessionId);
@@ -809,9 +848,9 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
 
       // Remove from generatingSessionIds (where sessionId is the value)
       const newGeneratingSessionIds = new Map<string, string>();
-      for (const [projectId, generatingSessionId] of state.generatingSessionIds.entries()) {
+      for (const [pid, generatingSessionId] of state.generatingSessionIds.entries()) {
         if (generatingSessionId !== sessionId) {
-          newGeneratingSessionIds.set(projectId, generatingSessionId);
+          newGeneratingSessionIds.set(pid, generatingSessionId);
         }
       }
       updates.generatingSessionIds = newGeneratingSessionIds;
@@ -981,7 +1020,8 @@ export async function switchSession(projectId: string, sessionId: string): Promi
   if (currentSessionId && currentSessionId !== sessionId) {
     // Check if current session is generating (has an abort controller)
     if (store.abortControllers.has(currentSessionId)) {
-      store.abortGeneration(currentSessionId);
+      // Pass projectId so abortGeneration can cancel the backend session
+      store.abortGeneration(currentSessionId, projectId);
     }
   }
 
