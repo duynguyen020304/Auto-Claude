@@ -45,6 +45,19 @@ export function UsageIndicator() {
 
   const handleProfileChange = async (profileId: string) => {
     await setActiveProfile(profileId);
+    // Request usage data refresh for the new profile
+    try {
+      const result = await window.electronAPI.requestUsageUpdate();
+      if (result.success && result.data) {
+        setUsage(result.data);
+        setIsAvailable(true);
+      } else {
+        setIsAvailable(false);
+      }
+    } catch (error) {
+      console.warn('[UsageIndicator] Failed to refresh usage after profile change:', error);
+      setIsAvailable(false);
+    }
   };
 
   /**
