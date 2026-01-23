@@ -508,6 +508,7 @@
       "cardToolsUsage": "Tools Usage",
       "cardResetSchedule": "Reset Schedule",
       "cardAccountStatus": "Account Status",
+      "lastUpdated": "Last updated",
       "tokenUsageQuota": "5H Quota",
       "toolsUsageMonthly": "Monthly",
       "resetScheduleLabel": "Next reset",

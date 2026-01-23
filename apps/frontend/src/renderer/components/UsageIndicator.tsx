@@ -27,6 +27,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "./ui/card";
 import { useTranslation } from "react-i18next";
 import {
   formatTimeRemaining,
+  formatTimeAgo,
   localizeUsageWindowLabel,
   hasHardcodedText,
 } from "../../shared/utils/format-time";
@@ -956,11 +957,22 @@ export function UsageIndicator() {
       >
         <div className="p-3 space-y-3">
           {/* Header with overall status */}
-          <div className="flex items-center pb-2 border-b border-white/10">
-            <Icon className="h-3.5 w-3.5 text-indigo-400" aria-hidden="true" />
-            <span className="font-semibold text-xs text-gray-200">
-              {t("common:usage.usageBreakdown")}
-            </span>
+          <div className="flex items-center justify-between pb-2 border-b border-white/10">
+            <div className="flex items-center gap-2">
+              <Icon className="h-3.5 w-3.5 text-indigo-400" aria-hidden="true" />
+              <span className="font-semibold text-xs text-gray-200">
+                {t("common:usage.usageBreakdown")}
+              </span>
+            </div>
+            {/* Last updated timestamp */}
+            {usage?.fetchedAt && (
+              <div className="text-[10px] text-gray-400">
+                {t("common:usage.dashboard.lastUpdated")}:{" "}
+                <span className="font-medium text-gray-300">
+                  {formatTimeAgo(usage.fetchedAt, t) || t("common:usage.notAvailable")}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Filter Bar */}
