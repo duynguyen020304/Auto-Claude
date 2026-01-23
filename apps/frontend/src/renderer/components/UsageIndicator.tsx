@@ -207,7 +207,7 @@ export function UsageIndicator() {
           size="sm"
           variant={timePeriod === '7d' ? 'default' : 'outline'}
           onClick={() => setTimePeriod('7d')}
-          className={`h-7 px-3 text-xs font-mono ${
+          className={`h-7 px-3 text-xs font-mono transition-all duration-200 ${
             timePeriod === '7d'
               ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0'
               : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
@@ -219,7 +219,7 @@ export function UsageIndicator() {
           size="sm"
           variant={timePeriod === '30d' ? 'default' : 'outline'}
           onClick={() => setTimePeriod('30d')}
-          className={`h-7 px-3 text-xs font-mono ${
+          className={`h-7 px-3 text-xs font-mono transition-all duration-200 ${
             timePeriod === '30d'
               ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0'
               : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
@@ -235,7 +235,7 @@ export function UsageIndicator() {
           size="sm"
           variant={chartType === 'area' ? 'default' : 'outline'}
           onClick={() => setChartType('area')}
-          className={`h-7 px-3 text-xs font-mono ${
+          className={`h-7 px-3 text-xs font-mono transition-all duration-200 ${
             chartType === 'area'
               ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0'
               : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
@@ -247,7 +247,7 @@ export function UsageIndicator() {
           size="sm"
           variant={chartType === 'line' ? 'default' : 'outline'}
           onClick={() => setChartType('line')}
-          className={`h-7 px-3 text-xs font-mono ${
+          className={`h-7 px-3 text-xs font-mono transition-all duration-200 ${
             chartType === 'line'
               ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0'
               : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
@@ -259,7 +259,7 @@ export function UsageIndicator() {
           size="sm"
           variant={chartType === 'bar' ? 'default' : 'outline'}
           onClick={() => setChartType('bar')}
-          className={`h-7 px-3 text-xs font-mono ${
+          className={`h-7 px-3 text-xs font-mono transition-all duration-200 ${
             chartType === 'bar'
               ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0'
               : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
@@ -275,7 +275,7 @@ export function UsageIndicator() {
           size="sm"
           variant={metric === 'tokens' ? 'default' : 'outline'}
           onClick={() => setMetric('tokens')}
-          className={`h-7 px-3 text-xs font-mono ${
+          className={`h-7 px-3 text-xs font-mono transition-all duration-200 ${
             metric === 'tokens'
               ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0'
               : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
@@ -287,7 +287,7 @@ export function UsageIndicator() {
           size="sm"
           variant={metric === 'tools' ? 'default' : 'outline'}
           onClick={() => setMetric('tools')}
-          className={`h-7 px-3 text-xs font-mono ${
+          className={`h-7 px-3 text-xs font-mono transition-all duration-200 ${
             metric === 'tools'
               ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white border-0'
               : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
@@ -533,7 +533,7 @@ export function UsageIndicator() {
       <div className="w-full h-full flex items-center justify-center p-4 bg-[#161618]">
         <svg
           viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-          className="w-full h-full"
+          className="w-full h-full transition-all duration-300 ease-out"
           preserveAspectRatio="xMidYMid meet"
           role="img"
           aria-label={`Usage trend ${chartType} chart`}
@@ -561,13 +561,13 @@ export function UsageIndicator() {
                   stroke="currentColor"
                   strokeOpacity="0.1"
                   strokeWidth="1"
-                  className="text-gray-500"
+                  className="text-gray-500 transition-opacity duration-300"
                 />
                 <text
                   x={padding.left - 10}
                   y={y + 4}
                   textAnchor="end"
-                  className="text-[10px] fill-gray-400 font-mono"
+                  className="text-[10px] fill-gray-400 font-mono transition-all duration-300"
                 >
                   {percent}%
                 </text>
@@ -577,12 +577,13 @@ export function UsageIndicator() {
 
           {/* Area Chart: Area + Line Path */}
           {chartType === 'area' && (
-            <>
+            <g className="transition-all duration-300 ease-out">
               {/* Area Path */}
               <path
                 d={pathData + ` L ${padding.left + innerWidth} ${chartHeight - padding.bottom} Z`}
                 fill="url(#chartGradient)"
                 stroke="none"
+                className="transition-all duration-300 ease-out"
               />
               {/* Line Path (stroke only) */}
               <path
@@ -592,8 +593,9 @@ export function UsageIndicator() {
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                className="transition-all duration-300 ease-out"
               />
-            </>
+            </g>
           )}
 
           {/* Line Chart: Stroke Only */}
@@ -605,6 +607,7 @@ export function UsageIndicator() {
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
+              className="transition-all duration-300 ease-out"
             />
           )}
 
@@ -614,7 +617,7 @@ export function UsageIndicator() {
             const barGap = (innerWidth / chartData.length) * 0.4; // 40% gap
 
             return (
-              <>
+              <g className="transition-all duration-300 ease-out">
                 {chartData.map((value, index) => {
                   const x = padding.left + (index * (innerWidth / chartData.length)) + (barGap / 2);
                   const barHeight = ((value / 100) * innerHeight);
@@ -628,11 +631,11 @@ export function UsageIndicator() {
                       width={barWidth}
                       height={barHeight}
                       fill="#6366F1"
-                      className="hover:fill-indigo-400 transition-all duration-150"
+                      className="hover:fill-indigo-400 transition-all duration-200 ease-out"
                     />
                   );
                 })}
-              </>
+              </g>
             );
           })()}
 
@@ -651,7 +654,7 @@ export function UsageIndicator() {
                 fill="#6366F1"
                 stroke="#8B5CF6"
                 strokeWidth="2"
-                className="hover:r-6 transition-all duration-150"
+                className="hover:r-6 transition-all duration-200 ease-out"
               />
             );
           })}
@@ -669,7 +672,7 @@ export function UsageIndicator() {
                 x={x}
                 y={chartHeight - padding.bottom + 20}
                 textAnchor="middle"
-                className="text-[10px] fill-gray-400 font-mono"
+                className="text-[10px] fill-gray-400 font-mono transition-all duration-300"
               >
                 {t('common:usage.dashboard.chartAxisDay')} {index + 1}
               </text>
