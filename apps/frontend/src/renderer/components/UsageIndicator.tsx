@@ -91,17 +91,6 @@ export function UsageIndicator() {
 
   /**
    * Helper function to format large numbers with locale-aware compact notation
-   *
-   * Returns undefined for null/undefined values. The caller (JSX conditional guards)
-   * is responsible for checking values before calling this function.
-   *
-   * @param value - The number to format (undefined, null, or number)
-   * @returns Formatted compact number string (e.g., "1.2K", "3.4M"), or undefined if input is null/undefined
-   *
-   * @example
-   * formatUsageValue(1234) // "1.2K" (en-US)
-   * formatUsageValue(null) // undefined
-   * formatUsageValue(undefined) // undefined
    */
   const formatUsageValue = (value?: number | null): string | undefined => {
     if (value == null) return undefined;
@@ -123,7 +112,6 @@ export function UsageIndicator() {
   };
 
   // Get formatted reset times (calculated dynamically from timestamps)
-  // Only fall back to sessionResetTime/weeklyResetTime if they don't contain placeholder/hardcoded text
   const sessionResetTime = usage?.sessionResetTimestamp
     ? (formatTimeRemaining(usage.sessionResetTimestamp, t) ??
       (hasHardcodedText(usage?.sessionResetTime)
@@ -150,7 +138,6 @@ export function UsageIndicator() {
         setIsLoading(false);
       },
     );
-
     // Request initial usage on mount
     window.electronAPI
       .requestUsageUpdate()
@@ -176,8 +163,7 @@ export function UsageIndicator() {
     };
   }, []);
 
-  // Always show the badge, but display different states
-  // Show loading state initially
+  // Show loading state
   if (isLoading) {
     return (
       <div
@@ -197,7 +183,7 @@ export function UsageIndicator() {
     );
   }
 
-  // Show unavailable state when endpoint doesn't return data
+  // Show unavailable state
   if (!isAvailable || !usage) {
     return (
       <Popover>
@@ -243,8 +229,6 @@ export function UsageIndicator() {
           ? "text-yellow-400 bg-yellow-500/10 border-yellow-500/20"
           : "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
 
-  // Get window labels for display
-  // Map backend-provided labels to localized versions with appropriate defaults
   const sessionLabel = localizeUsageWindowLabel(
     usage?.usageWindows?.sessionWindowLabel,
     t,
@@ -256,7 +240,6 @@ export function UsageIndicator() {
     "common:usage.weeklyDefault",
   );
 
-  // For icon, use the highest of the two windows
   const maxUsage = Math.max(usage.sessionPercent, usage.weeklyPercent);
   const Icon =
     maxUsage >= 91 ? AlertCircle : maxUsage >= 71 ? TrendingUp : Activity;

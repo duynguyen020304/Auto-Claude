@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Settings,
   Save,
@@ -7,7 +7,6 @@ import {
   Palette,
   Bot,
   FolderOpen,
-  Key,
   Package,
   Bell,
   Settings2,
@@ -19,16 +18,22 @@ import {
   Globe,
   Code,
   Bug,
-  Server,
-  Shield
-} from 'lucide-react';
+  Shield,
+  Users,
+} from "lucide-react";
 
 // GitLab icon component (lucide-react doesn't have one)
 function GitLabIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor" role="img" aria-labelledby="gitlab-icon-title">
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      role="img"
+      aria-labelledby="gitlab-icon-title"
+    >
       <title id="gitlab-icon-title">GitLab</title>
-      <path d="M22.65 14.39L12 22.13 1.35 14.39a.84.84 0 0 1-.3-.94l1.22-3.78 2.44-7.51A.42.42 0 0 1 4.82 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.49h8.1l2.44-7.51A.42.42 0 0 1 18.6 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.51L23 13.45a.84.84 0 0 1-.35.94z"/>
+      <path d="M22.65 14.39L12 22.13 1.35 14.39a.84.84 0 0 1-.3-.94l1.22-3.78 2.44-7.51A.42.42 0 0 1 4.82 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.49h8.1l2.44-7.51A.42.42 0 0 1 18.6 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.51L23 13.45a.84.84 0 0 1-.35.94z" />
     </svg>
   );
 }
@@ -39,26 +44,28 @@ import {
   FullScreenDialogBody,
   FullScreenDialogFooter,
   FullScreenDialogTitle,
-  FullScreenDialogDescription
-} from '../ui/full-screen-dialog';
-import { Button } from '../ui/button';
-import { ScrollArea } from '../ui/scroll-area';
-import { cn } from '../../lib/utils';
-import { useSettings } from './hooks/useSettings';
-import { ThemeSettings } from './ThemeSettings';
-import { DisplaySettings } from './DisplaySettings';
-import { LanguageSettings } from './LanguageSettings';
-import { GeneralSettings } from './GeneralSettings';
-import { IntegrationSettings } from './IntegrationSettings';
-import { AdvancedSettings } from './AdvancedSettings';
-import { DevToolsSettings } from './DevToolsSettings';
-import { DebugSettings } from './DebugSettings';
-import { ProfileList } from './ProfileList';
-import { ProjectSelector } from './ProjectSelector';
-import { ProjectSettingsContent, ProjectSettingsSection } from './ProjectSettingsContent';
-import { useProjectStore } from '../../stores/project-store';
-import type { UseProjectSettingsReturn } from '../project-settings/hooks/useProjectSettings';
-import { CredentialProfilesManagement } from '../credential-profiles';
+  FullScreenDialogDescription,
+} from "../ui/full-screen-dialog";
+import { Button } from "../ui/button";
+import { ScrollArea } from "../ui/scroll-area";
+import { cn } from "../../lib/utils";
+import { useSettings } from "./hooks/useSettings";
+import { ThemeSettings } from "./ThemeSettings";
+import { DisplaySettings } from "./DisplaySettings";
+import { LanguageSettings } from "./LanguageSettings";
+import { GeneralSettings } from "./GeneralSettings";
+import { AdvancedSettings } from "./AdvancedSettings";
+import { DevToolsSettings } from "./DevToolsSettings";
+import { DebugSettings } from "./DebugSettings";
+import { AccountSettings } from "./AccountSettings";
+import { ProjectSelector } from "./ProjectSelector";
+import {
+  ProjectSettingsContent,
+  ProjectSettingsSection,
+} from "./ProjectSettingsContent";
+import { useProjectStore } from "../../stores/project-store";
+import type { UseProjectSettingsReturn } from "../project-settings/hooks/useProjectSettings";
+import { CredentialProfilesManagement } from "../credential-profiles";
 
 interface AppSettingsDialogProps {
   open: boolean;
@@ -69,7 +76,18 @@ interface AppSettingsDialogProps {
 }
 
 // App-level settings sections
-export type AppSection = 'appearance' | 'display' | 'language' | 'devtools' | 'agent' | 'paths' | 'integrations' | 'api-profiles' | 'credential-profiles' | 'updates' | 'notifications' | 'debug';
+export type AppSection =
+  | "appearance"
+  | "display"
+  | "language"
+  | "devtools"
+  | "agent"
+  | "paths"
+  | "accounts"
+  | "credential-profiles"
+  | "updates"
+  | "notifications"
+  | "debug";
 
 interface NavItemConfig<T extends string> {
   id: T;
@@ -77,50 +95,68 @@ interface NavItemConfig<T extends string> {
 }
 
 const appNavItemsConfig: NavItemConfig<AppSection>[] = [
-  { id: 'appearance', icon: Palette },
-  { id: 'display', icon: Monitor },
-  { id: 'language', icon: Globe },
-  { id: 'devtools', icon: Code },
-  { id: 'agent', icon: Bot },
-  { id: 'paths', icon: FolderOpen },
-  { id: 'integrations', icon: Key },
-  { id: 'api-profiles', icon: Server },
-  { id: 'credential-profiles', icon: Shield },
-  { id: 'updates', icon: Package },
-  { id: 'notifications', icon: Bell },
-  { id: 'debug', icon: Bug }
+  { id: "appearance", icon: Palette },
+  { id: "display", icon: Monitor },
+  { id: "language", icon: Globe },
+  { id: "devtools", icon: Code },
+  { id: "agent", icon: Bot },
+  { id: "paths", icon: FolderOpen },
+  { id: "accounts", icon: Users },
+  { id: "credential-profiles", icon: Shield },
+  { id: "updates", icon: Package },
+  { id: "notifications", icon: Bell },
+  { id: "debug", icon: Bug },
 ];
 
 const projectNavItemsConfig: NavItemConfig<ProjectSettingsSection>[] = [
-  { id: 'general', icon: Settings2 },
-  { id: 'linear', icon: Zap },
-  { id: 'github', icon: Github },
-  { id: 'gitlab', icon: GitLabIcon },
-  { id: 'memory', icon: Database }
+  { id: "general", icon: Settings2 },
+  { id: "linear", icon: Zap },
+  { id: "github", icon: Github },
+  { id: "gitlab", icon: GitLabIcon },
+  { id: "memory", icon: Database },
 ];
 
 /**
  * Main application settings dialog container
  * Coordinates app and project settings sections
  */
-export function AppSettingsDialog({ open, onOpenChange, initialSection, initialProjectSection, onRerunWizard }: AppSettingsDialogProps) {
-  const { t } = useTranslation('settings');
-  const { settings, setSettings, isSaving, error, saveSettings, revertTheme, commitTheme } = useSettings();
-  const [version, setVersion] = useState<string>('');
+export function AppSettingsDialog({
+  open,
+  onOpenChange,
+  initialSection,
+  initialProjectSection,
+  onRerunWizard,
+}: AppSettingsDialogProps) {
+  const { t } = useTranslation("settings");
+  const {
+    settings,
+    setSettings,
+    isSaving,
+    error,
+    saveSettings,
+    revertTheme,
+    commitTheme,
+  } = useSettings();
+  const [version, setVersion] = useState<string>("");
 
   // Track which top-level section is active
-  const [activeTopLevel, setActiveTopLevel] = useState<'app' | 'project'>('app');
-  const [appSection, setAppSection] = useState<AppSection>(initialSection || 'appearance');
-  const [projectSection, setProjectSection] = useState<ProjectSettingsSection>('general');
+  const [activeTopLevel, setActiveTopLevel] = useState<"app" | "project">(
+    "app",
+  );
+  const [appSection, setAppSection] = useState<AppSection>(
+    initialSection || "appearance",
+  );
+  const [projectSection, setProjectSection] =
+    useState<ProjectSettingsSection>("general");
 
   // Navigate to initial section when dialog opens with a specific section
   useEffect(() => {
     if (open) {
       if (initialProjectSection) {
-        setActiveTopLevel('project');
+        setActiveTopLevel("project");
         setProjectSection(initialProjectSection);
       } else if (initialSection) {
-        setActiveTopLevel('app');
+        setActiveTopLevel("app");
         setAppSection(initialSection);
       }
     }
@@ -133,7 +169,8 @@ export function AppSettingsDialog({ open, onOpenChange, initialSection, initialP
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
 
   // Project settings hook state (lifted from child)
-  const [projectSettingsHook, setProjectSettingsHook] = useState<UseProjectSettingsReturn | null>(null);
+  const [projectSettingsHook, setProjectSettingsHook] =
+    useState<UseProjectSettingsReturn | null>(null);
   const [projectError, setProjectError] = useState<string | null>(null);
 
   // Load app version on mount
@@ -142,25 +179,34 @@ export function AppSettingsDialog({ open, onOpenChange, initialSection, initialP
   }, []);
 
   // Memoize the callback to avoid infinite loops
-  const handleProjectHookReady = useCallback((hook: UseProjectSettingsReturn | null) => {
-    setProjectSettingsHook(hook);
-    if (hook) {
-      setProjectError(hook.error || hook.envError || null);
-    } else {
-      setProjectError(null);
-    }
-  }, []);
+  const handleProjectHookReady = useCallback(
+    (hook: UseProjectSettingsReturn | null) => {
+      setProjectSettingsHook(hook);
+      if (hook) {
+        setProjectError(hook.error || hook.envError || null);
+      } else {
+        setProjectError(null);
+      }
+    },
+    [],
+  );
 
   const handleSave = async () => {
     // Save app settings first
     const appSaveSuccess = await saveSettings();
 
     // If on project section with a project selected, save project settings too
-    if (activeTopLevel === 'project' && selectedProject && projectSettingsHook) {
+    if (
+      activeTopLevel === "project" &&
+      selectedProject &&
+      projectSettingsHook
+    ) {
       await projectSettingsHook.handleSave(() => {});
       // Check for project errors
       if (projectSettingsHook.error || projectSettingsHook.envError) {
-        setProjectError(projectSettingsHook.error || projectSettingsHook.envError);
+        setProjectError(
+          projectSettingsHook.error || projectSettingsHook.envError,
+        );
         return; // Don't close dialog on error
       }
     }
@@ -183,29 +229,73 @@ export function AppSettingsDialog({ open, onOpenChange, initialSection, initialP
 
   const renderAppSection = () => {
     switch (appSection) {
-      case 'appearance':
-        return <ThemeSettings settings={settings} onSettingsChange={setSettings} />;
-      case 'display':
-        return <DisplaySettings settings={settings} onSettingsChange={setSettings} />;
-      case 'language':
-        return <LanguageSettings settings={settings} onSettingsChange={setSettings} />;
-      case 'devtools':
-        return <DevToolsSettings settings={settings} onSettingsChange={setSettings} />;
-      case 'agent':
-        return <GeneralSettings settings={settings} onSettingsChange={setSettings} section="agent" />;
-      case 'paths':
-        return <GeneralSettings settings={settings} onSettingsChange={setSettings} section="paths" />;
-      case 'integrations':
-        return <IntegrationSettings settings={settings} onSettingsChange={setSettings} isOpen={open} />;
-      case 'api-profiles':
-        return <ProfileList />;
-      case 'credential-profiles':
+      case "appearance":
+        return (
+          <ThemeSettings settings={settings} onSettingsChange={setSettings} />
+        );
+      case "display":
+        return (
+          <DisplaySettings settings={settings} onSettingsChange={setSettings} />
+        );
+      case "language":
+        return (
+          <LanguageSettings
+            settings={settings}
+            onSettingsChange={setSettings}
+          />
+        );
+      case "devtools":
+        return (
+          <DevToolsSettings
+            settings={settings}
+            onSettingsChange={setSettings}
+          />
+        );
+      case "agent":
+        return (
+          <GeneralSettings
+            settings={settings}
+            onSettingsChange={setSettings}
+            section="agent"
+          />
+        );
+      case "paths":
+        return (
+          <GeneralSettings
+            settings={settings}
+            onSettingsChange={setSettings}
+            section="paths"
+          />
+        );
+      case "accounts":
+        return (
+          <AccountSettings
+            settings={settings}
+            onSettingsChange={setSettings}
+            isOpen={open}
+          />
+        );
+      case "credential-profiles":
         return <CredentialProfilesManagement />;
-      case 'updates':
-        return <AdvancedSettings settings={settings} onSettingsChange={setSettings} section="updates" version={version} />;
-      case 'notifications':
-        return <AdvancedSettings settings={settings} onSettingsChange={setSettings} section="notifications" version={version} />;
-      case 'debug':
+      case "updates":
+        return (
+          <AdvancedSettings
+            settings={settings}
+            onSettingsChange={setSettings}
+            section="updates"
+            version={version}
+          />
+        );
+      case "notifications":
+        return (
+          <AdvancedSettings
+            settings={settings}
+            onSettingsChange={setSettings}
+            section="notifications"
+            version={version}
+          />
+        );
+      case "debug":
         return <DebugSettings />;
       default:
         return null;
@@ -213,7 +303,7 @@ export function AppSettingsDialog({ open, onOpenChange, initialSection, initialP
   };
 
   const renderContent = () => {
-    if (activeTopLevel === 'app') {
+    if (activeTopLevel === "app") {
       return renderAppSection();
     }
     return (
@@ -230,22 +320,25 @@ export function AppSettingsDialog({ open, onOpenChange, initialSection, initialP
   const projectNavDisabled = !selectedProjectId;
 
   return (
-    <FullScreenDialog open={open} onOpenChange={(newOpen) => {
-      if (!newOpen) {
-        // Dialog is being closed (via X, escape, or overlay click)
-        // Revert any unsaved theme changes
-        revertTheme();
-      }
-      onOpenChange(newOpen);
-    }}>
+    <FullScreenDialog
+      open={open}
+      onOpenChange={(newOpen) => {
+        if (!newOpen) {
+          // Dialog is being closed (via X, escape, or overlay click)
+          // Revert any unsaved theme changes
+          revertTheme();
+        }
+        onOpenChange(newOpen);
+      }}
+    >
       <FullScreenDialogContent>
         <FullScreenDialogHeader>
           <FullScreenDialogTitle className="flex items-center gap-3">
             <Settings className="h-6 w-6" />
-            {t('title')}
+            {t("title")}
           </FullScreenDialogTitle>
           <FullScreenDialogDescription>
-            {t('tabs.app')} & {t('tabs.project')}
+            {t("tabs.app")} & {t("tabs.project")}
           </FullScreenDialogDescription>
         </FullScreenDialogHeader>
 
@@ -258,30 +351,35 @@ export function AppSettingsDialog({ open, onOpenChange, initialSection, initialP
                   {/* APPLICATION Section */}
                   <div>
                     <h3 className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      {t('tabs.app')}
+                      {t("tabs.app")}
                     </h3>
                     <div className="space-y-1">
                       {appNavItemsConfig.map((item) => {
                         const Icon = item.icon;
-                        const isActive = activeTopLevel === 'app' && appSection === item.id;
+                        const isActive =
+                          activeTopLevel === "app" && appSection === item.id;
                         return (
                           <button
                             key={item.id}
                             onClick={() => {
-                              setActiveTopLevel('app');
+                              setActiveTopLevel("app");
                               setAppSection(item.id);
                             }}
                             className={cn(
-                              'w-full flex items-start gap-3 p-3 rounded-lg text-left transition-all',
+                              "w-full flex items-start gap-3 p-3 rounded-lg text-left transition-all",
                               isActive
-                                ? 'bg-accent text-accent-foreground'
-                                : 'hover:bg-accent/50 text-muted-foreground hover:text-foreground'
+                                ? "bg-accent text-accent-foreground"
+                                : "hover:bg-accent/50 text-muted-foreground hover:text-foreground",
                             )}
                           >
                             <Icon className="h-5 w-5 mt-0.5 shrink-0" />
                             <div className="min-w-0">
-                              <div className="font-medium text-sm">{t(`sections.${item.id}.title`)}</div>
-                              <div className="text-xs text-muted-foreground truncate">{t(`sections.${item.id}.description`)}</div>
+                              <div className="font-medium text-sm">
+                                {t(`sections.${item.id}.title`)}
+                              </div>
+                              <div className="text-xs text-muted-foreground truncate">
+                                {t(`sections.${item.id}.description`)}
+                              </div>
                             </div>
                           </button>
                         );
@@ -295,15 +393,19 @@ export function AppSettingsDialog({ open, onOpenChange, initialSection, initialP
                             onRerunWizard();
                           }}
                           className={cn(
-                            'w-full flex items-start gap-3 p-3 rounded-lg text-left transition-all mt-2',
-                            'border border-dashed border-muted-foreground/30',
-                            'hover:bg-accent/50 text-muted-foreground hover:text-foreground'
+                            "w-full flex items-start gap-3 p-3 rounded-lg text-left transition-all mt-2",
+                            "border border-dashed border-muted-foreground/30",
+                            "hover:bg-accent/50 text-muted-foreground hover:text-foreground",
                           )}
                         >
                           <Sparkles className="h-5 w-5 mt-0.5 shrink-0" />
                           <div className="min-w-0">
-                            <div className="font-medium text-sm">{t('actions.rerunWizard')}</div>
-                            <div className="text-xs text-muted-foreground truncate">{t('actions.rerunWizardDescription')}</div>
+                            <div className="font-medium text-sm">
+                              {t("actions.rerunWizard")}
+                            </div>
+                            <div className="text-xs text-muted-foreground truncate">
+                              {t("actions.rerunWizardDescription")}
+                            </div>
                           </div>
                         </button>
                       )}
@@ -313,7 +415,7 @@ export function AppSettingsDialog({ open, onOpenChange, initialSection, initialP
                   {/* PROJECT Section */}
                   <div>
                     <h3 className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      {t('tabs.project')}
+                      {t("tabs.project")}
                     </h3>
 
                     {/* Project Selector */}
@@ -328,28 +430,34 @@ export function AppSettingsDialog({ open, onOpenChange, initialSection, initialP
                     <div className="space-y-1">
                       {projectNavItemsConfig.map((item) => {
                         const Icon = item.icon;
-                        const isActive = activeTopLevel === 'project' && projectSection === item.id;
+                        const isActive =
+                          activeTopLevel === "project" &&
+                          projectSection === item.id;
                         return (
                           <button
                             key={item.id}
                             onClick={() => {
-                              setActiveTopLevel('project');
+                              setActiveTopLevel("project");
                               setProjectSection(item.id);
                             }}
                             disabled={projectNavDisabled}
                             className={cn(
-                              'w-full flex items-start gap-3 p-3 rounded-lg text-left transition-all',
+                              "w-full flex items-start gap-3 p-3 rounded-lg text-left transition-all",
                               isActive
-                                ? 'bg-accent text-accent-foreground'
+                                ? "bg-accent text-accent-foreground"
                                 : projectNavDisabled
-                                  ? 'opacity-50 cursor-not-allowed text-muted-foreground'
-                                  : 'hover:bg-accent/50 text-muted-foreground hover:text-foreground'
+                                  ? "opacity-50 cursor-not-allowed text-muted-foreground"
+                                  : "hover:bg-accent/50 text-muted-foreground hover:text-foreground",
                             )}
                           >
                             <Icon className="h-5 w-5 mt-0.5 shrink-0" />
                             <div className="min-w-0">
-                              <div className="font-medium text-sm">{t(`projectSections.${item.id}.title`)}</div>
-                              <div className="text-xs text-muted-foreground truncate">{t(`projectSections.${item.id}.description`)}</div>
+                              <div className="font-medium text-sm">
+                                {t(`projectSections.${item.id}.title`)}
+                              </div>
+                              <div className="text-xs text-muted-foreground truncate">
+                                {t(`projectSections.${item.id}.description`)}
+                              </div>
                             </div>
                           </button>
                         );
@@ -362,7 +470,7 @@ export function AppSettingsDialog({ open, onOpenChange, initialSection, initialP
                 {version && (
                   <div className="mt-8 pt-4 border-t border-border">
                     <p className="text-xs text-muted-foreground text-center">
-                      {t('updates.version')} {version}
+                      {t("updates.version")} {version}
                     </p>
                   </div>
                 )}
@@ -372,9 +480,7 @@ export function AppSettingsDialog({ open, onOpenChange, initialSection, initialP
             {/* Main content */}
             <div className="flex-1 overflow-hidden">
               <ScrollArea className="h-full">
-                <div className="p-8 max-w-2xl">
-                  {renderContent()}
-                </div>
+                <div className="p-8 max-w-2xl">{renderContent()}</div>
               </ScrollArea>
             </div>
           </div>
@@ -387,21 +493,25 @@ export function AppSettingsDialog({ open, onOpenChange, initialSection, initialP
             </div>
           )}
           <Button variant="outline" onClick={handleCancel}>
-            {t('common:buttons.cancel', 'Cancel')}
+            {t("common:buttons.cancel", "Cancel")}
           </Button>
           <Button
             onClick={handleSave}
-            disabled={isSaving || (activeTopLevel === 'project' && projectSettingsHook?.isSaving)}
+            disabled={
+              isSaving ||
+              (activeTopLevel === "project" && projectSettingsHook?.isSaving)
+            }
           >
-            {(isSaving || (activeTopLevel === 'project' && projectSettingsHook?.isSaving)) ? (
+            {isSaving ||
+            (activeTopLevel === "project" && projectSettingsHook?.isSaving) ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {t('common:buttons.saving', 'Saving...')}
+                {t("common:buttons.saving", "Saving...")}
               </>
             ) : (
               <>
                 <Save className="mr-2 h-4 w-4" />
-                {t('actions.save')}
+                {t("actions.save")}
               </>
             )}
           </Button>

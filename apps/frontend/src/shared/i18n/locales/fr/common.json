@@ -108,7 +108,8 @@
     "closed": "Fermé",
     "all": "Tous",
     "branch": "Branche",
-    "token": "Jeton"
+    "token": "Jeton",
+    "important": "Important"
   },
   "selection": {
     "select": "Sélectionner",
@@ -531,7 +532,15 @@
         "chartVisualization": "Graphique de tendance d'utilisation",
         "refreshButton": "Actualiser les données d'utilisation"
       }
-    }
+    },
+    "otherAccounts": "Autres comptes",
+    "next": "Suivant",
+    "weeklyLimitReached": "Limite hebdomadaire atteinte",
+    "sessionLimitReached": "Limite de session atteinte",
+    "notAuthenticated": "Non authentifié",
+    "sessionShort": "Utilisation session 5 heures",
+    "weeklyShort": "Utilisation hebdomadaire 7 jours",
+    "swap": "Changer"
   },
   "oauth": {
     "enterCode": "Saisie manuelle du code (secours)",
