@@ -33,6 +33,7 @@ import { registerClaudeCodeHandlers } from './claude-code-handlers';
 import { registerMcpHandlers } from './mcp-handlers';
 import { registerProfileHandlers } from './profile-handlers';
 import { registerCredentialProfilesHandlers } from './credential-profiles';
+import { registerScreenshotHandlers } from './screenshot-handlers';
 import { registerTerminalWorktreeIpcHandlers } from './terminal';
 import { notificationService } from '../notification-service';
 
@@ -121,6 +122,8 @@ export function setupIpcHandlers(
 
   // Credential Profile handlers (OAuth and API key profiles with rotation)
   registerCredentialProfilesHandlers();
+  // Screenshot capture handlers
+  registerScreenshotHandlers();
 
   console.warn('[IPC] All handler modules registered successfully');
 }
@@ -149,5 +152,6 @@ export {
   registerClaudeCodeHandlers,
   registerMcpHandlers,
   registerProfileHandlers,
-  registerCredentialProfilesHandlers
+  registerCredentialProfilesHandlers,
+  registerScreenshotHandlers
 };
