@@ -13,6 +13,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from './ui/tooltip';
+import { Button } from './ui/button';
 import { useTranslation } from 'react-i18next';
 import { formatTimeRemaining, localizeUsageWindowLabel, hasHardcodedText } from '../../shared/utils/format-time';
 import type { ClaudeUsageSnapshot } from '../../shared/types/agent';
@@ -22,6 +23,11 @@ export function UsageIndicator() {
   const [usage, setUsage] = useState<ClaudeUsageSnapshot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAvailable, setIsAvailable] = useState(false);
+
+  // Filter bar state
+  const [timePeriod, setTimePeriod] = useState<'7d' | '30d'>('7d');
+  const [chartType, setChartType] = useState<'area' | 'line' | 'bar'>('area');
+  const [metric, setMetric] = useState<'tokens' | 'tools'>('tokens');
 
   /**
    * Helper function to format large numbers with locale-aware compact notation
@@ -160,6 +166,83 @@ export function UsageIndicator() {
     maxUsage >= 91 ? AlertCircle :
     maxUsage >= 71 ? TrendingUp :
     Activity;
+
+  /**
+   * Filter Bar Component
+   * Displays time period, chart type, and metric toggle buttons
+   * TODO: Integrate into dashboard layout in Phase 4
+   */
+  const renderFilterBar = () => (
+    <div className="flex items-center gap-2 p-2 border-b border-white/10">
+      {/* Time Period Toggle */}
+      <div className="flex items-center gap-1">
+        <Button
+          size="sm"
+          variant={timePeriod === '7d' ? 'default' : 'outline'}
+          onClick={() => setTimePeriod('7d')}
+          className="h-7 px-3 text-xs"
+        >
+          7 Days
+        </Button>
+        <Button
+          size="sm"
+          variant={timePeriod === '30d' ? 'default' : 'outline'}
+          onClick={() => setTimePeriod('30d')}
+          className="h-7 px-3 text-xs"
+        >
+          30 Days
+        </Button>
+      </div>
+
+      {/* Chart Type Toggle */}
+      <div className="flex items-center gap-1">
+        <Button
+          size="sm"
+          variant={chartType === 'area' ? 'default' : 'outline'}
+          onClick={() => setChartType('area')}
+          className="h-7 px-3 text-xs"
+        >
+          Area
+        </Button>
+        <Button
+          size="sm"
+          variant={chartType === 'line' ? 'default' : 'outline'}
+          onClick={() => setChartType('line')}
+          className="h-7 px-3 text-xs"
+        >
+          Line
+        </Button>
+        <Button
+          size="sm"
+          variant={chartType === 'bar' ? 'default' : 'outline'}
+          onClick={() => setChartType('bar')}
+          className="h-7 px-3 text-xs"
+        >
+          Bar
+        </Button>
+      </div>
+
+      {/* Metric Toggle */}
+      <div className="flex items-center gap-1">
+        <Button
+          size="sm"
+          variant={metric === 'tokens' ? 'default' : 'outline'}
+          onClick={() => setMetric('tokens')}
+          className="h-7 px-3 text-xs"
+        >
+          Tokens
+        </Button>
+        <Button
+          size="sm"
+          variant={metric === 'tools' ? 'default' : 'outline'}
+          onClick={() => setMetric('tools')}
+          className="h-7 px-3 text-xs"
+        >
+          Tools
+        </Button>
+      </div>
+    </div>
+  );
 
   return (
     <TooltipProvider delayDuration={200}>
