@@ -1,0 +1,75 @@
+# Build Progress - Task 005: Find and Document UI Components Missing i18n
+
+**Started:** 2026-01-23
+**Current Status:** In Progress
+
+---
+
+## Phase 1: Scan Frontend Codebase for Hardcoded Strings
+
+### Subtask 1.1: Scan all *.tsx and *.jsx files ✅ COMPLETED
+- **Status:** Completed
+- **Findings:** 200+ hardcoded strings identified across 306 files
+- **Output:** SUBTASK-1-1-FINDINGS.md
+- **Summary:**
+  - Total files scanned: 306
+  - Files using i18n: 128 (41.8%)
+  - Files NOT using i18n: 178 (58.2%)
+  - 12 categories of hardcoded strings identified
+  - High priority files documented
+
+### Subtask 1.2: Catalog user-facing hardcoded strings ✅ COMPLETED
+- **Status:** Completed
+- **Output:** SUBTASK-1-2-HARCODED-STRINGS-CATALOG.md
+- **Summary:**
+  - Created comprehensive catalog of 200+ hardcoded strings
+  - Organized into 13 user-facing categories
+  - Each entry includes: file path, line number, context, suggested translation key, severity
+  - Provided implementation priority matrix
+  - Recommended translation file structure for 9 namespaces
+  - Included detailed implementation guidelines with code examples
+  - Suggested 3-week implementation order
+
+---
+
+## Phase 2: Cross-Reference with Existing Translation Files
+
+### Subtask 2.1: Review existing translation keys ✅ COMPLETED
+- **Status:** Completed
+- **Output:** translation_files_analysis.md
+- **Summary:**
+  - Reviewed all 12 English translation files (en/*.json)
+  - Documented 2,500+ existing translation keys
+  - Analyzed naming conventions and patterns
+  - Identified key hierarchical structure: namespace:section.key
+  - Cataloged common reusable keys (buttons, labels, actions)
+  - Documented interpolation patterns: {{variable}}
+  - Documented pluralization patterns: key / key_plural
+  - Created namespace usage guidelines
+  - Provided dialog and form structure templates
+  - Summary statistics and best practices documented
+
+### Subtask 2.2: Match hardcoded strings to existing keys ✅ COMPLETED
+- **Status:** Completed
+- **Output:** SUBTASK-2-2-KEY-MATCHING-REPORT.md
+- **Summary:**
+  - Cross-referenced 200+ hardcoded strings with 2,500+ existing translation keys
+  - Identified 80 strings (40%) that can reuse existing keys
+  - Identified 120 strings (60%) that need new translation keys
+  - Documented exact key matches for common buttons, labels, actions
+  - Categorized new keys needed by namespace and priority
+  - Created implementation strategy: Phase 1 (reuse existing), Phase 2 (add common keys), Phase 3 (create feature namespaces)
+  - Provided duplicate avoidance strategy and verification checklist
+  - Recommended 5 new translation files and 4 files to extend
+
+## Phase 3: Generate Investigation Report
+- **Status:** Not Started
+
+---
+
+## Notes
+
+- Comprehensive scan completed successfully
+- Found hardcoded strings in dialog titles, labels, placeholders, buttons, and more
+- Even files with i18n imports contain hardcoded strings
+- Created detailed report with suggested translation keys
