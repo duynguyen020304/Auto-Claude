@@ -495,11 +495,11 @@ export function UsageIndicator() {
   };
 
   /**
-   * Custom SVG Area Chart Component
-   * Displays usage trends with gradient blue fill
+   * Custom SVG Chart Component
+   * Displays usage trends with configurable chart type (area/line/bar)
    * TODO: Replace placeholder data with real data in Phase 3 (subtask-2-4)
    */
-  const renderAreaChart = () => {
+  const renderChart = () => {
     // Transform usage snapshot to chart data points
     const dataPoints = transformUsageToChartData(usage, timePeriod, metric);
 
@@ -514,7 +514,7 @@ export function UsageIndicator() {
     const innerWidth = chartWidth - padding.left - padding.right;
     const innerHeight = chartHeight - padding.top - padding.bottom;
 
-    // Generate path data for area chart
+    // Generate path data for area/line charts
     const generatePathData = (data: number[]) => {
       const stepX = innerWidth / (data.length - 1);
 
@@ -528,9 +528,6 @@ export function UsageIndicator() {
         pathD += ` L ${x} ${y}`;
       });
 
-      // Close path at bottom-right
-      pathD += ` L ${padding.left + innerWidth} ${chartHeight - padding.bottom} Z`;
-
       return pathD;
     };
 
@@ -543,15 +540,17 @@ export function UsageIndicator() {
           className="w-full h-full"
           preserveAspectRatio="xMidYMid meet"
           role="img"
-          aria-label="Usage trend area chart"
+          aria-label={`Usage trend ${chartType} chart`}
         >
-          {/* Gradient Definition */}
-          <defs>
-            <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#6366F1" stopOpacity="0.6" />
-              <stop offset="100%" stopColor="#6366F1" stopOpacity="0.05" />
-            </linearGradient>
-          </defs>
+          {/* Gradient Definition (only for area chart) */}
+          {chartType === 'area' && (
+            <defs>
+              <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#6366F1" stopOpacity="0.6" />
+                <stop offset="100%" stopColor="#6366F1" stopOpacity="0.05" />
+              </linearGradient>
+            </defs>
+          )}
 
           {/* Grid Lines (horizontal) */}
           {[0, 25, 50, 75, 100].map((percent) => {
@@ -580,25 +579,69 @@ export function UsageIndicator() {
             );
           })}
 
-          {/* Area Path */}
-          <path
-            d={pathData}
-            fill="url(#chartGradient)"
-            stroke="none"
-          />
+          {/* Area Chart: Area + Line Path */}
+          {chartType === 'area' && (
+            <>
+              {/* Area Path */}
+              <path
+                d={pathData + ` L ${padding.left + innerWidth} ${chartHeight - padding.bottom} Z`}
+                fill="url(#chartGradient)"
+                stroke="none"
+              />
+              {/* Line Path (stroke only) */}
+              <path
+                d={pathData}
+                fill="none"
+                stroke="#6366F1"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </>
+          )}
 
-          {/* Line Path (stroke only) */}
-          <path
-            d={pathData.replace(' Z', '')}
-            fill="none"
-            stroke="#6366F1"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
+          {/* Line Chart: Stroke Only */}
+          {chartType === 'line' && (
+            <path
+              d={pathData}
+              fill="none"
+              stroke="#6366F1"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          )}
 
-          {/* Data Points */}
-          {chartData.map((value, index) => {
+          {/* Bar Chart: Vertical Bars */}
+          {chartType === 'bar' && (() => {
+            const barWidth = (innerWidth / chartData.length) * 0.6; // 60% of available space
+            const barGap = (innerWidth / chartData.length) * 0.4; // 40% gap
+
+            return (
+              <>
+                {chartData.map((value, index) => {
+                  const x = padding.left + (index * (innerWidth / chartData.length)) + (barGap / 2);
+                  const barHeight = ((value / 100) * innerHeight);
+                  const y = padding.top + innerHeight - barHeight;
+
+                  return (
+                    <rect
+                      key={`bar-${index}`}
+                      x={x}
+                      y={y}
+                      width={barWidth}
+                      height={barHeight}
+                      fill="#6366F1"
+                      className="hover:fill-indigo-400 transition-all duration-150"
+                    />
+                  );
+                })}
+              </>
+            );
+          })()}
+
+          {/* Data Points (only for area and line charts) */}
+          {chartType !== 'bar' && chartData.map((value, index) => {
             const stepX = innerWidth / (chartData.length - 1);
             const x = padding.left + (index * stepX);
             const y = padding.top + innerHeight - ((value / 100) * innerHeight);
@@ -619,8 +662,10 @@ export function UsageIndicator() {
 
           {/* X-Axis Labels (Days) */}
           {chartData.map((_, index) => {
-            const stepX = innerWidth / (chartData.length - 1);
-            const x = padding.left + (index * stepX);
+            const stepX = chartType === 'bar'
+              ? innerWidth / chartData.length
+              : innerWidth / (chartData.length - 1);
+            const x = padding.left + (index * stepX) + (chartType === 'bar' ? stepX / 2 : 0);
 
             return (
               <text
@@ -653,13 +698,24 @@ export function UsageIndicator() {
             </span>
           </button>
         </TooltipTrigger>
-        <TooltipContent side="bottom" className="text-xs w-72 p-0 bg-[#161618] border border-white/10">
+        <TooltipContent side="bottom" className="text-xs w-[600px] p-0 bg-[#161618] border border-white/10 max-h-[600px] overflow-y-auto">
           <div className="p-3 space-y-3">
             {/* Header with overall status */}
             <div className="flex items-center pb-2 border-b border-white/10">
               <Icon className="h-3.5 w-3.5 text-indigo-400" />
               <span className="font-semibold text-xs text-gray-200">{t('common:usage.usageBreakdown')}</span>
             </div>
+
+            {/* Filter Bar */}
+            {renderFilterBar()}
+
+            {/* Chart Visualization */}
+            <div className="h-[200px] border border-white/10 rounded-lg overflow-hidden">
+              {renderChart()}
+            </div>
+
+            {/* Dashboard Cards */}
+            {renderDashboardCards()}
 
             {/* Session/5-hour usage */}
             <div className="space-y-1.5">
