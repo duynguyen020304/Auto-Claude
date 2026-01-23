@@ -6,14 +6,13 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Activity, TrendingUp, AlertCircle, Clock, User, ChevronRight, Info, Key } from 'lucide-react';
+import { Activity, TrendingUp, AlertCircle, Clock, User, Info, Key } from 'lucide-react';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from './ui/popover';
 import { Button } from './ui/button';
-import { Label } from './ui/label';
 import {
   Select,
   SelectContent,
@@ -21,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue
 } from './ui/select';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from './ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { useTranslation } from 'react-i18next';
 import { formatTimeRemaining, localizeUsageWindowLabel, hasHardcodedText } from '../../shared/utils/format-time';
 import type { ClaudeUsageSnapshot } from '../../shared/types/agent';
