@@ -7,6 +7,9 @@ import { DEFAULT_APP_SETTINGS } from '../../shared/constants';
 import { toast } from '../hooks/use-toast';
 import { markSettingsLoaded } from '../lib/sentry';
 
+// Usage cache TTL: 10 minutes in milliseconds
+const USAGE_CACHE_TTL = 10 * 60 * 1000;
+
 interface SettingsState {
   settings: AppSettings;
   isLoading: boolean;
@@ -78,6 +81,9 @@ interface SettingsState {
   savePool: (pool: Pool) => Promise<boolean>;
   updatePoolAsync: (pool: Pool) => Promise<boolean>;
   deletePool: (poolId: string) => Promise<boolean>;
+
+  // Usage cache actions
+  getCachedUsage: (profileId: string) => ClaudeUsageSnapshot | null;
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
@@ -601,6 +607,29 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       });
       return false;
     }
+  },
+
+  getCachedUsage: (profileId: string): ClaudeUsageSnapshot | null => {
+    const state = useSettingsStore.getState();
+    const cached = state.cachedUsage.get(profileId);
+
+    // Return null if no cached entry
+    if (!cached) {
+      console.log('[settings-store] Usage cache miss - no entry for profile:', profileId);
+      return null;
+    }
+
+    // Check if cache has expired
+    const now = Date.now();
+    const cacheAge = now - cached.fetchedAt;
+    if (cacheAge > USAGE_CACHE_TTL) {
+      console.log('[settings-store] Usage cache expired for profile:', profileId, 'age:', cacheAge, 'ms');
+      return null;
+    }
+
+    // Return cached data if valid
+    console.log('[settings-store] Usage cache hit for profile:', profileId, 'age:', cacheAge, 'ms');
+    return cached.data;
   },
 }));
 
