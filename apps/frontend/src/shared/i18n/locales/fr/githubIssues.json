@@ -1,0 +1,24 @@
+{
+  "title": "Tickets GitHub",
+  "buttons": {
+    "createIssue": "Créer un ticket",
+    "refresh": "Actualiser",
+    "filter": "Filtrer"
+  },
+  "searchPlaceholder": "Rechercher des tickets...",
+  "noIssuesFound": "Aucun ticket trouvé",
+  "labels": {
+    "issue": "Ticket",
+    "pullRequest": "Pull Request",
+    "open": "Ouvert",
+    "closed": "Fermé",
+    "draft": "Brouillon"
+  },
+  "filters": {
+    "all": "Tous",
+    "open": "Ouvert",
+    "closed": "Fermé",
+    "createdByMe": "Créés par moi",
+    "assignedToMe": "Assignés à moi"
+  }
+}

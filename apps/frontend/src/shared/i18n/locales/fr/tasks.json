@@ -270,10 +270,16 @@
           "critical": "Impact critique"
         }
       }
-    }
+    },
+    "taskNamePlaceholder": "Enter task name",
+    "taskDescriptionPlaceholder": "Décrivez votre tâche...",
+    "selectProfile": "Sélectionner un profil"
   },
   "subtasks": {
-    "untitled": "Sous-tâche sans titre"
+    "untitled": "Sous-tâche sans titre",
+    "label": "Sous-tâche",
+    "addSubtask": "Ajouter une sous-tâche",
+    "noSubtasks": "Aucune sous-tâche pour le moment"
   },
   "bulkPR": {
     "selectAllInColumn": "Sélectionner toutes les tâches de la colonne",

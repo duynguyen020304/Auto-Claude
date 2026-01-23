@@ -1,0 +1,28 @@
+{
+  "title": "Changelog",
+  "buttons": {
+    "generate": "Generate",
+    "apply": "Apply",
+    "preview": "Preview"
+  },
+  "labels": {
+    "format": "Format",
+    "audience": "Audience",
+    "emojis": "Emojis",
+    "includeCommitList": "Include Commit List"
+  },
+  "placeholders": {
+    "selectTag": "Select tag...",
+    "version": "Version"
+  },
+  "format": {
+    "markdown": "Markdown",
+    "json": "JSON",
+    "html": "HTML"
+  },
+  "audience": {
+    "technical": "Technical",
+    "business": "Business",
+    "general": "General"
+  }
+}

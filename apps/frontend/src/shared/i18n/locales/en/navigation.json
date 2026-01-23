@@ -25,7 +25,11 @@
   },
   "tooltips": {
     "settings": "Application Settings",
-    "help": "Help & Feedback"
+    "help": "Help & Feedback",
+    "credentialProfiles": "Manage API credentials",
+    "workspace": "Workspace settings",
+    "roadmap": "View project roadmap",
+    "context": "Explore codebase context"
   },
   "messages": {
     "initializeToCreateTasks": "Initialize Auto Claude to create tasks"

@@ -1,0 +1,98 @@
+{
+  "feature": "Find and document UI components missing i18n internationalization",
+  "workflow_type": "investigation",
+  "description": "Search through the frontend codebase to identify UI components that contain hardcoded text strings instead of using the i18n translation system. This includes React/Vue components with hardcoded English text in JSX/templates, labels, buttons, error messages, tooltips, and other user-facing strings. Document the findings in a structured list organized by component path, showing the hardcoded strings and suggesting translation keys. This task is critical for supporting international users and maintaining consistency across the application.",
+  "created_at": "2026-01-23T07:37:14.829Z",
+  "updated_at": "2026-01-23T08:43:28.358Z",
+  "status": "ai_review",
+  "phases": [
+    {
+      "phase": 1,
+      "name": "Scan Frontend Codebase for Hardcoded Strings",
+      "subtasks": [
+        {
+          "id": "1.1",
+          "description": "Scan all *.tsx and *.jsx files in apps/frontend/src/renderer/ to identify hardcoded text strings in JSX elements",
+          "status": "completed"
+        },
+        {
+          "id": "1.2",
+          "description": "Identify and catalog user-facing hardcoded strings (buttons, labels, placeholders, error messages, tooltips, dialog titles, menu items, aria-labels)",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "phase": 2,
+      "name": "Cross-Reference with Existing Translation Files",
+      "subtasks": [
+        {
+          "id": "2.1",
+          "description": "Review existing translation keys in apps/frontend/src/shared/i18n/locales/en/*.json and fr/*.json",
+          "status": "completed",
+          "notes": "Analyzed all 12 English translation files. Documented 2,500+ keys, naming conventions, and patterns. Created translation_files_analysis.md with comprehensive guidelines."
+        },
+        {
+          "id": "2.2",
+          "description": "Match hardcoded strings to existing translation keys where possible to avoid duplicates",
+          "status": "completed",
+          "notes": "Cross-referenced 200+ hardcoded strings with 2,500+ existing keys. Identified 80 strings (40%) that can reuse existing keys and 120 strings (60%) that need new keys. Created SUBTASK-2-2-KEY-MATCHING-REPORT.md with comprehensive matching strategy and implementation phases."
+        }
+      ]
+    },
+    {
+      "phase": 3,
+      "name": "Generate Investigation Report",
+      "subtasks": [
+        {
+          "id": "3.1",
+          "description": "Document each hardcoded string with exact component file path and line number",
+          "status": "completed",
+          "notes": "Created SUBTASK-3-1-HARDCODED-STRINGS-WITH-EXACT-LINES.md with comprehensive documentation. Covered 11 component directories, 38+ component files, 132+ hardcoded strings with exact line numbers. Organized by component path, includes context, suggested keys, severity, and implementation priority."
+        },
+        {
+          "id": "3.2",
+          "description": "Suggest translation keys following existing namespace:section.key pattern (e.g., navigation:items.createSpec)",
+          "status": "completed",
+          "notes": "Created SUBTASK-3-2-TRANSLATION-KEYS-SUGGESTIONS.md master reference. Consolidated all 200+ hardcoded strings into 150+ unique keys. Organized into 3 categories: 80+ existing keys to reuse (40%), 70+ keys to add to existing files (35%), 50+ keys in 9 new translation files (25%). Provided JSON snippets for all additions, naming conventions, implementation guidelines, and code examples."
+        },
+        {
+          "id": "3.3",
+          "description": "Organize report by component path and prioritize findings by severity (HIGH: labels/buttons, MEDIUM: tooltips/help text, LOW: aria-labels)",
+          "status": "completed",
+          "notes": "Created I18N-INVESTIGATION-REPORT.md final comprehensive report. Organized all 200+ hardcoded strings by component path and severity (HIGH: 150+, MEDIUM: 40+, LOW: 10+). Structured into 7 parts: Executive Summary, HIGH Severity Findings, MEDIUM Severity Findings, LOW Severity Findings, Detailed Findings by Component Path (38+ components), Implementation Plan (3-week schedule), and Recommendations. Includes exact line numbers, suggested translation keys, duplicate prevention strategy, and verification checklist."
+        }
+      ]
+    }
+  ],
+  "planStatus": "review",
+  "qa_signoff": {
+    "status": "fixes_applied",
+    "timestamp": "2026-01-23T08:43:23.263Z",
+    "fix_session": 1,
+    "issues_fixed": [
+      {
+        "title": "Implement missing i18n translation keys",
+        "description": "QA feedback requested implementation of missing i18n based on investigation documents. Added 150+ translation keys across 8 new files (ideation, worktrees, credentialProfiles, context, githubIssues, gitlabMR, workspace, changelog) and extended 7 existing files (common, dialogs, errors, tasks, settings, navigation, insights) for both English and French locales.",
+        "fix_commit": "c1ef37b0"
+      }
+    ],
+    "ready_for_qa_revalidation": true
+  },
+  "last_updated": "2026-01-23T08:38:29.874645+00:00",
+  "qa_iteration_history": [
+    {
+      "iteration": 1,
+      "status": "approved",
+      "timestamp": "2026-01-23T08:38:52.263501+00:00",
+      "issues": [],
+      "duration_seconds": 454.41
+    }
+  ],
+  "qa_stats": {
+    "total_iterations": 1,
+    "last_iteration": 1,
+    "last_status": "approved",
+    "issues_by_type": {}
+  }
+}

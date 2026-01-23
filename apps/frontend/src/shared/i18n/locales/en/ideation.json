@@ -1,0 +1,25 @@
+{
+  "buttons": {
+    "generate": "Generate",
+    "addMore": "Add More Ideas",
+    "save": "Save Ideas",
+    "clear": "Clear All"
+  },
+  "dialogs": {
+    "configuration": "Ideation Configuration",
+    "addMoreIdeas": "Add More Ideas"
+  },
+  "labels": {
+    "ideas": "Ideas",
+    "requirements": "Requirements",
+    "constraints": "Constraints"
+  },
+  "placeholders": {
+    "enterIdea": "Enter your idea...",
+    "describeRequirements": "Describe your requirements..."
+  },
+  "empty": {
+    "noIdeas": "No ideas yet",
+    "generateFirst": "Generate your first idea"
+  }
+}

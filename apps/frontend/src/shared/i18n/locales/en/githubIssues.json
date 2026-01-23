@@ -1,0 +1,24 @@
+{
+  "title": "GitHub Issues",
+  "buttons": {
+    "createIssue": "Create Issue",
+    "refresh": "Refresh",
+    "filter": "Filter"
+  },
+  "searchPlaceholder": "Search issues...",
+  "noIssuesFound": "No issues found",
+  "labels": {
+    "issue": "Issue",
+    "pullRequest": "Pull Request",
+    "open": "Open",
+    "closed": "Closed",
+    "draft": "Draft"
+  },
+  "filters": {
+    "all": "All",
+    "open": "Open",
+    "closed": "Closed",
+    "createdByMe": "Created by me",
+    "assignedToMe": "Assigned to me"
+  }
+}

@@ -171,7 +171,7 @@
   },
   "credentialProfiles": {
     "title": "Credential Profiles",
-    "description": "Manage OAuth tokens and API keys with usage limits",
+    "description": "Manage API keys and OAuth credentials for external services",
     "addButton": "Add Profile",
     "type": {
       "api": "API",
@@ -267,11 +267,13 @@
         "errorTitle": "Failed to delete profile",
         "errorFallback": "An error occurred while deleting the profile."
       }
-    }
+    },
+    "noProfiles": "No profiles configured yet",
+    "createFirst": "Create your first profile"
   },
   "pools": {
     "title": "Credential Pools",
-    "description": "Group multiple credential profiles with rotation strategies and limits",
+    "description": "Organize credentials into pools for different environments",
     "addButton": "Add Pool",
     "empty": {
       "title": "No pools configured",
@@ -360,7 +362,9 @@
         "errorTitle": "Failed to delete pool",
         "errorFallback": "An error occurred while deleting the pool."
       }
-    }
+    },
+    "noPools": "No pools configured yet",
+    "createFirst": "Create your first pool"
   },
   "profiles": {
     "type": {
@@ -651,7 +655,11 @@
       "apiGateway": "API Gateway",
       "worker": "Worker",
       "other": "Other"
-    }
+    },
+    "title": "Workspace",
+    "description": "Configure workspace settings and preferences",
+    "workspaceName": "Workspace Name",
+    "workspaceDescription": "Description"
   },
   "integrations": {
     "title": "Integrations",

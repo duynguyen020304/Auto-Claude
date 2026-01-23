@@ -1,0 +1,28 @@
+{
+  "title": "Journal des modifications",
+  "buttons": {
+    "generate": "Générer",
+    "apply": "Appliquer",
+    "preview": "Aperçu"
+  },
+  "labels": {
+    "format": "Format",
+    "audience": "Public",
+    "emojis": "Emojis",
+    "includeCommitList": "Inclure la liste des commits"
+  },
+  "placeholders": {
+    "selectTag": "Sélectionner une balise...",
+    "version": "Version"
+  },
+  "format": {
+    "markdown": "Markdown",
+    "json": "JSON",
+    "html": "HTML"
+  },
+  "audience": {
+    "technical": "Technique",
+    "business": "Commercial",
+    "general": "Général"
+  }
+}

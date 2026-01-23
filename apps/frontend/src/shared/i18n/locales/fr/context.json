@@ -1,0 +1,33 @@
+{
+  "memories": {
+    "title": "Mémoires",
+    "searchPlaceholder": "Rechercher des modèles, informations, pièges...",
+    "total": "Total",
+    "sessions": "Sessions",
+    "codebase": "Base de code",
+    "patterns": "Modèles",
+    "gotchas": "Pièges",
+    "source": "Source",
+    "patternType": "Type de modèle",
+    "noMemoriesFound": "Aucune mémoire trouvée",
+    "viewMemory": "Voir la mémoire",
+    "deleteMemory": "Supprimer la mémoire"
+  },
+  "services": {
+    "title": "Services",
+    "databases": "Bases de données",
+    "email": "E-mail",
+    "payments": "Paiements",
+    "cache": "Cache",
+    "storage": "Stockage",
+    "api": "API",
+    "auth": "Authentification"
+  },
+  "projectIndex": {
+    "title": "Index du projet",
+    "overview": "Aperçu",
+    "services": "Services",
+    "technologies": "Technologies",
+    "architecture": "Architecture"
+  }
+}

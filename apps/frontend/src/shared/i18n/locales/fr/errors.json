@@ -5,5 +5,37 @@
       "titleSuffix": "(Erreur JSON)",
       "description": "⚠️ Erreur d'analyse JSON : {{error}}\n\nLe fichier implementation_plan.json est malformé. Exécutez la correction automatique du backend ou réparez le fichier manuellement."
     }
+  },
+  "github": {
+    "failedToDetectRepo": "Échec de la détection du dépôt",
+    "failedToLoadBranches": "Échec du chargement des branches",
+    "enterRepoName": "Veuillez entrer un nom de dépôt",
+    "selectOwner": "Veuillez sélectionner un propriétaire pour le dépôt",
+    "authenticationFailed": "Échec de l'authentification GitHub",
+    "repositoryNotFound": "Dépôt non trouvé",
+    "branchLoadError": "Impossible de charger les informations de la branche"
+  },
+  "credentialProfiles": {
+    "saveFailed": "Échec de l'enregistrement du profil",
+    "deleteFailed": "Échec de la suppression du profil",
+    "createFailed": "Échec de la création du profil",
+    "invalidCredentials": "Identifiants invalides",
+    "tokenRequired": "Le jeton est requis"
+  },
+  "workspace": {
+    "createFailed": "Échec de la création de l'espace de travail",
+    "updateFailed": "Échec de la mise à jour de l'espace de travail",
+    "deleteFailed": "Échec de la suppression de l'espace de travail",
+    "nameRequired": "Le nom de l'espace de travail est requis"
+  },
+  "gitlab": {
+    "failedToCreateMR": "Échec de la création de la demande de fusion",
+    "failedToLoadProjects": "Échec du chargement des projets",
+    "authenticationFailed": "Échec de l'authentification GitLab"
+  },
+  "linear": {
+    "failedToCreateIssue": "Échec de la création du ticket",
+    "failedToLoadTeams": "Échec du chargement des équipes",
+    "authenticationFailed": "Échec de l'authentification Linear"
   }
 }

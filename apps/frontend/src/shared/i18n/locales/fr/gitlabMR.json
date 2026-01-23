@@ -1,0 +1,24 @@
+{
+  "title": "Demandes de fusion GitLab",
+  "buttons": {
+    "createMR": "Créer une MR",
+    "refresh": "Actualiser"
+  },
+  "searchPlaceholder": "Rechercher des demandes de fusion...",
+  "noMergeRequestsFound": "Aucune demande de fusion trouvée",
+  "labels": {
+    "mergeRequest": "Demande de fusion",
+    "open": "Ouvert",
+    "merged": "Fusionné",
+    "closed": "Fermé",
+    "draft": "Brouillon"
+  },
+  "form": {
+    "sourceBranch": "Branche source",
+    "targetBranch": "Branche cible",
+    "title": "Titre",
+    "description": "Description",
+    "assignee": "Assignataire",
+    "reviewer": "Relecteur"
+  }
+}

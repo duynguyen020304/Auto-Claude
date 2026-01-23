@@ -1,0 +1,18 @@
+{
+  "title": "Arborescences de travail",
+  "deleteWarning": "Cela supprimera définitivement cette arborescence de travail. Cette action ne peut pas être annulée.",
+  "deleteTerminalWarning": "Cela supprimera définitivement cette arborescence de travail terminale. Cette action ne peut pas être annulée.",
+  "confirmDelete": "Supprimer l'arborescence de travail ?",
+  "confirmDeleteTerminal": "Supprimer l'arborescence de travail terminale ?",
+  "noWorktrees": "Aucune arborescence de travail trouvée",
+  "createWorktree": "Créer une arborescence de travail",
+  "switchWorktree": "Basculer vers l'arborescence de travail",
+  "activeWorktree": "Arborescence de travail active",
+  "worktreeName": "Nom de l'arborescence de travail",
+  "branchName": "Nom de la branche",
+  "status": {
+    "active": "Actif",
+    "inactive": "Inactif",
+    "dirty": "Contient des modifications"
+  }
+}

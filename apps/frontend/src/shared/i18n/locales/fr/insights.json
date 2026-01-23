@@ -18,5 +18,29 @@
     "truncatedTooltip": "Affichage de {{lines}} lignes sur {{total}}",
     "lines": "{{count}} lignes",
     "linesIncluded": "{{included}} inclus"
+  },
+  "chatHistory": {
+    "title": "Historique des discussions",
+    "noConversations": "Aucune discussion pour le moment",
+    "deleteWarning": "Cela supprimera définitivement cette conversation et tous ses messages. Cette action ne peut pas être annulée.",
+    "messageCount": "{{count}} message",
+    "messageCount_plural": "{{count}} messages",
+    "searchPlaceholder": "Rechercher des discussions...",
+    "renameConversation": "Renommer la conversation",
+    "conversationName": "Nom de la conversation"
+  },
+  "search": {
+    "placeholder": "Poser des questions sur votre base de code...",
+    "searchButton": "Rechercher",
+    "searching": "Recherche...",
+    "noResults": "Aucun résultat trouvé",
+    "resultsCount": "{{count}} résultat",
+    "resultsCount_plural": "{{count}} résultats"
+  },
+  "sessions": {
+    "title": "Sessions",
+    "startNew": "Commencer une nouvelle session",
+    "continueSession": "Continuer la session",
+    "noSessions": "Aucune session pour le moment"
   }
 }
