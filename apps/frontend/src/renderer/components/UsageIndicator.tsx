@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Activity, TrendingUp, AlertCircle, Clock, User, ChevronRight, Info } from 'lucide-react';
+import { Activity, TrendingUp, AlertCircle, Clock, User, ChevronRight, Info, Key } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -14,12 +14,22 @@ import {
   TooltipTrigger,
 } from './ui/tooltip';
 import { Button } from './ui/button';
+import { Label } from './ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from './ui/select';
 import { useTranslation } from 'react-i18next';
 import { formatTimeRemaining, localizeUsageWindowLabel, hasHardcodedText } from '../../shared/utils/format-time';
 import type { ClaudeUsageSnapshot } from '../../shared/types/agent';
+import type { APIProfile } from '../../shared/types/profile';
+import { useSettingsStore } from '../stores/settings-store';
 
 export function UsageIndicator() {
-  const { t, i18n } = useTranslation(['common']);
+  const { t, i18n } = useTranslation(['common', 'tasks']);
   const [usage, setUsage] = useState<ClaudeUsageSnapshot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAvailable, setIsAvailable] = useState(false);
@@ -28,6 +38,13 @@ export function UsageIndicator() {
   const [timePeriod, setTimePeriod] = useState<'7d' | '30d'>('7d');
   const [chartType, setChartType] = useState<'area' | 'line' | 'bar'>('area');
   const [metric, setMetric] = useState<'tokens' | 'tools'>('tokens');
+
+  // Profile selection
+  const { profiles, activeProfileId, setActiveProfile } = useSettingsStore();
+
+  const handleProfileChange = async (profileId: string) => {
+    await setActiveProfile(profileId);
+  };
 
   /**
    * Helper function to format large numbers with locale-aware compact notation
@@ -362,16 +379,42 @@ export function UsageIndicator() {
               )}
             </div>
 
-            {/* Active account footer */}
-            <div className="pt-2 border-t flex items-center justify-between">
+            {/* Profile selector */}
+            <div className="pt-2 border-t space-y-2">
               <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                 <User className="h-3 w-3" />
                 <span>{t('common:usage.activeAccount')}</span>
               </div>
-              <div className="flex items-center gap-1 text-xs font-medium text-primary">
-                <span>{usage.profileName}</span>
-                <ChevronRight className="h-3 w-3" />
-              </div>
+              <Select
+                value={activeProfileId || undefined}
+                onValueChange={handleProfileChange}
+                disabled={!profiles || profiles.length === 0}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder={t('tasks:apiProfile.placeholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {profiles && profiles.length > 0 ? (
+                    profiles.map((profile: APIProfile) => (
+                      <SelectItem key={profile.id} value={profile.id}>
+                        <div className="flex items-center gap-2">
+                          <Key className="h-3 w-3 shrink-0" />
+                          <div>
+                            <span className="font-medium text-xs">{profile.name}</span>
+                            <span className="ml-2 text-[10px] text-muted-foreground">
+                              ({profile.baseUrl})
+                            </span>
+                          </div>
+                        </div>
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="empty" disabled>
+                      {t('tasks:apiProfile.empty')}
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </TooltipContent>
