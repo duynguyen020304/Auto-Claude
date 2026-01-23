@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { AppSettings } from '../../shared/types';
 import type { APIProfile, ProfileFormData, TestConnectionResult, DiscoverModelsResult, ModelInfo } from '../../shared/types/profile';
 import type { CredentialProfile, Pool, CredentialProfileFormData, PoolFormData } from '../../shared/types/credential-profile';
+import type { ClaudeUsageSnapshot } from '../../shared/types/agent';
 import { DEFAULT_APP_SETTINGS } from '../../shared/constants';
 import { toast } from '../hooks/use-toast';
 import { markSettingsLoaded } from '../lib/sentry';
@@ -35,6 +36,9 @@ interface SettingsState {
   modelsLoading: boolean;
   modelsError: string | null;
   discoveredModels: Map<string, ModelInfo[]>; // Cache key -> models mapping
+
+  // Usage cache state
+  cachedUsage: Map<string, { data: ClaudeUsageSnapshot; fetchedAt: number }>; // profileId -> { data, timestamp } mapping
 
   // Actions
   setSettings: (settings: AppSettings) => void;
@@ -105,6 +109,9 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   modelsLoading: false,
   modelsError: null,
   discoveredModels: new Map<string, ModelInfo[]>(),
+
+  // Usage cache state
+  cachedUsage: new Map<string, { data: ClaudeUsageSnapshot; fetchedAt: number }>(),
 
   setSettings: (settings) => set({ settings }),
 
