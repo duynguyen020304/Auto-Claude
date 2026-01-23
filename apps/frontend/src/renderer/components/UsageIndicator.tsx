@@ -55,6 +55,11 @@ export function UsageIndicator() {
     setProfileError(null);
 
     try {
+      // Invalidate cache for previous profile when switching
+      if (activeProfileId) {
+        useSettingsStore.getState().invalidateUsageCache(activeProfileId);
+      }
+
       await setActiveProfile(profileId);
 
       // Request usage data refresh for the new profile
@@ -63,6 +68,9 @@ export function UsageIndicator() {
       if (result.success && result.data) {
         setUsage(result.data);
         setIsAvailable(true);
+
+        // Cache the new profile's usage data
+        useSettingsStore.getState().setCachedUsage(profileId, result.data);
       } else {
         // Profile switched but no usage data available
         setUsage(null);
@@ -136,32 +144,84 @@ export function UsageIndicator() {
         setUsage(snapshot);
         setIsAvailable(true);
         setIsLoading(false);
+
+        // Update cache when fresh data arrives
+        if (activeProfileId) {
+          useSettingsStore.getState().setCachedUsage(activeProfileId, snapshot);
+        }
       },
     );
-    // Request initial usage on mount
-    window.electronAPI
-      .requestUsageUpdate()
-      .then((result) => {
-        setIsLoading(false);
+
+    // Cache-first: Check for cached data before fetching
+    const loadUsageData = async () => {
+      // Check cache first if we have an active profile
+      if (activeProfileId) {
+        const cached = useSettingsStore.getState().getCachedUsage(activeProfileId);
+        if (cached) {
+          console.log("[UsageIndicator] Cache hit - using cached data");
+          setUsage(cached);
+          setIsAvailable(true);
+          setIsLoading(false);
+        } else {
+          console.log("[UsageIndicator] Cache miss - showing loading state");
+          setIsLoading(true);
+        }
+      } else {
+        setIsLoading(true);
+      }
+
+      // Request fresh data in background
+      try {
+        const result = await window.electronAPI.requestUsageUpdate();
+
+        // Only update loading state if we didn't have cached data
+        if (activeProfileId) {
+          const hadCache = useSettingsStore.getState().getCachedUsage(activeProfileId) !== null;
+          if (!hadCache) {
+            setIsLoading(false);
+          }
+        } else {
+          setIsLoading(false);
+        }
+
         if (result.success && result.data) {
           setUsage(result.data);
           setIsAvailable(true);
+
+          // Cache the fresh data
+          if (activeProfileId) {
+            useSettingsStore.getState().setCachedUsage(activeProfileId, result.data);
+          }
         } else {
           // No usage data available (endpoint not supported or error)
+          if (!usage) {
+            setIsAvailable(false);
+          }
+        }
+      } catch (error) {
+        // Handle errors (IPC failure, network issues, etc.)
+        console.warn("[UsageIndicator] Failed to fetch usage data:", error);
+
+        // Only update loading state if we didn't have cached data
+        if (activeProfileId) {
+          const hadCache = useSettingsStore.getState().getCachedUsage(activeProfileId) !== null;
+          if (!hadCache) {
+            setIsLoading(false);
+            setIsAvailable(false);
+          }
+        } else {
+          setIsLoading(false);
           setIsAvailable(false);
         }
-      })
-      .catch((error) => {
-        // Handle errors (IPC failure, network issues, etc.)
-        console.warn("[UsageIndicator] Failed to fetch initial usage:", error);
-        setIsLoading(false);
-        setIsAvailable(false);
-      });
+      }
+    };
+
+    loadUsageData();
 
     return () => {
       unsubscribe();
     };
-  }, []);
+  }, [activeProfileId]);
 
   // Show loading state
   if (isLoading) {
