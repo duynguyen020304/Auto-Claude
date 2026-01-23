@@ -2,17 +2,16 @@
  * Usage Indicator - Real-time Claude usage display in header
  *
  * Displays current session/weekly usage as a badge with color-coded status.
- * Shows detailed breakdown on hover.
+ * Shows detailed usage analytics dashboard in a popover on click.
  */
 
 import React, { useState, useEffect } from 'react';
 import { Activity, TrendingUp, AlertCircle, Clock, User, ChevronRight, Info, Key } from 'lucide-react';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from './ui/tooltip';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from './ui/popover';
 import { Button } from './ui/button';
 import { Label } from './ui/label';
 import {
@@ -148,24 +147,22 @@ export function UsageIndicator() {
   // Show unavailable state when endpoint doesn't return data
   if (!isAvailable || !usage) {
     return (
-      <TooltipProvider delayDuration={200}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-white/10 bg-[#161618] text-gray-400 cursor-help">
-              <Activity className="h-3.5 w-3.5" />
-              <span className="text-xs font-semibold">{t('common:usage.notAvailable')}</span>
-            </div>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs w-64 bg-[#161618] border border-white/10">
-            <div className="space-y-1">
-              <p className="font-medium">{t('common:usage.dataUnavailable')}</p>
-              <p className="text-gray-400 text-[10px]">
-                {t('common:usage.dataUnavailableDescription')}
-              </p>
-            </div>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <Popover>
+        <PopoverTrigger asChild>
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-white/10 bg-[#161618] text-gray-400 cursor-help">
+            <Activity className="h-3.5 w-3.5" />
+            <span className="text-xs font-semibold">{t('common:usage.notAvailable')}</span>
+          </div>
+        </PopoverTrigger>
+        <PopoverContent align="start" sideOffset={4} className="text-xs w-64 bg-[#161618] border border-white/10">
+          <div className="space-y-1">
+            <p className="font-medium">{t('common:usage.dataUnavailable')}</p>
+            <p className="text-gray-400 text-[10px]">
+              {t('common:usage.dataUnavailableDescription')}
+            </p>
+          </div>
+        </PopoverContent>
+      </Popover>
     );
   }
 
@@ -685,174 +682,172 @@ export function UsageIndicator() {
   };
 
   return (
-    <TooltipProvider delayDuration={200}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-white/10 bg-[#161618] transition-all hover:opacity-80 ${badgeColorClasses}`}
-            aria-label={t('common:usage.usageStatusAriaLabel')}
-          >
-            <Icon className="h-3.5 w-3.5" />
-            <span className="text-xs font-semibold font-mono text-gray-200">
-              {Math.round(badgeUsage)}%
-            </span>
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" className="text-xs w-[600px] p-0 bg-[#161618] border border-white/10 max-h-[600px] overflow-y-auto">
-          <div className="p-3 space-y-3">
-            {/* Header with overall status */}
-            <div className="flex items-center pb-2 border-b border-white/10">
-              <Icon className="h-3.5 w-3.5 text-indigo-400" />
-              <span className="font-semibold text-xs text-gray-200">{t('common:usage.usageBreakdown')}</span>
-            </div>
-
-            {/* Filter Bar */}
-            {renderFilterBar()}
-
-            {/* Chart Visualization */}
-            <div className="h-[200px] border border-white/10 rounded-lg overflow-hidden">
-              {renderChart()}
-            </div>
-
-            {/* Dashboard Cards */}
-            {renderDashboardCards()}
-
-            {/* Session/5-hour usage */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-400 font-medium text-[11px] flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  {sessionLabel}
-                </span>
-                <span className={`font-semibold font-mono text-xs ${
-                  usage.sessionPercent >= 95 ? 'text-red-400' :
-                  usage.sessionPercent >= 91 ? 'text-orange-400' :
-                  usage.sessionPercent >= 71 ? 'text-yellow-400' :
-                  'text-emerald-400'
-                }`}>
-                  {Math.round(usage.sessionPercent)}%
-                </span>
-              </div>
-              {sessionResetTime && (
-                <div className="text-[10px] text-gray-400 pl-4 flex items-center gap-1">
-                  <Info className="h-2.5 w-2.5" />
-                  {sessionResetTime}
-                </div>
-              )}
-              {/* Enhanced progress bar with gradient */}
-              <div className="h-2 bg-white/5 rounded-full overflow-hidden shadow-inner">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ease-out relative overflow-hidden ${
-                    usage.sessionPercent >= 95 ? 'bg-gradient-to-r from-red-500 to-red-400' :
-                    usage.sessionPercent >= 91 ? 'bg-gradient-to-r from-orange-500 to-orange-400' :
-                    usage.sessionPercent >= 71 ? 'bg-gradient-to-r from-yellow-500 to-yellow-400' :
-                    'bg-gradient-to-r from-emerald-500 to-emerald-400'
-                  }`}
-                  style={{ width: `${Math.min(usage.sessionPercent, 100)}%` }}
-                >
-                  {/* Subtle shine effect */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent motion-safe:animate-pulse" />
-                </div>
-              </div>
-              {/* Raw usage value with better styling */}
-              {usage.sessionUsageValue != null && usage.sessionUsageLimit != null && (
-                <div className="flex items-center justify-between text-[10px]">
-                  <span className="text-gray-400">{t('common:usage.used')}</span>
-                  <span className="font-medium font-mono text-gray-200">
-                    {formatUsageValue(usage.sessionUsageValue)} <span className="text-gray-400 mx-1">/</span> {formatUsageValue(usage.sessionUsageLimit)}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Weekly/Monthly usage */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-400 font-medium text-[11px] flex items-center gap-1">
-                  <TrendingUp className="h-3 w-3" />
-                  {weeklyLabel}
-                </span>
-                <span className={`font-semibold font-mono text-xs ${
-                  usage.weeklyPercent >= 99 ? 'text-red-400' :
-                  usage.weeklyPercent >= 91 ? 'text-orange-400' :
-                  usage.weeklyPercent >= 71 ? 'text-yellow-400' :
-                  'text-emerald-400'
-                }`}>
-                  {Math.round(usage.weeklyPercent)}%
-                </span>
-              </div>
-              {weeklyResetTime && (
-                <div className="text-[10px] text-gray-400 pl-4 flex items-center gap-1">
-                  <Info className="h-2.5 w-2.5" />
-                  {weeklyResetTime}
-                </div>
-              )}
-              {/* Enhanced progress bar with gradient */}
-              <div className="h-2 bg-white/5 rounded-full overflow-hidden shadow-inner">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ease-out relative overflow-hidden ${
-                    usage.weeklyPercent >= 99 ? 'bg-gradient-to-r from-red-500 to-red-400' :
-                    usage.weeklyPercent >= 91 ? 'bg-gradient-to-r from-orange-500 to-orange-400' :
-                    usage.weeklyPercent >= 71 ? 'bg-gradient-to-r from-yellow-500 to-yellow-400' :
-                    'bg-gradient-to-r from-emerald-500 to-emerald-400'
-                  }`}
-                  style={{ width: `${Math.min(usage.weeklyPercent, 100)}%` }}
-                >
-                  {/* Subtle shine effect */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent motion-safe:animate-pulse" />
-                </div>
-              </div>
-              {/* Raw usage value with better styling */}
-              {usage.weeklyUsageValue != null && usage.weeklyUsageLimit != null && (
-                <div className="flex items-center justify-between text-[10px]">
-                  <span className="text-gray-400">{t('common:usage.used')}</span>
-                  <span className="font-medium font-mono text-gray-200">
-                    {formatUsageValue(usage.weeklyUsageValue)} <span className="text-gray-400 mx-1">/</span> {formatUsageValue(usage.weeklyUsageLimit)}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Profile selector */}
-            <div className="pt-2 border-t border-white/10 space-y-2">
-              <div className="flex items-center gap-1.5 text-[10px] text-gray-400">
-                <User className="h-3 w-3" />
-                <span>{t('common:usage.activeAccount')}</span>
-              </div>
-              <Select
-                value={activeProfileId || undefined}
-                onValueChange={handleProfileChange}
-                disabled={!profiles || profiles.length === 0}
-              >
-                <SelectTrigger className="h-8 text-xs bg-white/5 border-white/10 text-gray-200">
-                  <SelectValue placeholder={t('tasks:apiProfile.placeholder')} />
-                </SelectTrigger>
-                <SelectContent className="bg-[#161618] border-white/10">
-                  {profiles && profiles.length > 0 ? (
-                    profiles.map((profile: APIProfile) => (
-                      <SelectItem key={profile.id} value={profile.id}>
-                        <div className="flex items-center gap-2">
-                          <Key className="h-3 w-3 shrink-0 text-indigo-400" />
-                          <div>
-                            <span className="font-medium text-xs text-gray-200">{profile.name}</span>
-                            <span className="ml-2 text-[10px] text-gray-400">
-                              ({profile.baseUrl})
-                            </span>
-                          </div>
-                        </div>
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="empty" disabled>
-                      {t('tasks:apiProfile.empty')}
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-white/10 bg-[#161618] transition-all hover:opacity-80 ${badgeColorClasses}`}
+          aria-label={t('common:usage.usageStatusAriaLabel')}
+        >
+          <Icon className="h-3.5 w-3.5" />
+          <span className="text-xs font-semibold font-mono text-gray-200">
+            {Math.round(badgeUsage)}%
+          </span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" sideOffset={4} className="text-xs w-[600px] p-0 bg-[#161618] border border-white/10 max-h-[600px] overflow-y-auto">
+        <div className="p-3 space-y-3">
+          {/* Header with overall status */}
+          <div className="flex items-center pb-2 border-b border-white/10">
+            <Icon className="h-3.5 w-3.5 text-indigo-400" />
+            <span className="font-semibold text-xs text-gray-200">{t('common:usage.usageBreakdown')}</span>
           </div>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+
+          {/* Filter Bar */}
+          {renderFilterBar()}
+
+          {/* Chart Visualization */}
+          <div className="h-[200px] border border-white/10 rounded-lg overflow-hidden">
+            {renderChart()}
+          </div>
+
+          {/* Dashboard Cards */}
+          {renderDashboardCards()}
+
+          {/* Session/5-hour usage */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-gray-400 font-medium text-[11px] flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                {sessionLabel}
+              </span>
+              <span className={`font-semibold font-mono text-xs ${
+                usage.sessionPercent >= 95 ? 'text-red-400' :
+                usage.sessionPercent >= 91 ? 'text-orange-400' :
+                usage.sessionPercent >= 71 ? 'text-yellow-400' :
+                'text-emerald-400'
+              }`}>
+                {Math.round(usage.sessionPercent)}%
+              </span>
+            </div>
+            {sessionResetTime && (
+              <div className="text-[10px] text-gray-400 pl-4 flex items-center gap-1">
+                <Info className="h-2.5 w-2.5" />
+                {sessionResetTime}
+              </div>
+            )}
+            {/* Enhanced progress bar with gradient */}
+            <div className="h-2 bg-white/5 rounded-full overflow-hidden shadow-inner">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ease-out relative overflow-hidden ${
+                  usage.sessionPercent >= 95 ? 'bg-gradient-to-r from-red-500 to-red-400' :
+                  usage.sessionPercent >= 91 ? 'bg-gradient-to-r from-orange-500 to-orange-400' :
+                  usage.sessionPercent >= 71 ? 'bg-gradient-to-r from-yellow-500 to-yellow-400' :
+                  'bg-gradient-to-r from-emerald-500 to-emerald-400'
+                }`}
+                style={{ width: `${Math.min(usage.sessionPercent, 100)}%` }}
+              >
+                {/* Subtle shine effect */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent motion-safe:animate-pulse" />
+              </div>
+            </div>
+            {/* Raw usage value with better styling */}
+            {usage.sessionUsageValue != null && usage.sessionUsageLimit != null && (
+              <div className="flex items-center justify-between text-[10px]">
+                <span className="text-gray-400">{t('common:usage.used')}</span>
+                <span className="font-medium font-mono text-gray-200">
+                  {formatUsageValue(usage.sessionUsageValue)} <span className="text-gray-400 mx-1">/</span> {formatUsageValue(usage.sessionUsageLimit)}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Weekly/Monthly usage */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-gray-400 font-medium text-[11px] flex items-center gap-1">
+                <TrendingUp className="h-3 w-3" />
+                {weeklyLabel}
+              </span>
+              <span className={`font-semibold font-mono text-xs ${
+                usage.weeklyPercent >= 99 ? 'text-red-400' :
+                usage.weeklyPercent >= 91 ? 'text-orange-400' :
+                usage.weeklyPercent >= 71 ? 'text-yellow-400' :
+                'text-emerald-400'
+              }`}>
+                {Math.round(usage.weeklyPercent)}%
+              </span>
+            </div>
+            {weeklyResetTime && (
+              <div className="text-[10px] text-gray-400 pl-4 flex items-center gap-1">
+                <Info className="h-2.5 w-2.5" />
+                {weeklyResetTime}
+              </div>
+            )}
+            {/* Enhanced progress bar with gradient */}
+            <div className="h-2 bg-white/5 rounded-full overflow-hidden shadow-inner">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ease-out relative overflow-hidden ${
+                  usage.weeklyPercent >= 99 ? 'bg-gradient-to-r from-red-500 to-red-400' :
+                  usage.weeklyPercent >= 91 ? 'bg-gradient-to-r from-orange-500 to-orange-400' :
+                  usage.weeklyPercent >= 71 ? 'bg-gradient-to-r from-yellow-500 to-yellow-400' :
+                  'bg-gradient-to-r from-emerald-500 to-emerald-400'
+                }`}
+                style={{ width: `${Math.min(usage.weeklyPercent, 100)}%` }}
+              >
+                {/* Subtle shine effect */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent motion-safe:animate-pulse" />
+              </div>
+            </div>
+            {/* Raw usage value with better styling */}
+            {usage.weeklyUsageValue != null && usage.weeklyUsageLimit != null && (
+              <div className="flex items-center justify-between text-[10px]">
+                <span className="text-gray-400">{t('common:usage.used')}</span>
+                <span className="font-medium font-mono text-gray-200">
+                  {formatUsageValue(usage.weeklyUsageValue)} <span className="text-gray-400 mx-1">/</span> {formatUsageValue(usage.weeklyUsageLimit)}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Profile selector */}
+          <div className="pt-2 border-t border-white/10 space-y-2">
+            <div className="flex items-center gap-1.5 text-[10px] text-gray-400">
+              <User className="h-3 w-3" />
+              <span>{t('common:usage.activeAccount')}</span>
+            </div>
+            <Select
+              value={activeProfileId || undefined}
+              onValueChange={handleProfileChange}
+              disabled={!profiles || profiles.length === 0}
+            >
+              <SelectTrigger className="h-8 text-xs bg-white/5 border-white/10 text-gray-200">
+                <SelectValue placeholder={t('tasks:apiProfile.placeholder')} />
+              </SelectTrigger>
+              <SelectContent className="bg-[#161618] border-white/10">
+                {profiles && profiles.length > 0 ? (
+                  profiles.map((profile: APIProfile) => (
+                    <SelectItem key={profile.id} value={profile.id}>
+                      <div className="flex items-center gap-2">
+                        <Key className="h-3 w-3 shrink-0 text-indigo-400" />
+                        <div>
+                          <span className="font-medium text-xs text-gray-200">{profile.name}</span>
+                          <span className="ml-2 text-[10px] text-gray-400">
+                            ({profile.baseUrl})
+                          </span>
+                        </div>
+                      </div>
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="empty" disabled>
+                    {t('tasks:apiProfile.empty')}
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
