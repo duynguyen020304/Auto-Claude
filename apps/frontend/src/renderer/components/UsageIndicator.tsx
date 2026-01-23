@@ -309,9 +309,9 @@ export function UsageIndicator() {
    * TODO: Wire up real data in Phase 2 (subtask-2-2)
    */
   const renderDashboardCards = () => {
-    // Get active profile name
+    // Get active profile name - prioritize usage snapshot profile name, fall back to settings store
     const activeProfile = profiles?.find(p => p.id === activeProfileId);
-    const profileName = activeProfile?.name || t('tasks:apiProfile.placeholder');
+    const profileName = usage?.profileName || activeProfile?.name || t('tasks:apiProfile.placeholder');
 
     return (
       <div className="grid grid-cols-2 gap-3 p-4 bg-[#161618]">
