@@ -84,6 +84,8 @@ interface SettingsState {
 
   // Usage cache actions
   getCachedUsage: (profileId: string) => ClaudeUsageSnapshot | null;
+  setCachedUsage: (profileId: string, data: ClaudeUsageSnapshot) => void;
+  invalidateUsageCache: (profileId?: string) => void;
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
@@ -630,6 +632,32 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     // Return cached data if valid
     console.log('[settings-store] Usage cache hit for profile:', profileId, 'age:', cacheAge, 'ms');
     return cached.data;
+  },
+
+  setCachedUsage: (profileId: string, data: ClaudeUsageSnapshot) => {
+    set((state) => ({
+      cachedUsage: new Map(state.cachedUsage).set(profileId, {
+        data,
+        fetchedAt: Date.now()
+      })
+    }));
+    console.log('[settings-store] Cached usage data for profile:', profileId);
+  },
+
+  invalidateUsageCache: (profileId?: string) => {
+    if (profileId) {
+      // Invalidate specific profile's cache
+      set((state) => {
+        const newCache = new Map(state.cachedUsage);
+        newCache.delete(profileId);
+        console.log('[settings-store] Invalidated usage cache for profile:', profileId);
+        return { cachedUsage: newCache };
+      });
+    } else {
+      // Invalidate entire cache
+      set({ cachedUsage: new Map() });
+      console.log('[settings-store] Invalidated entire usage cache');
+    }
   },
 }));
 
