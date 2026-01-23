@@ -14,7 +14,8 @@ import {
   FileText,
   FolderSearch,
   PanelLeftClose,
-  PanelLeft
+  PanelLeft,
+  X
 } from 'lucide-react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -35,12 +36,14 @@ import {
   updateModelConfig,
   createTaskFromSuggestion,
   setupInsightsListeners,
-  resetStatus
+  resetStatus,
+  abortGeneration,
+  type InsightsSessionState
 } from '../stores/insights-store';
 import { useTaskStore } from '../stores/task-store';
 import { ChatHistorySidebar } from './ChatHistorySidebar';
 import { InsightsModelSelector } from './InsightsModelSelector';
-import type { InsightsChatMessage, InsightsModelConfig } from '../../shared/types';
+import type { InsightsChatMessage, InsightsModelConfig, InsightsSessionSummary } from '../../shared/types';
 import {
   TASK_CATEGORY_LABELS,
   TASK_CATEGORY_COLORS,
@@ -91,12 +94,15 @@ interface InsightsProps {
 export function Insights({ projectId }: InsightsProps) {
   const { t } = useTranslation('common');
   const session = useInsightsStore((state) => state.session);
+  const currentSessionId = useInsightsStore((state) => state.currentSessionId);
   const sessions = useInsightsStore((state) => state.sessions);
   const status = useInsightsStore((state) => state.status);
   const streamingContent = useInsightsStore((state) => state.streamingContent);
   const currentTool = useInsightsStore((state) => state.currentTool);
   const isLoadingSessions = useInsightsStore((state) => state.isLoadingSessions);
   const addTask = useTaskStore((state) => state.addTask);
+  const abortControllers = useInsightsStore((state) => state.abortControllers);
+  const sessionStates = useInsightsStore((state) => state.sessionStates);
 
   // Create markdown components with translated accessibility text
   const markdownComponents = useMemo(() => ({
@@ -153,7 +159,7 @@ export function Insights({ projectId }: InsightsProps) {
   };
 
   const handleSelectSession = async (sessionId: string) => {
-    if (sessionId !== session?.id) {
+    if (sessionId !== currentSessionId) {
       await switchSession(projectId, sessionId);
     }
   };
@@ -208,6 +214,10 @@ export function Insights({ projectId }: InsightsProps) {
     }
   };
 
+  const handleAbortSession = (sessionId: string) => {
+    abortGeneration(sessionId);
+  };
+
   const isLoading = status.phase === 'thinking' || status.phase === 'streaming';
   const messages = session?.messages || [];
 
@@ -217,7 +227,7 @@ export function Insights({ projectId }: InsightsProps) {
       {showSidebar && (
         <ChatHistorySidebar
           sessions={sessions}
-          currentSessionId={session?.id || null}
+          currentSessionId={currentSessionId}
           isLoading={isLoadingSessions}
           onNewSession={handleNewSession}
           onSelectSession={handleSelectSession}
@@ -273,6 +283,16 @@ export function Insights({ projectId }: InsightsProps) {
 
       {/* Messages */}
       <ScrollArea className="flex-1 px-6 py-4">
+        {/* Concurrent Sessions Indicator */}
+        <ConcurrentSessions
+          sessions={sessions}
+          abortControllers={abortControllers}
+          sessionStates={sessionStates}
+          currentSessionId={currentSessionId}
+          onAbortSession={handleAbortSession}
+          onSelectSession={handleSelectSession}
+        />
+
         {messages.length === 0 && !streamingContent ? (
           <div className="flex h-full flex-col items-center justify-center text-center">
             <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted">
@@ -684,6 +704,107 @@ function ToolIndicator({ name, input }: ToolIndicatorProps) {
           {input}
         </span>
       )}
+    </div>
+  );
+}
+
+// Concurrent sessions indicator component
+interface ConcurrentSessionsProps {
+  sessions: InsightsSessionSummary[];
+  abortControllers: Map<string, AbortController>;
+  sessionStates: Map<string, InsightsSessionState>;
+  currentSessionId: string | null;
+  onAbortSession: (sessionId: string) => void;
+  onSelectSession: (sessionId: string) => void;
+}
+
+function ConcurrentSessions({
+  sessions,
+  abortControllers,
+  sessionStates,
+  currentSessionId,
+  onAbortSession,
+  onSelectSession
+}: ConcurrentSessionsProps) {
+  // Get all active generating session IDs (sessions with abort controllers are generating)
+  const activeSessionIds = Array.from(abortControllers.keys());
+
+  // If only one or zero active sessions, don't show anything
+  if (activeSessionIds.length <= 1) {
+    return null;
+  }
+
+  // Map session IDs to session details
+  const activeSessions = activeSessionIds
+    .map((sessionId) => {
+      const session = sessions.find((s) => s.id === sessionId);
+      const sessionState = sessionStates.get(sessionId);
+      return {
+        id: sessionId,
+        title: session?.title || `Session ${sessionId.slice(-8)}`,
+        status: sessionState?.status,
+        currentTool: sessionState?.currentTool,
+        isCurrent: sessionId === currentSessionId
+      };
+    })
+    .filter(Boolean);
+
+  return (
+    <div className="mb-4 rounded-lg border border-primary/20 bg-primary/5 p-3">
+      <div className="mb-2 flex items-center gap-2 text-sm font-medium text-primary">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <span>Concurrent Sessions ({activeSessions.length})</span>
+      </div>
+      <div className="space-y-2">
+        {activeSessions.map((activeSession) => {
+          const isStreaming = activeSession.status?.phase === 'streaming' || activeSession.status?.phase === 'thinking';
+          const hasAbortController = abortControllers.has(activeSession.id);
+
+          return (
+            <div
+              key={activeSession.id}
+              className={cn(
+                'flex items-center gap-2 rounded-md px-3 py-2 text-sm cursor-pointer transition-colors',
+                activeSession.isCurrent ? 'bg-primary/10' : 'bg-muted/50 hover:bg-muted/70'
+              )}
+              onClick={() => !activeSession.isCurrent && onSelectSession(activeSession.id)}
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium truncate">{activeSession.title}</span>
+                  {activeSession.isCurrent && (
+                    <Badge variant="outline" className="text-xs shrink-0">
+                      Current
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                  {isStreaming && <Loader2 className="h-3 w-3 animate-spin" />}
+                  <span className="truncate">
+                    {activeSession.currentTool
+                      ? `Using ${activeSession.currentTool.name}...`
+                      : activeSession.status?.message || 'Processing...'}
+                  </span>
+                </div>
+              </div>
+              {hasAbortController && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 shrink-0"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAbortSession(activeSession.id);
+                  }}
+                  title="Cancel this session"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

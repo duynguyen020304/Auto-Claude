@@ -83,11 +83,11 @@ export const insightsMock = {
     return { success: true };
   },
 
-  sendInsightsMessage: () => {
+  sendInsightsMessage: (_sessionId: string, _projectId: string, _message: string, _modelConfig?: unknown) => {
     console.warn('[Browser Mock] sendInsightsMessage called');
   },
 
-  clearInsightsSession: async () => ({ success: true }),
+  clearInsightsSession: async (_sessionId: string, _projectId: string) => ({ success: true }),
 
   createTaskFromInsights: async (_projectId: string, title: string, description: string) => ({
     success: true,
@@ -103,6 +103,13 @@ export const insightsMock = {
       createdAt: new Date(),
       updatedAt: new Date()
     }
+  }),
+
+  cancelInsightsSession: async (_projectId: string, _sessionId: string) => ({ success: true }),
+
+  getActiveInsightsSessions: async () => ({
+    success: true,
+    data: []
   }),
 
   onInsightsStreamChunk: () => () => {},

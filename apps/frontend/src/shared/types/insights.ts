@@ -247,6 +247,13 @@ export interface InsightsSessionSummary {
   updatedAt: Date;
 }
 
+// Active session tracking (for parallel session management)
+export interface ActiveSession {
+  sessionId: string;
+  projectId: string;
+  startedAt: number;  // Timestamp when session started
+}
+
 export interface InsightsChatStatus {
   phase: 'idle' | 'thinking' | 'streaming' | 'complete' | 'error';
   message?: string;

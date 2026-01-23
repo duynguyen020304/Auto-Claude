@@ -14,6 +14,24 @@ import type {
 import { MODEL_ID_MAP } from '../../shared/constants';
 import { InsightsConfig } from './config';
 import { detectRateLimit, createSDKRateLimitInfo } from '../rate-limit-detector';
+import { SessionQueue, SessionPriority } from './session-queue';
+import { RollingWindowRateLimiter } from './rate-limiter';
+
+/**
+ * Rate limiting configuration
+ */
+interface RateLimitConfig {
+  limit: number;
+  windowMs: number;
+}
+
+/**
+ * Default rate limit: 10 sessions per minute
+ */
+const DEFAULT_RATE_LIMIT: RateLimitConfig = {
+  limit: 10,
+  windowMs: 60000 // 1 minute
+};
 
 /**
  * Message processor result
@@ -30,45 +48,111 @@ interface ProcessorResult {
  */
 export class InsightsExecutor extends EventEmitter {
   private config: InsightsConfig;
-  private activeSessions: Map<string, ChildProcess> = new Map();
+  private activeProcesses: Map<string, ChildProcess> = new Map();
+  private sessionQueue: SessionQueue;
+  private rateLimiter: RollingWindowRateLimiter;
+  private rateLimitConfig: RateLimitConfig;
 
-  constructor(config: InsightsConfig) {
+  constructor(
+    config: InsightsConfig,
+    sessionQueue: SessionQueue,
+    rateLimitConfig: RateLimitConfig = DEFAULT_RATE_LIMIT
+  ) {
     super();
     this.config = config;
+    this.sessionQueue = sessionQueue;
+    this.rateLimiter = new RollingWindowRateLimiter();
+    this.rateLimitConfig = rateLimitConfig;
   }
 
   /**
    * Check if a session is currently active
    */
-  isSessionActive(projectId: string): boolean {
-    return this.activeSessions.has(projectId);
+  isSessionActive(sessionId: string): boolean {
+    return this.activeProcesses.has(sessionId);
   }
 
   /**
    * Cancel an active session
    */
-  cancelSession(projectId: string): boolean {
-    const existingProcess = this.activeSessions.get(projectId);
+  cancelSession(sessionId: string, projectId: string): boolean {
+    const existingProcess = this.activeProcesses.get(sessionId);
     if (!existingProcess) return false;
 
     existingProcess.kill();
-    this.activeSessions.delete(projectId);
+    this.activeProcesses.delete(sessionId);
+    this.sessionQueue.removeActiveSession(sessionId, projectId);
     return true;
+  }
+
+  /**
+   * Update rate limit configuration
+   */
+  updateRateLimitConfig(config: Partial<RateLimitConfig>): void {
+    this.rateLimitConfig = { ...this.rateLimitConfig, ...config };
+  }
+
+  /**
+   * Get current rate limit configuration
+   */
+  getRateLimitConfig(): RateLimitConfig {
+    return { ...this.rateLimitConfig };
+  }
+
+  /**
+   * Get rate limiter instance (for testing)
+   */
+  getRateLimiter(): RollingWindowRateLimiter {
+    return this.rateLimiter;
+  }
+
+  /**
+   * Get current rate limit usage for a project
+   */
+  getRateLimitUsage(projectId: string): number {
+    return this.rateLimiter.getUsage(projectId, this.rateLimitConfig.windowMs);
+  }
+
+  /**
+   * Clear rate limit data for a specific project
+   */
+  clearRateLimit(projectId: string): void {
+    this.rateLimiter.clearProject(projectId);
+  }
+
+  /**
+   * Clear all rate limit data
+   */
+  clearAllRateLimits(): void {
+    this.rateLimiter.clearAll();
   }
 
   /**
    * Execute insights query
    */
   async execute(
+    sessionId: string,
     projectId: string,
     projectPath: string,
     message: string,
     conversationHistory: Array<{ role: string; content: string }>,
     modelConfig?: InsightsModelConfig,
-    fileMentions?: FileMention[]
+    fileMentions?: FileMention[],
+    priority: SessionPriority = SessionPriority.NORMAL
   ): Promise<ProcessorResult> {
-    // Cancel any existing session
-    this.cancelSession(projectId);
+    // Check if session is already active
+    if (this.isSessionActive(sessionId)) {
+      throw new Error(`Session ${sessionId} is already active`);
+    }
+
+    // Check rate limiting before starting session
+    if (!this.rateLimiter.canStartSession(projectId, this.rateLimitConfig.limit, this.rateLimitConfig.windowMs)) {
+      const currentUsage = this.rateLimiter.getUsage(projectId, this.rateLimitConfig.windowMs);
+      throw new Error(
+        `Rate limit exceeded: ${currentUsage}/${this.rateLimitConfig.limit} sessions per ${this.rateLimitConfig.windowMs / 1000}s. ` +
+        `Please wait before starting another session.`
+      );
+    }
 
     const autoBuildSource = this.config.getAutoBuildSourcePath();
     if (!autoBuildSource) {
@@ -81,7 +165,7 @@ export class InsightsExecutor extends EventEmitter {
     }
 
     // Emit thinking status
-    this.emit('status', projectId, {
+    this.emit('status', sessionId, {
       phase: 'thinking',
       message: 'Processing your message...'
     } as InsightsChatStatus);
@@ -92,7 +176,7 @@ export class InsightsExecutor extends EventEmitter {
     // Write conversation history to temp file to avoid Windows command-line length limit
     const historyFile = path.join(
       os.tmpdir(),
-      `insights-history-${projectId}-${Date.now()}.json`
+      `insights-history-${sessionId}-${Date.now()}.json`
     );
 
     let historyFileCreated = false;
@@ -107,7 +191,7 @@ export class InsightsExecutor extends EventEmitter {
     // Write file mentions to temp file if provided
     const mentionsFile = path.join(
       os.tmpdir(),
-      `insights-mentions-${projectId}-${Date.now()}.json`
+      `insights-mentions-${sessionId}-${Date.now()}.json`
     );
 
     let mentionsFileCreated = false;
@@ -147,7 +231,8 @@ export class InsightsExecutor extends EventEmitter {
       env: processEnv
     });
 
-    this.activeSessions.set(projectId, proc);
+    this.activeProcesses.set(sessionId, proc);
+    this.sessionQueue.markSessionActive(sessionId, projectId);
 
     return new Promise((resolve, reject) => {
       let fullResponse = '';
@@ -165,16 +250,16 @@ export class InsightsExecutor extends EventEmitter {
         const lines = text.split('\n');
         for (const line of lines) {
           if (line.startsWith('__TASK_SUGGESTION__:')) {
-            this.handleTaskSuggestion(projectId, line, (task) => {
+            this.handleTaskSuggestion(sessionId, line, (task) => {
               suggestedTask = task;
             });
           } else if (line.startsWith('__TOOL_START__:')) {
-            this.handleToolStart(projectId, line, toolsUsed);
+            this.handleToolStart(sessionId, line, toolsUsed);
           } else if (line.startsWith('__TOOL_END__:')) {
-            this.handleToolEnd(projectId, line);
+            this.handleToolEnd(sessionId, line);
           } else if (line.trim()) {
             fullResponse += line + '\n';
-            this.emit('stream-chunk', projectId, {
+            this.emit('stream-chunk', sessionId, {
               type: 'text',
               content: line + '\n'
             } as InsightsStreamChunk);
@@ -191,7 +276,8 @@ export class InsightsExecutor extends EventEmitter {
       });
 
       proc.on('close', (code) => {
-        this.activeSessions.delete(projectId);
+        this.activeProcesses.delete(sessionId);
+        this.sessionQueue.removeActiveSession(sessionId, projectId);
 
         // Cleanup temp files
         if (historyFileCreated && existsSync(historyFile)) {
@@ -212,15 +298,15 @@ export class InsightsExecutor extends EventEmitter {
 
         // Check for rate limit if process failed
         if (code !== 0) {
-          this.handleRateLimit(projectId, allInsightsOutput);
+          this.handleRateLimit(sessionId, allInsightsOutput);
         }
 
         if (code === 0) {
-          this.emit('stream-chunk', projectId, {
+          this.emit('stream-chunk', sessionId, {
             type: 'done'
           } as InsightsStreamChunk);
 
-          this.emit('status', projectId, {
+          this.emit('status', sessionId, {
             phase: 'complete'
           } as InsightsChatStatus);
 
@@ -235,18 +321,19 @@ export class InsightsExecutor extends EventEmitter {
             ? `\n\nError output:\n${stderrOutput.slice(-500)}`
             : '';
           const error = `Process exited with code ${code}${stderrSummary}`;
-          this.emit('stream-chunk', projectId, {
+          this.emit('stream-chunk', sessionId, {
             type: 'error',
             error
           } as InsightsStreamChunk);
 
-          this.emit('error', projectId, error);
+          this.emit('error', sessionId, error);
           reject(new Error(error));
         }
       });
 
       proc.on('error', (err) => {
-        this.activeSessions.delete(projectId);
+        this.activeProcesses.delete(sessionId);
+        this.sessionQueue.removeActiveSession(sessionId, projectId);
 
         // Cleanup temp files
         if (historyFileCreated && existsSync(historyFile)) {
@@ -265,7 +352,7 @@ export class InsightsExecutor extends EventEmitter {
           }
         }
 
-        this.emit('error', projectId, err.message);
+        this.emit('error', sessionId, err.message);
         reject(err);
       });
     });
@@ -275,7 +362,7 @@ export class InsightsExecutor extends EventEmitter {
    * Handle task suggestion from output
    */
   private handleTaskSuggestion(
-    projectId: string,
+    sessionId: string,
     line: string,
     onTaskFound: (task: InsightsChatMessage['suggestedTask']) => void
   ): void {
@@ -283,7 +370,7 @@ export class InsightsExecutor extends EventEmitter {
       const taskJson = line.substring('__TASK_SUGGESTION__:'.length);
       const suggestedTask = JSON.parse(taskJson);
       onTaskFound(suggestedTask);
-      this.emit('stream-chunk', projectId, {
+      this.emit('stream-chunk', sessionId, {
         type: 'task_suggestion',
         suggestedTask
       } as InsightsStreamChunk);
@@ -296,7 +383,7 @@ export class InsightsExecutor extends EventEmitter {
    * Handle tool start marker
    */
   private handleToolStart(
-    projectId: string,
+    sessionId: string,
     line: string,
     toolsUsed: InsightsToolUsage[]
   ): void {
@@ -309,7 +396,7 @@ export class InsightsExecutor extends EventEmitter {
         input: toolData.input,
         timestamp: new Date()
       });
-      this.emit('stream-chunk', projectId, {
+      this.emit('stream-chunk', sessionId, {
         type: 'tool_start',
         tool: {
           name: toolData.name,
@@ -324,11 +411,11 @@ export class InsightsExecutor extends EventEmitter {
   /**
    * Handle tool end marker
    */
-  private handleToolEnd(projectId: string, line: string): void {
+  private handleToolEnd(sessionId: string, line: string): void {
     try {
       const toolJson = line.substring('__TOOL_END__:'.length);
       const toolData = JSON.parse(toolJson);
-      this.emit('stream-chunk', projectId, {
+      this.emit('stream-chunk', sessionId, {
         type: 'tool_end',
         tool: {
           name: toolData.name
@@ -342,20 +429,21 @@ export class InsightsExecutor extends EventEmitter {
   /**
    * Handle rate limit detection
    */
-  private handleRateLimit(projectId: string, output: string): void {
+  private handleRateLimit(sessionId: string, output: string): void {
     const rateLimitDetection = detectRateLimit(output);
     if (rateLimitDetection.isRateLimited) {
       console.warn('[Insights] Rate limit detected:', {
-        projectId,
+        sessionId,
         resetTime: rateLimitDetection.resetTime,
         limitType: rateLimitDetection.limitType,
         suggestedProfile: rateLimitDetection.suggestedProfile?.name
       });
 
+      // Use sessionId as taskId for rate limit tracking
       const rateLimitInfo = createSDKRateLimitInfo('other', rateLimitDetection, {
-        projectId
+        taskId: sessionId
       });
-      this.emit('sdk-rate-limit', rateLimitInfo);
+      this.emit('sdk-rate-limit', sessionId, rateLimitInfo);
     }
   }
 }

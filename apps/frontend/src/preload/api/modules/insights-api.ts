@@ -17,8 +17,8 @@ import { createIpcListener, invokeIpc, sendIpc, IpcListenerCleanup } from './ipc
 export interface InsightsAPI {
   // Operations
   getInsightsSession: (projectId: string) => Promise<IPCResult<InsightsSession | null>>;
-  sendInsightsMessage: (projectId: string, message: string, modelConfig?: InsightsModelConfig) => void;
-  clearInsightsSession: (projectId: string) => Promise<IPCResult>;
+  sendInsightsMessage: (sessionId: string, projectId: string, message: string, modelConfig?: InsightsModelConfig) => void;
+  clearInsightsSession: (sessionId: string, projectId: string) => Promise<IPCResult>;
   createTaskFromInsights: (
     projectId: string,
     title: string,
@@ -31,16 +31,18 @@ export interface InsightsAPI {
   deleteInsightsSession: (projectId: string, sessionId: string) => Promise<IPCResult>;
   renameInsightsSession: (projectId: string, sessionId: string, newTitle: string) => Promise<IPCResult>;
   updateInsightsModelConfig: (projectId: string, sessionId: string, modelConfig: InsightsModelConfig) => Promise<IPCResult>;
+  cancelInsightsSession: (projectId: string, sessionId: string) => Promise<IPCResult>;
+  getActiveInsightsSessions: (projectId: string) => Promise<IPCResult<InsightsSessionSummary[]>>;
 
   // Event Listeners
   onInsightsStreamChunk: (
-    callback: (projectId: string, chunk: InsightsStreamChunk) => void
+    callback: (sessionId: string, projectId: string, chunk: InsightsStreamChunk) => void
   ) => IpcListenerCleanup;
   onInsightsStatus: (
-    callback: (projectId: string, status: InsightsChatStatus) => void
+    callback: (sessionId: string, projectId: string, status: InsightsChatStatus) => void
   ) => IpcListenerCleanup;
   onInsightsError: (
-    callback: (projectId: string, error: string) => void
+    callback: (sessionId: string, projectId: string, error: string) => void
   ) => IpcListenerCleanup;
 }
 
@@ -52,11 +54,11 @@ export const createInsightsAPI = (): InsightsAPI => ({
   getInsightsSession: (projectId: string): Promise<IPCResult<InsightsSession | null>> =>
     invokeIpc(IPC_CHANNELS.INSIGHTS_GET_SESSION, projectId),
 
-  sendInsightsMessage: (projectId: string, message: string, modelConfig?: InsightsModelConfig): void =>
-    sendIpc(IPC_CHANNELS.INSIGHTS_SEND_MESSAGE, projectId, message, modelConfig),
+  sendInsightsMessage: (sessionId: string, projectId: string, message: string, modelConfig?: InsightsModelConfig): void =>
+    sendIpc(IPC_CHANNELS.INSIGHTS_SEND_MESSAGE, sessionId, projectId, message, modelConfig),
 
-  clearInsightsSession: (projectId: string): Promise<IPCResult> =>
-    invokeIpc(IPC_CHANNELS.INSIGHTS_CLEAR_SESSION, projectId),
+  clearInsightsSession: (sessionId: string, projectId: string): Promise<IPCResult> =>
+    invokeIpc(IPC_CHANNELS.INSIGHTS_CLEAR_SESSION, sessionId, projectId),
 
   createTaskFromInsights: (
     projectId: string,
@@ -84,19 +86,25 @@ export const createInsightsAPI = (): InsightsAPI => ({
   updateInsightsModelConfig: (projectId: string, sessionId: string, modelConfig: InsightsModelConfig): Promise<IPCResult> =>
     invokeIpc(IPC_CHANNELS.INSIGHTS_UPDATE_MODEL_CONFIG, projectId, sessionId, modelConfig),
 
+  cancelInsightsSession: (projectId: string, sessionId: string): Promise<IPCResult> =>
+    invokeIpc(IPC_CHANNELS.INSIGHTS_CANCEL_SESSION, projectId, sessionId),
+
+  getActiveInsightsSessions: (projectId: string): Promise<IPCResult<InsightsSessionSummary[]>> =>
+    invokeIpc(IPC_CHANNELS.INSIGHTS_GET_ACTIVE_SESSIONS, projectId),
+
   // Event Listeners
   onInsightsStreamChunk: (
-    callback: (projectId: string, chunk: InsightsStreamChunk) => void
+    callback: (sessionId: string, projectId: string, chunk: InsightsStreamChunk) => void
   ): IpcListenerCleanup =>
     createIpcListener(IPC_CHANNELS.INSIGHTS_STREAM_CHUNK, callback),
 
   onInsightsStatus: (
-    callback: (projectId: string, status: InsightsChatStatus) => void
+    callback: (sessionId: string, projectId: string, status: InsightsChatStatus) => void
   ): IpcListenerCleanup =>
     createIpcListener(IPC_CHANNELS.INSIGHTS_STATUS, callback),
 
   onInsightsError: (
-    callback: (projectId: string, error: string) => void
+    callback: (sessionId: string, projectId: string, error: string) => void
   ): IpcListenerCleanup =>
     createIpcListener(IPC_CHANNELS.INSIGHTS_ERROR, callback)
 });

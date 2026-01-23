@@ -20,6 +20,7 @@ import type {
   TaskMetadata,
   AppSettings,
   FileMention,
+  ActiveSession,
 } from "../../shared/types";
 import { projectStore } from "../project-store";
 import { insightsService } from "../insights-service";
@@ -84,6 +85,7 @@ export function registerInsightsHandlers(getMainWindow: () => BrowserWindow | nu
     IPC_CHANNELS.INSIGHTS_SEND_MESSAGE,
     async (
       _,
+      sessionId: string,
       projectId: string,
       message: string,
       modelConfig?: InsightsModelConfig,
@@ -94,6 +96,7 @@ export function registerInsightsHandlers(getMainWindow: () => BrowserWindow | nu
         safeSendToRenderer(
           getMainWindow,
           IPC_CHANNELS.INSIGHTS_ERROR,
+          sessionId,
           projectId,
           "Project not found"
         );
@@ -110,6 +113,7 @@ export function registerInsightsHandlers(getMainWindow: () => BrowserWindow | nu
       };
 
       console.log("[Insights Handler] Using model config:", {
+        sessionId,
         model: configWithSettings.model,
         thinkingLevel: configWithSettings.thinkingLevel,
       });
@@ -120,6 +124,7 @@ export function registerInsightsHandlers(getMainWindow: () => BrowserWindow | nu
       // environment setup wouldn't complete before process spawn.
       try {
         await insightsService.sendMessage(
+          sessionId,
           projectId,
           project.path,
           message,
@@ -135,6 +140,7 @@ export function registerInsightsHandlers(getMainWindow: () => BrowserWindow | nu
         safeSendToRenderer(
           getMainWindow,
           IPC_CHANNELS.INSIGHTS_ERROR,
+          sessionId,
           projectId,
           `Failed to send message: ${errorMessage}`
         );
@@ -144,7 +150,7 @@ export function registerInsightsHandlers(getMainWindow: () => BrowserWindow | nu
 
   ipcMain.handle(
     IPC_CHANNELS.INSIGHTS_CLEAR_SESSION,
-    async (_, projectId: string): Promise<IPCResult> => {
+    async (_, sessionId: string, projectId: string): Promise<IPCResult> => {
       const project = projectStore.getProject(projectId);
       if (!project) {
         return { success: false, error: "Project not found" };
@@ -361,23 +367,44 @@ export function registerInsightsHandlers(getMainWindow: () => BrowserWindow | nu
     }
   );
 
+  // Cancel a session (works for both queued and active sessions)
+  ipcMain.handle(
+    IPC_CHANNELS.INSIGHTS_CANCEL_SESSION,
+    async (_, sessionId: string): Promise<IPCResult> => {
+      const success = insightsService.cancelSession(sessionId);
+      if (success) {
+        return { success: true };
+      }
+      return { success: false, error: "Session not found or could not be cancelled" };
+    }
+  );
+
+  // Get all currently active (running) sessions
+  ipcMain.handle(
+    IPC_CHANNELS.INSIGHTS_GET_ACTIVE_SESSIONS,
+    async (): Promise<IPCResult<ActiveSession[]>> => {
+      const activeSessions = insightsService.getActiveSessions();
+      return { success: true, data: activeSessions };
+    }
+  );
+
   // ============================================
   // Insights Event Forwarding (Service -> Renderer)
   // ============================================
 
-  // Forward streaming chunks to renderer
-  insightsService.on("stream-chunk", (projectId: string, chunk: unknown) => {
-    safeSendToRenderer(getMainWindow, IPC_CHANNELS.INSIGHTS_STREAM_CHUNK, projectId, chunk);
+  // Forward streaming chunks to renderer (routed by sessionId, projectId)
+  insightsService.on("stream-chunk", (sessionId: string, projectId: string, chunk: unknown) => {
+    safeSendToRenderer(getMainWindow, IPC_CHANNELS.INSIGHTS_STREAM_CHUNK, sessionId, projectId, chunk);
   });
 
-  // Forward status updates to renderer
-  insightsService.on("status", (projectId: string, status: unknown) => {
-    safeSendToRenderer(getMainWindow, IPC_CHANNELS.INSIGHTS_STATUS, projectId, status);
+  // Forward status updates to renderer (routed by sessionId, projectId)
+  insightsService.on("status", (sessionId: string, projectId: string, status: unknown) => {
+    safeSendToRenderer(getMainWindow, IPC_CHANNELS.INSIGHTS_STATUS, sessionId, projectId, status);
   });
 
-  // Forward errors to renderer
-  insightsService.on("error", (projectId: string, error: string) => {
-    safeSendToRenderer(getMainWindow, IPC_CHANNELS.INSIGHTS_ERROR, projectId, error);
+  // Forward errors to renderer (routed by sessionId, projectId)
+  insightsService.on("error", (sessionId: string, projectId: string, error: string) => {
+    safeSendToRenderer(getMainWindow, IPC_CHANNELS.INSIGHTS_ERROR, sessionId, projectId, error);
   });
 
   // Forward SDK rate limit events to renderer

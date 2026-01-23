@@ -18,7 +18,7 @@ interface ToolUsage {
 }
 
 // Per-session streaming state
-interface InsightsSessionState {
+export interface InsightsSessionState {
   status: InsightsChatStatus;
   pendingMessage: string;
   streamingContent: string;
@@ -34,7 +34,6 @@ interface InsightsState {
   sessions: InsightsSessionSummary[]; // List of all sessions
   sessionStates: Map<string, InsightsSessionState>; // Per-session streaming state
   isLoadingSessions: boolean;
-  generatingSessionIds: Map<string, string>; // projectId -> sessionId mapping for active generations
   abortControllers: Map<string, AbortController>; // sessionId -> AbortController mapping for active generations
 
   // Current session state (mirrored from sessionStates for easy access)
@@ -67,6 +66,7 @@ interface InsightsState {
   setLoadingSessions: (loading: boolean) => void;
   abortGeneration: (sessionId: string) => void;
   cleanupSessionState: (sessionId: string) => void;
+  removeSession: (sessionId: string) => void;
 
   // Selectors
   getCurrentSessionState: () => InsightsSessionState | undefined;
@@ -102,7 +102,6 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
   sessions: [],
   sessionStates: new Map<string, InsightsSessionState>(),
   isLoadingSessions: false,
-  generatingSessionIds: new Map<string, string>(),
   abortControllers: new Map<string, AbortController>(),
   status: initialStatus,
   pendingMessage: '',
@@ -189,15 +188,6 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
         }
       }
 
-      // Clean up generatingSessionIds: remove entries for deleted sessions
-      const newGeneratingSessionIds = new Map<string, string>();
-      for (const [projectId, generatingSessionId] of state.generatingSessionIds.entries()) {
-        // Keep mapping if the generating session still exists
-        if (currentSessionIds.has(generatingSessionId)) {
-          newGeneratingSessionIds.set(projectId, generatingSessionId);
-        }
-      }
-
       // Clean up abortControllers: remove entries for deleted sessions
       const newAbortControllers = new Map<string, AbortController>();
       for (const [sessionId, abortController] of state.abortControllers.entries()) {
@@ -210,30 +200,29 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       return {
         sessions,
         sessionStates: newSessionStates,
-        generatingSessionIds: newGeneratingSessionIds,
         abortControllers: newAbortControllers
       };
     }),
 
-  setStatus: (status, sessionId) => {
-    const currentSessionId = _get().currentSessionId;
+  setStatus: (status, sessionId) =>
+    set((state) => {
+      // Determine target session ID and whether to update top-level field
+      const targetSessionId = sessionId || state.currentSessionId;
+      const shouldUpdateTopLevel = !sessionId || sessionId === state.currentSessionId;
 
-    return set((state) => {
-      // Validation guard: ensure session ID matches
-      if (sessionId && currentSessionId !== sessionId) {
-        console.warn(`[InsightsStore] Rejected setStatus for session ${sessionId} because current session is ${currentSessionId}`);
-        return state;
+      const updates: Partial<InsightsState> = {};
+
+      // Update top-level field if appropriate
+      if (shouldUpdateTopLevel) {
+        updates.status = status;
       }
 
-      // Update top-level field
-      const updates: Partial<InsightsState> = { status };
-
-      // Also update in sessionStates map
-      if (currentSessionId && state.sessionStates.has(currentSessionId)) {
-        const sessionState = state.sessionStates.get(currentSessionId);
+      // Update sessionStates map if we have a target session
+      if (targetSessionId) {
+        const sessionState = state.sessionStates.get(targetSessionId);
         if (sessionState) {
           const newSessionStates = new Map(state.sessionStates);
-          newSessionStates.set(currentSessionId, {
+          newSessionStates.set(targetSessionId, {
             ...sessionState,
             status
           });
@@ -242,8 +231,7 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       }
 
       return updates;
-    });
-  },
+    }),
 
   resetStatus: () => {
     const currentSessionId = _get().currentSessionId;
@@ -273,21 +261,23 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
 
   setPendingMessage: (message, sessionId) =>
     set((state) => {
-      // Validation guard: ensure session ID matches
-      if (sessionId && state.currentSessionId !== sessionId) {
-        console.warn(`[InsightsStore] Rejected setPendingMessage for session ${sessionId} because current session is ${state.currentSessionId}`);
-        return state;
+      // Determine target session ID and whether to update top-level field
+      const targetSessionId = sessionId || state.currentSessionId;
+      const shouldUpdateTopLevel = !sessionId || sessionId === state.currentSessionId;
+
+      const updates: Partial<InsightsState> = {};
+
+      // Update top-level field if appropriate
+      if (shouldUpdateTopLevel) {
+        updates.pendingMessage = message;
       }
 
-      // Update top-level field
-      const updates: Partial<InsightsState> = { pendingMessage: message };
-
-      // Also update in sessionStates map
-      if (state.currentSessionId && state.sessionStates.has(state.currentSessionId)) {
-        const sessionState = state.sessionStates.get(state.currentSessionId);
+      // Update sessionStates map if we have a target session
+      if (targetSessionId) {
+        const sessionState = state.sessionStates.get(targetSessionId);
         if (sessionState) {
           const newSessionStates = new Map(state.sessionStates);
-          newSessionStates.set(state.currentSessionId, {
+          newSessionStates.set(targetSessionId, {
             ...sessionState,
             pendingMessage: message
           });
@@ -313,12 +303,20 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
         };
       }
 
+      // Update the session in the sessions list (for sidebar)
+      const newSessions = state.sessions.map((s) =>
+        s.id === state.session?.id
+          ? { ...s, messageCount: s.messageCount + 1, updatedAt: new Date() }
+          : s
+      );
+
       return {
         session: {
           ...state.session,
           messages: [...state.session.messages, message],
           updatedAt: new Date()
-        }
+        },
+        sessions: newSessions
       };
     }),
 
@@ -345,302 +343,342 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
 
   appendStreamingContent: (content, sessionId) =>
     set((state) => {
-      // Validation guard: ensure session ID matches
-      if (sessionId && state.currentSessionId !== sessionId) {
-        console.warn(`[InsightsStore] Rejected appendStreamingContent for session ${sessionId} because current session is ${state.currentSessionId}`);
-        return state;
+      // Determine target session ID and whether to update top-level field
+      const targetSessionId = sessionId || state.currentSessionId;
+      const shouldUpdateTopLevel = !sessionId || sessionId === state.currentSessionId;
+
+      const updates: Partial<InsightsState> = {};
+
+      // Update sessionStates map if we have a target session
+      if (targetSessionId) {
+        const sessionState = state.sessionStates.get(targetSessionId);
+        if (sessionState) {
+          const newContent = sessionState.streamingContent + content;
+
+          const newSessionStates = new Map(state.sessionStates);
+          newSessionStates.set(targetSessionId, {
+            ...sessionState,
+            streamingContent: newContent
+          });
+          updates.sessionStates = newSessionStates;
+
+          // Update top-level field if appropriate
+          if (shouldUpdateTopLevel) {
+            updates.streamingContent = newContent;
+          }
+        }
       }
 
-      if (!state.currentSessionId) return state;
-
-      const sessionState = state.sessionStates.get(state.currentSessionId);
-      if (!sessionState) return state;
-
-      const newContent = sessionState.streamingContent + content;
-
-      const newSessionStates = new Map(state.sessionStates);
-      newSessionStates.set(state.currentSessionId, {
-        ...sessionState,
-        streamingContent: newContent
-      });
-
-      return {
-        streamingContent: newContent,
-        sessionStates: newSessionStates
-      };
+      return updates;
     }),
 
-  clearStreamingContent: (sessionId) => {
-    const currentSessionId = _get().currentSessionId;
+  clearStreamingContent: (sessionId) =>
+    set((state) => {
+      // Determine target session ID and whether to update top-level field
+      const targetSessionId = sessionId || state.currentSessionId;
+      const shouldUpdateTopLevel = !sessionId || sessionId === state.currentSessionId;
 
-    return set((state) => {
-      // Validation guard: ensure session ID matches
-      if (sessionId && state.currentSessionId !== sessionId) {
-        console.warn(`[InsightsStore] Rejected clearStreamingContent for session ${sessionId} because current session is ${state.currentSessionId}`);
-        return state;
+      const updates: Partial<InsightsState> = {};
+
+      // Update top-level field if appropriate
+      if (shouldUpdateTopLevel) {
+        updates.streamingContent = '';
       }
 
-      if (!state.currentSessionId) return state;
+      // Update sessionStates map if we have a target session
+      if (targetSessionId) {
+        const sessionState = state.sessionStates.get(targetSessionId);
+        if (sessionState) {
+          const newSessionStates = new Map(state.sessionStates);
+          newSessionStates.set(targetSessionId, {
+            ...sessionState,
+            streamingContent: ''
+          });
+          updates.sessionStates = newSessionStates;
+        }
+      }
 
-      const sessionState = state.sessionStates.get(state.currentSessionId);
-      if (!sessionState) return state;
-
-      const newSessionStates = new Map(state.sessionStates);
-      newSessionStates.set(state.currentSessionId, {
-        ...sessionState,
-        streamingContent: ''
-      });
-
-      return {
-        streamingContent: '',
-        sessionStates: newSessionStates
-      };
-    });
-  },
+      return updates;
+    }),
 
   setCurrentTool: (tool, sessionId) =>
     set((state) => {
-      // Validation guard: ensure session ID matches
-      if (sessionId && state.currentSessionId !== sessionId) {
-        console.warn(`[InsightsStore] Rejected setCurrentTool for session ${sessionId} because current session is ${state.currentSessionId}`);
-        return state;
+      // Determine target session ID and whether to update top-level field
+      const targetSessionId = sessionId || state.currentSessionId;
+      const shouldUpdateTopLevel = !sessionId || sessionId === state.currentSessionId;
+
+      const updates: Partial<InsightsState> = {};
+
+      // Update top-level field if appropriate
+      if (shouldUpdateTopLevel) {
+        updates.currentTool = tool;
       }
 
-      if (!state.currentSessionId) return state;
+      // Update sessionStates map if we have a target session
+      if (targetSessionId) {
+        const sessionState = state.sessionStates.get(targetSessionId);
+        if (sessionState) {
+          const newSessionStates = new Map(state.sessionStates);
+          newSessionStates.set(targetSessionId, {
+            ...sessionState,
+            currentTool: tool
+          });
+          updates.sessionStates = newSessionStates;
+        }
+      }
 
-      const sessionState = state.sessionStates.get(state.currentSessionId);
-      if (!sessionState) return state;
-
-      const newSessionStates = new Map(state.sessionStates);
-      newSessionStates.set(state.currentSessionId, {
-        ...sessionState,
-        currentTool: tool
-      });
-
-      return {
-        currentTool: tool,
-        sessionStates: newSessionStates
-      };
+      return updates;
     }),
 
   addToolUsage: (tool, sessionId) =>
     set((state) => {
-      // Validation guard: ensure session ID matches
-      if (sessionId && state.currentSessionId !== sessionId) {
-        console.warn(`[InsightsStore] Rejected addToolUsage for session ${sessionId} because current session is ${state.currentSessionId}`);
-        return state;
+      // Determine target session ID and whether to update top-level field
+      const targetSessionId = sessionId || state.currentSessionId;
+      const shouldUpdateTopLevel = !sessionId || sessionId === state.currentSessionId;
+
+      const updates: Partial<InsightsState> = {};
+
+      // Update sessionStates map if we have a target session
+      if (targetSessionId) {
+        const sessionState = state.sessionStates.get(targetSessionId);
+        if (sessionState) {
+          const newToolsUsed = [
+            ...sessionState.toolsUsed,
+            {
+              name: tool.name,
+              input: tool.input,
+              timestamp: new Date()
+            }
+          ];
+
+          const newSessionStates = new Map(state.sessionStates);
+          newSessionStates.set(targetSessionId, {
+            ...sessionState,
+            toolsUsed: newToolsUsed
+          });
+          updates.sessionStates = newSessionStates;
+
+          // Update top-level field if appropriate
+          if (shouldUpdateTopLevel) {
+            updates.toolsUsed = newToolsUsed;
+          }
+        }
       }
 
-      if (!state.currentSessionId) return state;
-
-      const sessionState = state.sessionStates.get(state.currentSessionId);
-      if (!sessionState) return state;
-
-      const newToolsUsed = [
-        ...sessionState.toolsUsed,
-        {
-          name: tool.name,
-          input: tool.input,
-          timestamp: new Date()
-        }
-      ];
-
-      const newSessionStates = new Map(state.sessionStates);
-      newSessionStates.set(state.currentSessionId, {
-        ...sessionState,
-        toolsUsed: newToolsUsed
-      });
-
-      return {
-        toolsUsed: newToolsUsed,
-        sessionStates: newSessionStates
-      };
+      return updates;
     }),
 
   clearToolsUsed: (sessionId) =>
     set((state) => {
-      // Validation guard: ensure session ID matches
-      if (sessionId && state.currentSessionId !== sessionId) {
-        console.warn(`[InsightsStore] Rejected clearToolsUsed for session ${sessionId} because current session is ${state.currentSessionId}`);
-        return state;
+      // Determine target session ID and whether to update top-level field
+      const targetSessionId = sessionId || state.currentSessionId;
+      const shouldUpdateTopLevel = !sessionId || sessionId === state.currentSessionId;
+
+      const updates: Partial<InsightsState> = {};
+
+      // Update top-level field if appropriate
+      if (shouldUpdateTopLevel) {
+        updates.toolsUsed = [];
       }
 
-      if (!state.currentSessionId) return state;
+      // Update sessionStates map if we have a target session
+      if (targetSessionId) {
+        const sessionState = state.sessionStates.get(targetSessionId);
+        if (sessionState) {
+          const newSessionStates = new Map(state.sessionStates);
+          newSessionStates.set(targetSessionId, {
+            ...sessionState,
+            toolsUsed: []
+          });
+          updates.sessionStates = newSessionStates;
+        }
+      }
 
-      const sessionState = state.sessionStates.get(state.currentSessionId);
-      if (!sessionState) return state;
-
-      const newSessionStates = new Map(state.sessionStates);
-      newSessionStates.set(state.currentSessionId, {
-        ...sessionState,
-        toolsUsed: []
-      });
-
-      return {
-        toolsUsed: [],
-        sessionStates: newSessionStates
-      };
+      return updates;
     }),
 
   addFileMention: (mention, sessionId) =>
     set((state) => {
-      // Validation guard: ensure session ID matches
-      if (sessionId && state.currentSessionId !== sessionId) {
-        console.warn(`[InsightsStore] Rejected addFileMention for session ${sessionId} because current session is ${state.currentSessionId}`);
-        return state;
+      // Determine target session ID and whether to update top-level field
+      const targetSessionId = sessionId || state.currentSessionId;
+      const shouldUpdateTopLevel = !sessionId || sessionId === state.currentSessionId;
+
+      const updates: Partial<InsightsState> = {};
+
+      // Update sessionStates map if we have a target session
+      if (targetSessionId) {
+        const sessionState = state.sessionStates.get(targetSessionId);
+        if (sessionState) {
+          // Check if mention with same ID already exists
+          if (sessionState.fileMentions.some((m) => m.id === mention.id)) {
+            return state;
+          }
+
+          const newFileMentions = [...sessionState.fileMentions, mention];
+          const newSessionStates = new Map(state.sessionStates);
+          newSessionStates.set(targetSessionId, {
+            ...sessionState,
+            fileMentions: newFileMentions
+          });
+          updates.sessionStates = newSessionStates;
+
+          // Update top-level field if appropriate
+          if (shouldUpdateTopLevel) {
+            updates.fileMentions = newFileMentions;
+          }
+        }
       }
 
-      if (!state.currentSessionId) return state;
-
-      const sessionState = state.sessionStates.get(state.currentSessionId);
-      if (!sessionState) return state;
-
-      // Check if mention with same ID already exists
-      if (sessionState.fileMentions.some((m) => m.id === mention.id)) {
-        return state;
-      }
-
-      const newFileMentions = [...sessionState.fileMentions, mention];
-      const newSessionStates = new Map(state.sessionStates);
-      newSessionStates.set(state.currentSessionId, {
-        ...sessionState,
-        fileMentions: newFileMentions
-      });
-
-      return {
-        fileMentions: newFileMentions,
-        sessionStates: newSessionStates
-      };
+      return updates;
     }),
 
   removeFileMention: (id, sessionId) =>
     set((state) => {
-      // Validation guard: ensure session ID matches
-      if (sessionId && state.currentSessionId !== sessionId) {
-        console.warn(`[InsightsStore] Rejected removeFileMention for session ${sessionId} because current session is ${state.currentSessionId}`);
-        return state;
+      // Determine target session ID and whether to update top-level field
+      const targetSessionId = sessionId || state.currentSessionId;
+      const shouldUpdateTopLevel = !sessionId || sessionId === state.currentSessionId;
+
+      const updates: Partial<InsightsState> = {};
+
+      // Update sessionStates map if we have a target session
+      if (targetSessionId) {
+        const sessionState = state.sessionStates.get(targetSessionId);
+        if (sessionState) {
+          const newFileMentions = sessionState.fileMentions.filter((m) => m.id !== id);
+
+          const newSessionStates = new Map(state.sessionStates);
+          newSessionStates.set(targetSessionId, {
+            ...sessionState,
+            fileMentions: newFileMentions
+          });
+          updates.sessionStates = newSessionStates;
+
+          // Update top-level field if appropriate
+          if (shouldUpdateTopLevel) {
+            updates.fileMentions = newFileMentions;
+          }
+        }
       }
 
-      if (!state.currentSessionId) return state;
-
-      const sessionState = state.sessionStates.get(state.currentSessionId);
-      if (!sessionState) return state;
-
-      const newFileMentions = sessionState.fileMentions.filter((m) => m.id !== id);
-      const newSessionStates = new Map(state.sessionStates);
-      newSessionStates.set(state.currentSessionId, {
-        ...sessionState,
-        fileMentions: newFileMentions
-      });
-
-      return {
-        fileMentions: newFileMentions,
-        sessionStates: newSessionStates
-      };
+      return updates;
     }),
 
   clearFileMentions: (sessionId) =>
     set((state) => {
-      // Validation guard: ensure session ID matches
-      if (sessionId && state.currentSessionId !== sessionId) {
-        console.warn(`[InsightsStore] Rejected clearFileMentions for session ${sessionId} because current session is ${state.currentSessionId}`);
-        return state;
+      // Determine target session ID and whether to update top-level field
+      const targetSessionId = sessionId || state.currentSessionId;
+      const shouldUpdateTopLevel = !sessionId || sessionId === state.currentSessionId;
+
+      const updates: Partial<InsightsState> = {};
+
+      // Update top-level field if appropriate
+      if (shouldUpdateTopLevel) {
+        updates.fileMentions = [];
       }
 
-      if (!state.currentSessionId) return state;
+      // Update sessionStates map if we have a target session
+      if (targetSessionId) {
+        const sessionState = state.sessionStates.get(targetSessionId);
+        if (sessionState) {
+          const newSessionStates = new Map(state.sessionStates);
+          newSessionStates.set(targetSessionId, {
+            ...sessionState,
+            fileMentions: []
+          });
+          updates.sessionStates = newSessionStates;
+        }
+      }
 
-      const sessionState = state.sessionStates.get(state.currentSessionId);
-      if (!sessionState) return state;
-
-      const newSessionStates = new Map(state.sessionStates);
-      newSessionStates.set(state.currentSessionId, {
-        ...sessionState,
-        fileMentions: []
-      });
-
-      return {
-        fileMentions: [],
-        sessionStates: newSessionStates
-      };
+      return updates;
     }),
 
   finalizeStreamingMessage: (suggestedTask, sessionId) =>
     set((state) => {
-      // Validation guard: ensure session ID matches
-      if (sessionId && state.currentSessionId !== sessionId) {
-        console.warn(`[InsightsStore] Rejected finalizeStreamingMessage for session ${sessionId} because current session is ${state.currentSessionId}`);
-        return state;
-      }
+      // Determine target session ID and whether to update top-level field
+      const targetSessionId = sessionId || state.currentSessionId;
+      const shouldUpdateTopLevel = !sessionId || sessionId === state.currentSessionId;
 
-      if (!state.currentSessionId) return state;
+      const updates: Partial<InsightsState> = {};
 
-      const sessionState = state.sessionStates.get(state.currentSessionId);
-      if (!sessionState) return state;
+      // Update sessionStates map if we have a target session
+      if (targetSessionId) {
+        const sessionState = state.sessionStates.get(targetSessionId);
+        if (sessionState) {
+          const content = sessionState.streamingContent;
+          const toolsUsed = sessionState.toolsUsed.length > 0 ? [...sessionState.toolsUsed] : undefined;
 
-      const content = sessionState.streamingContent;
-      const toolsUsed = sessionState.toolsUsed.length > 0 ? [...sessionState.toolsUsed] : undefined;
+          // Reset streaming state in sessionStates map
+          const newSessionStates = new Map(state.sessionStates);
+          newSessionStates.set(targetSessionId, {
+            ...sessionState,
+            streamingContent: '',
+            toolsUsed: []
+          });
+          updates.sessionStates = newSessionStates;
 
-      if (!content && !suggestedTask && !toolsUsed) {
-        const newSessionStates = new Map(state.sessionStates);
-        newSessionStates.set(state.currentSessionId, {
-          ...sessionState,
-          streamingContent: '',
-          toolsUsed: []
-        });
-        return {
-          streamingContent: '',
-          toolsUsed: [],
-          sessionStates: newSessionStates
-        };
-      }
-
-      const newMessage: InsightsChatMessage = {
-        id: `msg-${Date.now()}`,
-        role: 'assistant',
-        content,
-        timestamp: new Date(),
-        suggestedTask,
-        toolsUsed
-      };
-
-      if (!state.session) {
-        const newSessionStates = new Map(state.sessionStates);
-        newSessionStates.set(state.currentSessionId, {
-          ...sessionState,
-          streamingContent: '',
-          toolsUsed: []
-        });
-        return {
-          streamingContent: '',
-          toolsUsed: [],
-          sessionStates: newSessionStates,
-          session: {
-            id: `session-${Date.now()}`,
-            projectId: '',
-            messages: [newMessage],
-            createdAt: new Date(),
-            updatedAt: new Date()
+          // Update top-level mirrored fields only if updating the current session
+          if (shouldUpdateTopLevel) {
+            updates.streamingContent = '';
+            updates.toolsUsed = [];
           }
-        };
+
+          // If no content, suggested task, or tools, just reset streaming state
+          if (!content && !suggestedTask && !toolsUsed) {
+            return updates;
+          }
+
+          // Only add the message to state.session if the target session IS the current session
+          // For background sessions, the backend handles persistence and the message will load
+          // when the user switches to that session
+          if (targetSessionId !== state.currentSessionId) {
+            // Background session completed - just reset streaming state
+            // Message will be loaded from backend when user switches to that session
+            return updates;
+          }
+
+          const newMessage: InsightsChatMessage = {
+            id: `msg-${Date.now()}`,
+            role: 'assistant',
+            content,
+            timestamp: new Date(),
+            suggestedTask,
+            toolsUsed
+          };
+
+          // If no session exists, create one
+          if (!state.session) {
+            return {
+              ...updates,
+              session: {
+                id: `session-${Date.now()}`,
+                projectId: '',
+                messages: [newMessage],
+                createdAt: new Date(),
+                updatedAt: new Date()
+              }
+            };
+          }
+
+          // Add message to existing session (only for current session)
+          // Update the session in the sessions list (for sidebar)
+          const newSessions = state.sessions.map((s) =>
+            s.id === state.session?.id
+              ? { ...s, messageCount: s.messageCount + 1, updatedAt: new Date() }
+              : s
+          );
+          return {
+            ...updates,
+            session: {
+              ...state.session,
+              messages: [...state.session.messages, newMessage],
+              updatedAt: new Date()
+            },
+            sessions: newSessions
+          };
+        }
       }
 
-      const newSessionStates = new Map(state.sessionStates);
-      newSessionStates.set(state.currentSessionId, {
-        ...sessionState,
-        streamingContent: '',
-        toolsUsed: []
-      });
-
-      return {
-        streamingContent: '',
-        toolsUsed: [],
-        sessionStates: newSessionStates,
-        session: {
-          ...state.session,
-          messages: [...state.session.messages, newMessage],
-          updatedAt: new Date()
-        }
-      };
+      return updates;
     }),
 
   clearSession: () => {
@@ -648,7 +686,6 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       session: null,
       currentSessionId: null,
       sessionStates: new Map<string, InsightsSessionState>(),
-      generatingSessionIds: new Map<string, string>(),
       abortControllers: new Map<string, AbortController>(),
       status: initialStatus,
       pendingMessage: '',
@@ -661,12 +698,21 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
 
   /**
    * Aborts an ongoing generation for the specified session.
-   * Cleans up the abort controller, generating session tracking, and resets session status.
+   * Cleans up the abort controller and resets session status.
+   * Also cancels the backend Python process via IPC.
    *
    * @param sessionId - The ID of the session whose generation should be aborted
+   * @param projectId - The project ID for the session (required for IPC cancel)
    */
-  abortGeneration: (sessionId) =>
+  abortGeneration: (sessionId: string, projectId?: string) =>
     set((state) => {
+      // Cancel the backend session via IPC if we have a projectId and are in browser environment
+      if (projectId && typeof window !== 'undefined' && window.electronAPI?.cancelInsightsSession) {
+        window.electronAPI.cancelInsightsSession(projectId, sessionId).catch((err) => {
+          console.error('[InsightsStore] Failed to cancel backend session:', err);
+        });
+      }
+
       // Abort the controller for this session
       const abortController = state.abortControllers.get(sessionId);
       if (abortController) {
@@ -677,19 +723,10 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       const newAbortControllers = new Map(state.abortControllers);
       newAbortControllers.delete(sessionId);
 
-      // Remove from generating session IDs
-      const newGeneratingSessionIds = new Map<string, string>();
-      for (const [projectId, generatingSessionId] of state.generatingSessionIds.entries()) {
-        if (generatingSessionId !== sessionId) {
-          newGeneratingSessionIds.set(projectId, generatingSessionId);
-        }
-      }
-
       // Update status for the session
       const sessionState = state.sessionStates.get(sessionId);
       const updates: Partial<InsightsState> = {
-        abortControllers: newAbortControllers,
-        generatingSessionIds: newGeneratingSessionIds
+        abortControllers: newAbortControllers
       };
 
       if (sessionState) {
@@ -741,6 +778,59 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
         updates.currentTool = initialState.currentTool;
         updates.toolsUsed = initialState.toolsUsed;
         updates.fileMentions = initialState.fileMentions;
+      }
+
+      return updates;
+    }),
+
+  /**
+   * Removes a session from the store completely.
+   * This includes:
+   * - Aborting any active generation for the session (including backend cancellation)
+   * - Removing the session state from sessionStates
+   * - Removing the session from abortControllers
+   * - Clearing the current session if it's the one being removed
+   *
+   * @param sessionId - The ID of the session to remove
+   * @param projectId - The project ID for the session (optional, will be looked up if not provided)
+   */
+  removeSession: (sessionId: string, projectId?: string) =>
+    set((state) => {
+      const updates: Partial<InsightsState> = {};
+
+      // Cancel the backend session via IPC if we have a projectId and are in browser environment
+      if (projectId && typeof window !== 'undefined' && window.electronAPI?.cancelInsightsSession) {
+        window.electronAPI.cancelInsightsSession(projectId, sessionId).catch((err) => {
+          console.error('[InsightsStore] Failed to cancel backend session during remove:', err);
+        });
+      }
+
+      // Abort any active generation for this session
+      const abortController = state.abortControllers.get(sessionId);
+      if (abortController) {
+        abortController.abort();
+      }
+
+      // Remove from sessionStates
+      const newSessionStates = new Map(state.sessionStates);
+      newSessionStates.delete(sessionId);
+      updates.sessionStates = newSessionStates;
+
+      // Remove from abortControllers
+      const newAbortControllers = new Map(state.abortControllers);
+      newAbortControllers.delete(sessionId);
+      updates.abortControllers = newAbortControllers;
+
+      // If this is the current session, clear it
+      if (state.currentSessionId === sessionId) {
+        updates.currentSessionId = null;
+        updates.session = null;
+        updates.status = initialStatus;
+        updates.pendingMessage = '';
+        updates.streamingContent = '';
+        updates.currentTool = null;
+        updates.toolsUsed = [];
+        updates.fileMentions = [];
       }
 
       return updates;
@@ -845,20 +935,23 @@ export function sendMessage(projectId: string, message: string, modelConfig?: In
     message: 'Processing your message...'
   }, session.id);
 
-  // Store the projectId -> sessionId mapping so IPC chunks know which session to update
-  useInsightsStore.setState((state) => ({
-    generatingSessionIds: new Map(state.generatingSessionIds).set(projectId, session.id)
-  }));
-
   // Use provided modelConfig, or fall back to session's config
   const configToUse = modelConfig || session?.modelConfig;
 
   // Send to main process
-  window.electronAPI.sendInsightsMessage(projectId, message, configToUse);
+  window.electronAPI.sendInsightsMessage(session.id, projectId, message, configToUse);
 }
 
 export async function clearSession(projectId: string): Promise<void> {
-  const result = await window.electronAPI.clearInsightsSession(projectId);
+  const store = useInsightsStore.getState();
+  const sessionId = store.currentSessionId;
+
+  if (!sessionId) {
+    console.error('[InsightsStore] clearSession - no current session');
+    return;
+  }
+
+  const result = await window.electronAPI.clearInsightsSession(sessionId, projectId);
   if (result.success) {
     useInsightsStore.getState().clearSession();
     // Reload sessions list and current session
@@ -876,16 +969,10 @@ export async function newSession(projectId: string): Promise<void> {
 }
 
 export async function switchSession(projectId: string, sessionId: string): Promise<void> {
-  const store = useInsightsStore.getState();
-
-  // Abort ongoing generation in the current session before switching
-  const currentSessionId = store.currentSessionId;
-  if (currentSessionId && currentSessionId !== sessionId) {
-    // Check if current session is generating (has an abort controller)
-    if (store.abortControllers.has(currentSessionId)) {
-      store.abortGeneration(currentSessionId);
-    }
-  }
+  // NOTE: For parallel generation, we do NOT abort the current session's generation
+  // when switching. The session should continue generating in the background,
+  // and its state will be updated via IPC events.
+  // Users can explicitly cancel a generation using the abort button if desired.
 
   const result = await window.electronAPI.switchInsightsSession(projectId, sessionId);
 
@@ -896,6 +983,9 @@ export async function switchSession(projectId: string, sessionId: string): Promi
     // The setSession() action now automatically loads the session's state
     // from the sessionStates map into the top-level fields.
   }
+
+  // Refresh the sessions list to update sidebar with latest summaries
+  await loadInsightsSessions(projectId);
 }
 
 export async function deleteSession(projectId: string, sessionId: string): Promise<boolean> {
@@ -964,26 +1054,26 @@ export function cleanupSessionState(sessionId: string): void {
   useInsightsStore.getState().cleanupSessionState(sessionId);
 }
 
+export function removeSession(sessionId: string): void {
+  useInsightsStore.getState().removeSession(sessionId);
+}
+
 // IPC listener setup - call this once when the app initializes
 export function setupInsightsListeners(): () => void {
   // Listen for streaming chunks
   // Drop chunks for aborted sessions to prevent state pollution
   const unsubStreamChunk = window.electronAPI.onInsightsStreamChunk(
-    (projectId, chunk: InsightsStreamChunk) => {
-      // Check if session was aborted and drop chunks accordingly
-      const store = useInsightsStore.getState();
-      const generatingSessionId = store.generatingSessionIds.get(projectId);
-
-      // If we don't have a tracked session for this project, it means the user
-      // switched away from this project. Drop the chunk to prevent cross-project
-      // data corruption.
-      if (!generatingSessionId) {
+    (sessionId, _projectId, chunk: InsightsStreamChunk) => {
+      // Use sessionId directly from IPC event - the backend knows which session
+      // this chunk belongs to, so we don't need to look it up by projectId
+      if (!sessionId) {
         return;
       }
 
-      const targetSessionId = generatingSessionId;
+      const targetSessionId = sessionId;
 
       // Check if the session has been aborted (no abort controller means it was aborted)
+      const store = useInsightsStore.getState();
       const abortController = store.abortControllers.get(targetSessionId);
       if (!abortController) {
         // Session was aborted, drop the chunk
@@ -1213,12 +1303,6 @@ export function setupInsightsListeners(): () => void {
           });
           // Finalize any remaining content
           store.finalizeStreamingMessage(undefined, targetSessionId);
-          // Clear the generating session tracking since generation is complete
-          useInsightsStore.setState((state) => {
-            const newGeneratingSessionIds = new Map(state.generatingSessionIds);
-            newGeneratingSessionIds.delete(projectId);
-            return { generatingSessionIds: newGeneratingSessionIds };
-          });
           // Update status to complete
           useInsightsStore.setState((state) => {
             const sessionState = state.sessionStates.get(targetSessionId);
@@ -1244,6 +1328,13 @@ export function setupInsightsListeners(): () => void {
 
             return updates;
           });
+          // Remove abort controller to indicate generation is complete
+          // This is critical for the UI to correctly show the session as no longer processing
+          useInsightsStore.setState((state) => {
+            const newAbortControllers = new Map(state.abortControllers);
+            newAbortControllers.delete(targetSessionId);
+            return { abortControllers: newAbortControllers };
+          });
           break;
         case 'error':
           // Clear current tool
@@ -1265,12 +1356,6 @@ export function setupInsightsListeners(): () => void {
             }
 
             return updates;
-          });
-          // Clear the generating session tracking since generation failed
-          useInsightsStore.setState((state) => {
-            const newGeneratingSessionIds = new Map(state.generatingSessionIds);
-            newGeneratingSessionIds.delete(projectId);
-            return { generatingSessionIds: newGeneratingSessionIds };
           });
           // Update status to error
           useInsightsStore.setState((state) => {
@@ -1297,26 +1382,28 @@ export function setupInsightsListeners(): () => void {
 
             return updates;
           });
+          // Remove abort controller to indicate generation is complete (even with error)
+          useInsightsStore.setState((state) => {
+            const newAbortControllers = new Map(state.abortControllers);
+            newAbortControllers.delete(targetSessionId);
+            return { abortControllers: newAbortControllers };
+          });
           break;
       }
     }
   );
 
   // Listen for status updates
-  const unsubStatus = window.electronAPI.onInsightsStatus((projectId, status) => {
-    const store = useInsightsStore.getState();
-    const generatingSessionId = store.generatingSessionIds.get(projectId);
-
-    // If we don't have a tracked session for this project, it means the user
-    // switched away from this project. Drop the status update to prevent
-    // cross-project data corruption.
-    if (!generatingSessionId) {
+  const unsubStatus = window.electronAPI.onInsightsStatus((sessionId, _projectId, status) => {
+    // Use sessionId directly from IPC event
+    if (!sessionId) {
       return;
     }
 
-    const targetSessionId = generatingSessionId;
+    const targetSessionId = sessionId;
 
     // Check if the session has been aborted (no abort controller means it was aborted)
+    const store = useInsightsStore.getState();
     const abortController = store.abortControllers.get(targetSessionId);
     if (!abortController) {
       // Session was aborted, drop the status update
@@ -1345,20 +1432,16 @@ export function setupInsightsListeners(): () => void {
   });
 
   // Listen for errors
-  const unsubError = window.electronAPI.onInsightsError((projectId, error) => {
-    const store = useInsightsStore.getState();
-    const generatingSessionId = store.generatingSessionIds.get(projectId);
-
-    // If we don't have a tracked session for this project, it means the user
-    // switched away from this project. Drop the error to prevent cross-project
-    // data corruption.
-    if (!generatingSessionId) {
+  const unsubError = window.electronAPI.onInsightsError((sessionId, _projectId, error) => {
+    // Use sessionId directly from IPC event
+    if (!sessionId) {
       return;
     }
 
-    const targetSessionId = generatingSessionId;
+    const targetSessionId = sessionId;
 
     // Check if the session has been aborted (no abort controller means it was aborted)
+    const store = useInsightsStore.getState();
     const abortController = store.abortControllers.get(targetSessionId);
     if (!abortController) {
       // Session was aborted, drop the error
@@ -1388,13 +1471,6 @@ export function setupInsightsListeners(): () => void {
       }
 
       return updates;
-    });
-
-    // Clear the generating session tracking since generation failed
-    useInsightsStore.setState((state) => {
-      const newGeneratingSessionIds = new Map(state.generatingSessionIds);
-      newGeneratingSessionIds.delete(projectId);
-      return { generatingSessionIds: newGeneratingSessionIds };
     });
   });
 
