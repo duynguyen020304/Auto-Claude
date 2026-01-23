@@ -304,12 +304,14 @@ describe('insights-store - concurrent session state updates', () => {
     expect(stateB?.streamingContent).toBe('');
     expect(stateB?.toolsUsed).toHaveLength(0);
 
-    // Verify messages were added to the current session
-    // Since session B was set last, it's the current session and both messages are there
+    // Verify only the current session's message was added to state.session
+    // Session A is not the current session, so its message was not added
+    // Session B is the current session, so only its message was added
     const storeState = useInsightsStore.getState();
-    expect(storeState.session?.messages).toHaveLength(2);
-    expect(storeState.session?.messages[0].content).toBe('Final content A');
-    expect(storeState.session?.messages[1].content).toBe('Final content B');
+    expect(storeState.session?.messages).toHaveLength(1);
+    expect(storeState.session?.messages[0].content).toBe('Final content B');
+    expect(storeState.session?.messages[0].toolsUsed).toHaveLength(1);
+    expect(storeState.session?.messages[0].toolsUsed?.[0].name).toBe('tool-b');
   });
 
   it('should handle concurrent session cleanup without affecting other sessions', () => {

@@ -631,6 +631,15 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
             return updates;
           }
 
+          // Only add the message to state.session if the target session IS the current session
+          // For background sessions, the backend handles persistence and the message will load
+          // when the user switches to that session
+          if (targetSessionId !== state.currentSessionId) {
+            // Background session completed - just reset streaming state
+            // Message will be loaded from backend when user switches to that session
+            return updates;
+          }
+
           const newMessage: InsightsChatMessage = {
             id: `msg-${Date.now()}`,
             role: 'assistant',
@@ -654,7 +663,7 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
             };
           }
 
-          // Add message to existing session
+          // Add message to existing session (only for current session)
           return {
             ...updates,
             session: {
