@@ -1,0 +1,41 @@
+{
+  "expand": {
+    "expand": "Mở rộng terminal",
+    "collapse": "Thu gọn terminal"
+  },
+  "auth": {
+    "terminalTitle": "Xác thực: {{profileName}}",
+    "maxTerminalsReached": "Không thể mở terminal xác thực: đã đạt đến số lượng terminal tối đa. Đóng một terminal trước."
+  },
+  "worktree": {
+    "create": "Worktree",
+    "createNew": "Worktree Mới",
+    "existing": "Worktrees Terminal",
+    "taskWorktrees": "Worktrees Tác vụ",
+    "otherWorktrees": "Khác",
+    "createTitle": "Tạo Worktree Terminal",
+    "createDescription": "Tạo một không gian làm việc cô lập cho terminal này. Tất cả công việc sẽ diễn ra trong thư mục worktree.",
+    "name": "Tên Worktree",
+    "namePlaceholder": "tinh-nang-cua-toi",
+    "nameRequired": "Tên worktree là bắt buộc",
+    "nameInvalid": "Tên phải bắt đầu và kết thúc bằng một chữ cái hoặc số",
+    "nameHelp": "Chữ cái thường, số, dấu gạch ngang và dấu gạch dưới (dấu cách trở thành dấu gạch ngang)",
+    "associateTask": "Liên kết đến Tác vụ",
+    "selectTask": "Chọn một tác vụ...",
+    "noTask": "Không có tác vụ (worktree độc lập)",
+    "createBranch": "Tạo Nhánh Git",
+    "branchHelp": "Tạo nhánh: {{branch}}",
+    "baseBranch": "Nhánh Cơ sở",
+    "selectBaseBranch": "Chọn nhánh cơ sở...",
+    "searchBranch": "Tìm kiếm nhánh...",
+    "noBranchFound": "Không tìm thấy nhánh",
+    "useProjectDefault": "Sử dụng mặc định dự án ({{branch}})",
+    "baseBranchHelp": "Nhánh để tạo worktree từ",
+    "openInIDE": "Mở trong IDE",
+    "maxReached": "Đã đạt đến tối đa 12 terminal worktree",
+    "alreadyExists": "Một worktree với tên này đã tồn tại",
+    "deleteTitle": "Xóa Worktree?",
+    "deleteDescription": "Thao tác này sẽ xóa vĩnh viễn worktree và nhánh của nó. Bất kỳ thay đổi chưa được commit nào sẽ bị mất.",
+    "detached": "(đã tách rời)"
+  }
+}

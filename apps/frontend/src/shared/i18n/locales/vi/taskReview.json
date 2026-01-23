@@ -1,0 +1,83 @@
+{
+  "terminal": {
+    "openTerminal": "Mở terminal",
+    "openInbuilt": "Mở trong Terminal Tích hợp",
+    "openExternal": "Mở trong Terminal Bên ngoài"
+  },
+  "merge": {
+    "branchHasNewCommits": "nhánh {{branch}} có {{count}} commit mới.",
+    "branchHasNewCommits_other": "nhánh {{branch}} có {{count}} commit mới.",
+    "branchHasNewCommitsSinceWorktree": "Nhánh {{branch}} có {{count}} commit mới kể từ khi worktree này được tạo.",
+    "branchHasNewCommitsSinceWorktree_other": "Nhánh {{branch}} có {{count}} commit mới kể từ khi worktree này được tạo.",
+    "filesNeedMerging": "{{count}} tệp cần hợp nhất.",
+    "filesNeedMerging_other": "{{count}} tệp cần hợp nhất.",
+    "filesNeedIntelligentMerging": "{{count}} tệp sẽ cần hợp nhất thông minh:",
+    "filesNeedIntelligentMerging_other": "{{count}} tệp sẽ cần hợp nhất thông minh:",
+    "branchHasNewCommitsSinceBuild": "nhánh {{branch}} có {{count}} commit mới kể từ khi bản build này bắt đầu.",
+    "branchHasNewCommitsSinceBuild_other": "nhánh {{branch}} có {{count}} commit mới kể từ khi bản build này bắt đầu.",
+    "filesNeedAIMergeDueToRenames": "{{count}} tệp cần hợp nhất AI do {{renameCount}} tệp được đổi tên.",
+    "filesNeedAIMergeDueToRenames_other": "{{count}} tệp cần hợp nhất AI do {{renameCount}} tệp được đổi tên.",
+    "filesNeedAIMergeDueToRenamesPlural": "{{count}} tệp cần hợp nhất AI do {{renameCount}} tệp được đổi tên.",
+    "filesNeedAIMergeDueToRenamesPlural_other": "{{count}} tệp cần hợp nhất AI do {{renameCount}} tệp được đổi tên.",
+    "fileRenamesDetected": "đã phát hiện {{count}} tệp được đổi tên - AI sẽ xử lý việc hợp nhất.",
+    "fileRenamesDetected_other": "đã phát hiện {{count}} tệp được đổi tên - AI sẽ xử lý việc hợp nhất.",
+    "filesRenamedOrMoved": "Các tệp có thể đã được đổi tên hoặc di chuyển - AI sẽ xử lý việc hợp nhất.",
+    "buttons": {
+      "stageWithAIMerge": "Stage với Hợp nhất AI",
+      "mergeWithAI": "Hợp nhất với AI",
+      "stageTo": "Stage đến {{branch}}",
+      "mergeTo": "Hợp nhất đến {{branch}}",
+      "resolving": "Đang giải quyết...",
+      "staging": "Đang staging...",
+      "merging": "Đang hợp nhất..."
+    }
+  },
+  "pr": {
+    "title": "Tạo Pull Request",
+    "description": "Đẩy nhánh và tạo một pull request cho \"{{taskTitle}}\"",
+    "errors": {
+      "unknown": "Đã xảy ra lỗi không xác định khi tạo pull request",
+      "invalidBranchName": "Tên nhánh chứa các ký tự không hợp lệ. Chỉ sử dụng chữ cái, số, dấu gạch ngang (-), dấu gạch dưới (_), và dấu gạch chuyển (/).",
+      "emptyTitle": "Tiêu đề pull request không thể để trống."
+    },
+    "success": {
+      "created": "Đã tạo pull request thành công!",
+      "alreadyExists": "Đã có một pull request tồn tại cho nhánh này"
+    },
+    "actions": {
+      "retry": "Thử lại",
+      "creating": "Đang tạo PR...",
+      "create": "Tạo Pull Request"
+    },
+    "labels": {
+      "sourceBranch": "Nhánh nguồn",
+      "targetBranch": "Nhánh đích",
+      "commits": "Commits",
+      "changes": "Thay đổi",
+      "prTitle": "Tiêu đề PR (tùy chọn)",
+      "draftPR": "Tạo dưới dạng draft PR",
+      "unknown": "Không xác định"
+    },
+    "hints": {
+      "targetBranch": "Để trống để sử dụng nhánh mặc định",
+      "prTitle": "Để trống để sử dụng tiêu đề tác vụ"
+    }
+  },
+  "bulkPR": {
+    "title": "Tạo Pull Requests",
+    "description": "Tạo pull requests cho {{count}} tác vụ đã chọn",
+    "creating": "Đang tạo PR {{current}} của {{total}}...",
+    "creatingPR": "Đang tạo PR {{current}} của {{total}}",
+    "resultsDescription": "{{success}} thành công, {{failed}} thất bại",
+    "tasksToProcess": "Tác vụ cần xử lý",
+    "targetBranchHint": "Để trống để sử dụng nhánh mặc định của mỗi tác vụ. Điều này sẽ được áp dụng cho tất cả các PRs.",
+    "createAll": "Tạo {{count}} PR",
+    "completed": "hoàn thành",
+    "succeeded": "thành công",
+    "failed": "thất bại",
+    "skipped": "bị bỏ qua",
+    "alreadyExisted": "đã tồn tại",
+    "noWorktree": "Không tìm thấy worktree cho tác vụ này",
+    "resultsDescriptionWithSkipped": "{{success}} thành công, {{skipped}} bị bỏ qua, {{failed}} thất bại"
+  }
+}

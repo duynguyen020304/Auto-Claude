@@ -1,0 +1,208 @@
+{
+  "title": "Vấn đề GitLab",
+  "states": {
+    "opened": "Mở",
+    "closed": "Đã đóng"
+  },
+  "complexity": {
+    "simple": "Đơn giản",
+    "standard": "Tiêu chuẩn",
+    "complex": "Phức tạp"
+  },
+  "header": {
+    "open": "mở",
+    "searchPlaceholder": "Tìm kiếm vấn đề..."
+  },
+  "filters": {
+    "opened": "Mở",
+    "closed": "Đã đóng",
+    "all": "Tất cả"
+  },
+  "empty": {
+    "noMatch": "Không có vấn đề nào khớp với tìm kiếm của bạn",
+    "selectIssue": "Chọn một vấn đề để xem chi tiết"
+  },
+  "notConnected": {
+    "title": "Chưa Kết nối GitLab",
+    "description": "Cấu hình token và dự án GitLab của bạn trong cài đặt dự án để đồng bộ các vấn đề.",
+    "openSettings": "Mở Cài đặt"
+  },
+  "detail": {
+    "notes": "ghi chú",
+    "viewTask": "Xem Tác vụ",
+    "createTask": "Tạo Tác vụ",
+    "taskLinked": "Tác vụ Đã Liên kết",
+    "taskId": "ID Tác vụ",
+    "description": "Mô tả",
+    "noDescription": "Không có mô tả được cung cấp.",
+    "assignees": "Người được giao",
+    "milestone": "Mốc"
+  },
+  "investigation": {
+    "title": "Tạo Tác vụ từ Vấn đề",
+    "issuePrefix": "Vấn đề",
+    "description": "Tạo một tác vụ từ vấn đề GitLab này. Tác vụ sẽ được thêm vào bảng Kanban của bạn trong cột Backlog.",
+    "selectNotes": "Chọn Ghi chú để Bao gồm",
+    "deselectAll": "Bỏ Chọn Tất cả",
+    "selectAll": "Chọn Tất cả",
+    "willInclude": "Tác vụ sẽ bao gồm:",
+    "includeTitle": "Tiêu đề và mô tả vấn đề",
+    "includeLink": "Liên kết trở lại vấn đề GitLab",
+    "includeLabels": "Nhãn và metadata từ vấn đề",
+    "noNotes": "Không có ghi chú (vấn đề này không có ghi chú)",
+    "failedToLoadNotes": "Không thể tải ghi chú",
+    "taskCreated": "Đã tạo tác vụ! Xem nó trong bảng Kanban của bạn.",
+    "creating": "Đang tạo...",
+    "cancel": "Hủy",
+    "done": "Hoàn tất",
+    "close": "Đóng"
+  },
+  "settings": {
+    "enableIssues": "Bật Vấn đề GitLab",
+    "enableIssuesDescription": "Đồng bộ các vấn đề từ GitLab và tạo tác vụ tự động",
+    "instance": "Instance GitLab",
+    "instanceDescription": "Sử dụng https://gitlab.com hoặc URL instance tự lưu trữ của bạn",
+    "connectedVia": "Đã kết nối qua GitLab CLI",
+    "authenticatedAs": "Đã xác thực với tư cách",
+    "useDifferentToken": "Sử dụng Token Khác",
+    "authentication": "Xác thực GitLab",
+    "useManualToken": "Sử dụng Token Thủ công",
+    "authenticating": "Đang xác thực với glab CLI...",
+    "browserWindow": "Một cửa sổ trình duyệt sẽ mở để bạn đăng nhập.",
+    "personalAccessToken": "Personal Access Token",
+    "useOAuth": "Sử dụng OAuth Thay vào đó",
+    "tokenScope": "Tạo một token với",
+    "scopeApi": "api",
+    "scopeFrom": "phạm vi từ",
+    "gitlabSettings": "Cài đặt GitLab",
+    "project": "Dự án",
+    "enterManually": "Nhập Thủ công",
+    "loadingProjects": "Đang tải dự án...",
+    "selectProject": "Chọn một dự án...",
+    "searchProjects": "Tìm kiếm dự án...",
+    "noMatchingProjects": "Không có dự án phù hợp",
+    "noProjectsFound": "Không tìm thấy dự án",
+    "selected": "Đã chọn",
+    "projectFormat": "Định dạng:",
+    "projectFormatExample": "(ví dụ: gitlab-org/gitlab)",
+    "connectionStatus": "Trạng thái Kết nối",
+    "checking": "Đang kiểm tra...",
+    "connectedTo": "Đã kết nối đến",
+    "notConnected": "Chưa kết nối",
+    "issuesAvailable": "Vấn đề Có sẵn",
+    "issuesAvailableDescription": "Truy cập Vấn đề GitLab từ thanh bên để xem, điều tra, và tạo tác vụ từ các vấn đề.",
+    "defaultBranch": "Nhánh Mặc định",
+    "defaultBranchDescription": "Nhánh cơ sở để tạo worktrees tác vụ",
+    "loadingBranches": "Đang tải các nhánh...",
+    "autoDetect": "Tự động phát hiện (main/master)",
+    "searchBranches": "Tìm kiếm các nhánh...",
+    "noMatchingBranches": "Không có nhánh phù hợp",
+    "noBranchesFound": "Không tìm thấy nhánh",
+    "branchFromNote": "Tất cả các tác vụ mới sẽ phân nhánh từ",
+    "autoSyncOnLoad": "Tự động Đồng bộ khi Tải",
+    "autoSyncDescription": "Tự động lấy các vấn đề khi dự án tải",
+    "cli": {
+      "required": "Cần CLI GitLab",
+      "notInstalled": "CLI GitLab (glab) được yêu cầu để xác thực OAuth. Cài đặt nó để sử dụng tùy chọn 'Sử dụng OAuth'.",
+      "installButton": "Cài đặt glab",
+      "installing": "Đang cài đặt...",
+      "installSuccess": "Đã bắt đầu cài đặt trong terminal của bạn. Hoàn tất nó và nhấn Làm mới.",
+      "refresh": "Làm mới",
+      "learnMore": "Tìm hiểu thêm",
+      "installed": "Đã cài đặt CLI GitLab:"
+    }
+  },
+  "mergeRequests": {
+    "title": "Merge Requests GitLab",
+    "newMR": "Merge Request Mới",
+    "selectMR": "Chọn một merge request để xem chi tiết",
+    "states": {
+      "opened": "Mở",
+      "closed": "Đã đóng",
+      "merged": "Đã hợp nhất",
+      "locked": "Đã khóa"
+    },
+    "filters": {
+      "opened": "Mở",
+      "closed": "Đã đóng",
+      "merged": "Đã hợp nhất",
+      "all": "Tất cả"
+    }
+  },
+  "mrReview": {
+    "runReview": "Chạy Xem xét AI",
+    "reviewing": "Đang xem xét...",
+    "followupReview": "Xem xét Theo dõi",
+    "newCommits": "commit mới",
+    "newCommitsPlural": "commit mới",
+    "cancel": "Hủy",
+    "postFindings": "Đăng Các phát hiện",
+    "posting": "Đang đăng...",
+    "postedTo": "Đã đăng lên GitLab",
+    "approve": "Phê duyệt",
+    "approving": "Đang phê duyệt...",
+    "merge": "Hợp nhất MR",
+    "merging": "Đang hợp nhất...",
+    "aiReviewResult": "Kết quả Xem xét AI",
+    "followupReviewResult": "Xem xét Theo dõi",
+    "description": "Mô tả",
+    "noDescription": "Không có mô tả được cung cấp.",
+    "labels": "Nhãn",
+    "status": {
+      "notReviewed": "Chưa Xem xét",
+      "notReviewedDesc": "Chạy một xem xét AI để phân tích MR này",
+      "reviewComplete": "Xem xét Hoàn tất",
+      "reviewCompleteDesc": "phát hiện. Chọn và đăng lên GitLab.",
+      "waitingForChanges": "Đang chờ Thay đổi",
+      "waitingForChangesDesc": "phát hiện đã đăng. Đang chờ người đóng góp giải quyết các vấn đề.",
+      "readyToMerge": "Sẵn sàng để Hợp nhất",
+      "readyToMergeDesc": "Không tìm thấy vấn đề chặn. MR này có thể được hợp nhất.",
+      "needsAttention": "Cần Sự chú ý",
+      "needsAttentionDesc": "phát hiện cần được đăng lên GitLab.",
+      "readyForFollowup": "Sẵn sàng để Theo dõi",
+      "readyForFollowupDesc": "kể từ khi xem xét. Chạy theo dõi để kiểm tra xem các vấn đề đã được giải quyết chưa.",
+      "blockingIssues": "Vấn đề Chặn",
+      "blockingIssuesDesc": "vấn đề chặn vẫn mở."
+    },
+    "overallStatus": {
+      "approve": "Phê duyệt",
+      "requestChanges": "Đã Yêu cầu Thay đổi",
+      "comment": "Bình luận"
+    },
+    "resolution": {
+      "resolved": "đã giải quyết",
+      "stillOpen": "vẫn mở",
+      "newIssue": "vấn đề mới",
+      "newIssues": "vấn đề mới"
+    }
+  },
+  "findings": {
+    "summary": "đã chọn",
+    "selectCriticalHigh": "Chọn Chặn/Bắt buộc",
+    "selectAll": "Chọn Tất cả",
+    "clear": "Xóa",
+    "noIssues": "Không tìm thấy vấn đề! Mã trông tốt.",
+    "suggestedFix": "Sửa đề xuất:",
+    "posted": "Đã đăng",
+    "severity": {
+      "critical": "Chặn",
+      "criticalDesc": "Phải sửa",
+      "high": "Bắt buộc",
+      "highDesc": "Nên sửa",
+      "medium": "Khuyến nghị",
+      "mediumDesc": "Cải thiện chất lượng",
+      "low": "Gợi ý",
+      "lowDesc": "Cân nhắc"
+    },
+    "category": {
+      "security": "Bảo mật",
+      "quality": "Chất lượng",
+      "style": "Phong cách",
+      "test": "Kiểm thử",
+      "docs": "Tài liệu",
+      "pattern": "Mẫu",
+      "performance": "Hiệu suất",
+      "logic": "Logic"
+    }
+  }
+}

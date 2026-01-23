@@ -1,0 +1,83 @@
+{
+  "sections": {
+    "project": "Dự án",
+    "tools": "Công cụ"
+  },
+  "items": {
+    "kanban": "Kanban Board",
+    "terminals": "Agent Terminals",
+    "insights": "Insights",
+    "roadmap": "Roadmap",
+    "ideation": "Ideation",
+    "changelog": "Changelog",
+    "context": "Bối cảnh",
+    "githubIssues": "GitHub Issues",
+    "githubPRs": "GitHub PRs",
+    "gitlabIssues": "GitLab Issues",
+    "gitlabMRs": "GitLab MRs",
+    "worktrees": "Worktrees",
+    "agentTools": "Tổng quan MCP"
+  },
+  "actions": {
+    "settings": "Cài đặt",
+    "help": "Trợ giúp & Phản hồi",
+    "newTask": "Tác vụ mới"
+  },
+  "tooltips": {
+    "settings": "Cài đặt ứng dụng",
+    "help": "Trợ giúp & Phản hồi"
+  },
+  "messages": {
+    "initializeToCreateTasks": "Khởi tạo Auto Claude để tạo tác vụ"
+  },
+  "updateBanner": {
+    "title": "Có bản cập nhật mới",
+    "version": "Phiên bản {{version}} đã sẵn sàng",
+    "updateAndRestart": "Cập nhật và Khởi động lại",
+    "installAndRestart": "Cài đặt và Khởi động lại",
+    "downloading": "Đang tải xuống...",
+    "dismiss": "Bỏ qua",
+    "downloadError": "Không thể tải xuống bản cập nhật"
+  },
+  "claudeCode": {
+    "checking": "Đang kiểm tra Claude Code...",
+    "upToDate": "Claude Code đã được cập nhật",
+    "updateAvailable": "Có bản cập nhật Claude Code",
+    "notInstalled": "Claude Code chưa được cài đặt",
+    "error": "Lỗi khi kiểm tra Claude Code",
+    "installed": "Đã cài đặt",
+    "outdated": "Có bản cập nhật",
+    "missing": "Chưa cài đặt",
+    "current": "Hiện tại",
+    "latest": "Mới nhất",
+    "path": "Đường dẫn",
+    "lastChecked": "Lần kiểm tra cuối",
+    "learnMore": "Tìm hiểu thêm về Claude Code",
+    "learnMoreAriaLabel": "Tìm hiểu thêm về Claude Code (mở trong cửa sổ mới)",
+    "viewChangelog": "Xem Claude Code Changelog",
+    "viewChangelogAriaLabel": "Xem Claude Code Changelog (mở trong cửa sổ mới)",
+    "updateWarningTitle": "Cập nhật Claude Code?",
+    "updateWarningDescription": "Việc cập nhật sẽ đóng tất cả các phiên Claude Code đang chạy. Bất kỳ công việc chưa lưu nào trong các phiên đó có thể bị mất. Hãy đảm bảo lưu công việc của bạn trước khi tiếp tục.",
+    "updateWarningTerminalNote": "Một cửa sổ terminal sẽ mở để chạy lệnh cài đặt. Vui lòng đợi quá trình cài đặt hoàn tất trước khi tiếp tục.",
+    "updateAnyway": "Mở Terminal & Cập nhật",
+    "switchVersion": "Chuyển phiên bản",
+    "selectVersion": "Chọn phiên bản",
+    "loadingVersions": "Đang tải phiên bản...",
+    "failedToLoadVersions": "Không thể tải phiên bản",
+    "installingVersion": "Đang cài đặt phiên bản {{version}}...",
+    "rollbackWarningTitle": "Chuyển sang phiên bản {{version}}?",
+    "rollbackWarningDescription": "Việc chuyển đổi phiên bản sẽ đóng tất cả các phiên Claude Code đang chạy. Bất kỳ công việc chưa lưu nào trong các phiên đó có thể bị mất. Hãy đảm bảo lưu công việc của bạn trước khi tiếp tục.",
+    "rollbackWarningTerminalNote": "Một cửa sổ terminal sẽ mở để chạy lệnh cài đặt. Vui lòng đợi quá trình cài đặt hoàn tất trước khi tiếp tục.",
+    "switchAnyway": "Mở Terminal & Chuyển đổi",
+    "currentVersion": "Hiện tại",
+    "switchInstallation": "Chuyển cài đặt",
+    "selectInstallation": "Chọn cài đặt",
+    "loadingInstallations": "Đang tải cài đặt...",
+    "failedToLoadInstallations": "Không thể tải cài đặt",
+    "activeInstallation": "Đang hoạt động",
+    "pathChangeWarningTitle": "Chuyển cài đặt CLI?",
+    "pathChangeWarningDescription": "Việc chuyển đổi cài đặt CLI sẽ sử dụng binary Claude Code khác. Các phiên đang chạy sẽ tiếp tục sử dụng cài đặt cũ cho đến khi được khởi động lại.",
+    "switchInstallationConfirm": "Chuyển đổi",
+    "versionUnknown": "phiên bản không xác định"
+  }
+}

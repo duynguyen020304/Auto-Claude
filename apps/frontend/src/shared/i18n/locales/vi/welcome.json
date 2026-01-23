@@ -1,0 +1,17 @@
+{
+  "hero": {
+    "title": "Chào mừng đến với Auto Claude",
+    "subtitle": "Xây dựng phần mềm tự động với các AI agents"
+  },
+  "actions": {
+    "newProject": "Dự án Mới",
+    "openProject": "Mở Dự án"
+  },
+  "recentProjects": {
+    "title": "Dự án Gần đây",
+    "empty": "Chưa có dự án nào",
+    "emptyDescription": "Tạo một dự án mới hoặc mở một dự án hiện có để bắt đầu",
+    "openFolder": "Mở Thư mục",
+    "openProjectAriaLabel": "Mở dự án {{name}}"
+  }
+}

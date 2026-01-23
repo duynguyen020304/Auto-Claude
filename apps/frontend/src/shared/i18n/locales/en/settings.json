@@ -37,6 +37,10 @@
       "title": "API Profiles",
       "description": "Custom API endpoint profiles"
     },
+    "credential-profiles": {
+      "title": "Credential Profiles",
+      "description": "Manage pool credentials"
+    },
     "updates": {
       "title": "Updates",
       "description": "Auto Claude updates"

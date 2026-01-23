@@ -1,0 +1,332 @@
+{
+  "refreshTasks": "Làm mới Tác vụ",
+  "status": {
+    "backlog": "Backlog",
+    "queue": "Hàng đợi",
+    "todo": "Cần làm",
+    "in_progress": "Đang thực hiện",
+    "review": "Xem xét",
+    "prCreated": "Đã tạo PR",
+    "complete": "Hoàn tất",
+    "archived": "Đã lưu trữ"
+  },
+  "actions": {
+    "start": "Bắt đầu",
+    "stop": "Dừng",
+    "recover": "Khôi phục",
+    "resume": "Tiếp tục",
+    "archive": "Lưu trữ",
+    "delete": "Xóa",
+    "view": "Xem Chi tiết",
+    "viewPR": "Xem PR",
+    "moveTo": "Chuyển đến",
+    "taskActions": "Hành động Tác vụ",
+    "selectTask": "Chọn tác vụ: {{title}}"
+  },
+  "labels": {
+    "running": "Đang chạy",
+    "aiReview": "Xem xét AI",
+    "needsReview": "Cần Xem xét",
+    "pending": "Đang chờ",
+    "stuck": "Bị kẹt",
+    "incomplete": "Chưa hoàn tất",
+    "recovering": "Đang khôi phục...",
+    "needsRecovery": "Cần Khôi phục",
+    "needsResume": "Cần Tiếp tục"
+  },
+  "reviewReason": {
+    "completed": "Đã hoàn tất",
+    "hasErrors": "Có Lỗi",
+    "qaIssues": "Vấn đề QA",
+    "approvePlan": "Phê duyệt Kế hoạch"
+  },
+  "tooltips": {
+    "archiveTask": "Lưu trữ tác vụ",
+    "archiveAllDone": "Lưu trữ tất cả các tác vụ đã hoàn thành",
+    "viewPR": "Mở pull request trong trình duyệt"
+  },
+  "creation": {
+    "title": "Tạo Tác vụ Mới",
+    "description": "Mô tả những gì bạn muốn xây dựng",
+    "placeholder": "Mô tả tác vụ của bạn..."
+  },
+  "empty": {
+    "title": "Chưa có tác vụ nào",
+    "description": "Tạo tác vụ đầu tiên của bạn để bắt đầu"
+  },
+  "columns": {
+    "backlog": "Lập kế hoạch",
+    "queue": "Hàng đợi",
+    "in_progress": "Đang thực hiện",
+    "ai_review": "Xem xét AI",
+    "human_review": "Xem xét Con người",
+    "done": "Hoàn tất",
+    "pr_created": "Đã tạo PR",
+    "error": "Lỗi"
+  },
+  "kanban": {
+    "emptyBacklog": "Chưa có tác vụ nào được lập kế hoạch",
+    "emptyBacklogHint": "Thêm một tác vụ để bắt đầu",
+    "emptyQueue": "Hàng đợi trống",
+    "emptyQueueHint": "Các tác vụ sẽ chờ ở đây khi đạt giới hạn tác vụ song song",
+    "emptyInProgress": "Không có gì đang chạy",
+    "emptyInProgressHint": "Bắt đầu một tác vụ từ Lập kế hoạch",
+    "emptyAiReview": "Không có tác vụ nào trong xem xét",
+    "emptyAiReviewHint": "AI sẽ xem xét các tác vụ đã hoàn thành",
+    "emptyHumanReview": "Không có gì để xem xét",
+    "emptyHumanReviewHint": "Các tác vụ chờ phê duyệt của bạn ở đây",
+    "emptyDone": "Không có tác vụ đã hoàn thành",
+    "emptyDoneHint": "Các tác vụ đã phê duyệt xuất hiện ở đây",
+    "emptyDefault": "Không có tác vụ",
+    "dropHere": "Thả vào đây",
+    "showArchived": "Hiển thị đã lưu trữ",
+    "addTaskAriaLabel": "Thêm tác vụ mới vào backlog",
+    "queueAllAriaLabel": "Chuyển tất cả các tác vụ vào hàng đợi",
+    "closeTaskDetailsAriaLabel": "Đóng chi tiết tác vụ",
+    "editTask": "Chỉnh sửa tác vụ",
+    "cannotEditWhileRunning": "Không thể chỉnh sửa trong khi tác vụ đang chạy",
+    "worktreeCleanupTitle": "Dọn dẹp Worktree",
+    "worktreeCleanupStaged": "Tác vụ này đã được staged và có một worktree. Bạn có muốn dọn dẹp worktree không?",
+    "worktreeCleanupNotStaged": "Tác vụ này có một worktree với các thay đổi chưa được hợp nhất. Xóa worktree để đánh dấu là hoàn tất, hoặc hủy để xem xét các thay đổi trước.",
+    "keepWorktree": "Giữ Worktree",
+    "deleteWorktree": "Xóa Worktree & Đánh dấu Hoàn tất",
+    "refreshTasks": "Làm mới Tác vụ",
+    "queueSettings": "Cài đặt Hàng đợi",
+    "orderSaveFailedTitle": "Thay đổi thứ tự không được lưu",
+    "orderSaveFailedDescription": "Thay đổi thứ tự tác vụ của bạn đã được áp dụng nhưng không thể lưu vào bộ lưu trữ. Nó sẽ bị mất khi làm mới.",
+    "selectAll": "Chọn tất cả",
+    "deselectAll": "Bỏ chọn tất cả",
+    "selectedCount": "{{count}} đã chọn",
+    "selectedCountOne": "{{count}} tác vụ đã chọn",
+    "selectedCountOther": "{{count}} tác vụ đã chọn",
+    "createPRs": "Tạo PRs",
+    "clearSelection": "Xóa Lựa chọn"
+  },
+  "queue": {
+    "limitReached": "Đã đạt giới hạn tác vụ song song ({{current}}/{{max}}). Tác vụ đã được chuyển vào hàng đợi.",
+    "movedToQueue": "Tác vụ đã được chuyển vào hàng đợi.",
+    "autoPromoted": "Tác vụ được tự động thăng cấp từ hàng đợi sang Đang thực hiện.",
+    "capacityAvailable": "{{count}} chỗ trống có sẵn trong Đang thực hiện.",
+    "queueAll": "Thêm Tất cả vào Hàng đợi",
+    "queueAllSuccess": "Đã chuyển {{count}} tác vụ vào hàng đợi.",
+    "settings": {
+      "title": "Cài đặt Hàng đợi",
+      "description": "Cấu hình số lượng tác vụ tối đa có thể chạy song song trong bảng \"Đang thực hiện\"",
+      "maxParallelLabel": "Số Tác vụ Song song Tối đa",
+      "minValueError": "Phải ít nhất là 1",
+      "maxValueError": "Không thể vượt quá 10",
+      "hint": "Khi đạt giới hạn này, các tác vụ mới sẽ chờ trong hàng đợi trước khi chuyển sang \"Đang thực hiện\"",
+      "saved": "Đã lưu cài đặt hàng đợi",
+      "saveFailed": "Không thể lưu cài đặt hàng đợi",
+      "retry": "Vui lòng thử lại"
+    }
+  },
+  "execution": {
+    "phases": {
+      "idle": "Nhàn rỗi",
+      "planning": "Lập kế hoạch",
+      "coding": "Coding",
+      "reviewing": "Đang xem xét",
+      "fixing": "Đang sửa",
+      "complete": "Hoàn tất",
+      "failed": "Thất bại"
+    },
+    "labels": {
+      "interrupted": "Bị gián đoạn",
+      "progress": "Tiến độ",
+      "entry": "mục",
+      "entries": "mục"
+    },
+    "shortPhases": {
+      "plan": "Kế hoạch",
+      "code": "Mã",
+      "qa": "QA"
+    }
+  },
+  "files": {
+    "title": "Tệp",
+    "tab": "Tệp",
+    "noSpecPath": "Không có tệp spec nào có sẵn",
+    "noFiles": "Không tìm thấy tệp",
+    "loading": "Đang tải tệp...",
+    "loadingContent": "Đang tải nội dung...",
+    "errorLoading": "Không thể tải tệp",
+    "errorLoadingContent": "Không thể tải nội dung tệp",
+    "retry": "Thử lại",
+    "selectFile": "Chọn một tệp để xem nội dung của nó",
+    "openInIDE": "Mở trong IDE"
+  },
+  "metadata": {
+    "severity": "mức độ nghiêm trọng",
+    "pullRequest": "Pull Request"
+  },
+  "images": {
+    "removeImageAriaLabel": "Xóa ảnh {{filename}}",
+    "pasteHint": "Mẹo: Dán trực tiếp các ảnh chụp màn hình với {{shortcut}} để thêm ảnh tham chiếu."
+  },
+  "notifications": {
+    "backgroundTaskTitle": "Tác vụ tiếp tục trong nền",
+    "backgroundTaskDescription": "Tác vụ vẫn đang chạy. Bạn có thể mở lại hộp thoại này để theo dõi tiến độ."
+  },
+  "wizard": {
+    "createTitle": "Tạo Tác vụ Mới",
+    "createDescription": "Mô tả những gì bạn muốn xây dựng. AI sẽ phân tích yêu cầu của bạn và tạo một thông số kỹ thuật chi tiết.",
+    "descriptionPlaceholder": "Mô tả tính năng, sửa lỗi, hoặc cải tiến mà bạn muốn triển khai. Cụ thể càng tốt về các yêu cầu, ràng buộc, và hành vi mong đợi. Nhập @ để tham chiếu các tệp.",
+    "draftRestored": "Bản nháp đã được khôi phục",
+    "startFresh": "Bắt đầu Mới",
+    "hideFiles": "Ẩn Tệp",
+    "browseFiles": "Duyệt Tệp",
+    "creating": "Đang tạo...",
+    "createTask": "Tạo Tác vụ",
+    "worktreeNotice": {
+      "title": "Không gian làm việc Cô lập",
+      "description": "Tác vụ này chạy trong một git worktree cô lập. Nhánh chính của bạn vẫn an toàn cho đến khi bạn chọn hợp nhất."
+    },
+    "gitOptions": {
+      "title": "Tùy chọn Git (tùy chọn)",
+      "baseBranchLabel": "Nhánh Cơ sở (tùy chọn)",
+      "useProjectDefault": "Sử dụng mặc định dự án",
+      "useProjectDefaultWithBranch": "Sử dụng mặc định dự án ({{branch}})",
+      "searchBranches": "Tìm kiếm nhánh...",
+      "noBranchesFound": "Không tìm thấy nhánh",
+      "helpText": "Ghi đè nhánh mà worktree của tác vụ này sẽ được tạo từ. Để trống để sử dụng nhánh mặc định đã cấu hình của dự án.",
+      "useWorktreeLabel": "Sử dụng không gian làm việc cô lập (khuyến nghị)",
+      "useWorktreeDescription": "Tạo các thay đổi trong một git worktree riêng biệt để xem xét an toàn trước khi hợp nhất. Tắt để xây dựng trực tiếp trong dự án của bạn (nhanh hơn nhưng rủi ro hơn)."
+    },
+    "errors": {
+      "createFailed": "Không thể tạo tác vụ. Vui lòng thử lại."
+    }
+  },
+  "feedback": {
+    "dragDropHint": "Kéo & thả hình ảnh hoặc dán ảnh chụp màn hình",
+    "imageAdded": "Đã thêm hình ảnh thành công",
+    "maxImagesError": "Tối đa {{count}} hình ảnh được phép",
+    "invalidTypeError": "Loại hình ảnh không hợp lệ. Được phép: {{types}}",
+    "removeImage": "Xóa hình ảnh",
+    "processingError": "Không thể xử lý hình ảnh"
+  },
+  "review": {
+    "mergeTooltip": "Hợp nhất các thay đổi từ nhánh worktree của tác vụ trở lại nhánh cơ sở của bạn. AI sẽ giải quyết mọi xung đột. Sau đó bạn có thể chọn giữ hay xóa worktree."
+  },
+  "edit": {
+    "title": "Chỉnh sửa Tác vụ",
+    "description": "Cập nhật chi tiết tác vụ bao gồm tiêu đề, mô tả, phân loại, hình ảnh và cài đặt. Các thay đổi sẽ được lưu vào các tệp spec.",
+    "saveChanges": "Lưu Thay đổi",
+    "errors": {
+      "updateFailed": "Không thể cập nhật tác vụ. Vui lòng thử lại."
+    }
+  },
+  "form": {
+    "description": "Mô tả",
+    "descriptionPlaceholder": "Mô tả tính năng, sửa lỗi, hoặc cải tiến mà bạn muốn triển khai. Cụ thể càng tốt về các yêu cầu, ràng buộc, và hành vi mong đợi.",
+    "imageAddedSuccess": "Đã thêm hình ảnh thành công!",
+    "taskTitle": "Tiêu đề Tác vụ",
+    "titlePlaceholder": "Để trống để tự động tạo từ mô tả",
+    "titleHelpText": "Một tiêu đề ngắn gọn, mô tả sẽ được tạo tự động nếu để trống.",
+    "classificationOptional": "Phân loại (tùy chọn)",
+    "requireReviewLabel": "Yêu cầu xem xét của con người trước khi coding",
+    "requireReviewDescription": "Khi bật, bạn sẽ được nhắc để xem xét spec và kế hoạch triển khai trước khi bắt đầu giai đoạn coding. Điều này cho phép bạn phê duyệt, yêu cầu thay đổi, hoặc cung cấp phản hồi.",
+    "errors": {
+      "descriptionRequired": "Vui lòng cung cấp mô tả",
+      "maxImagesReached": "Tối đa 5 hình ảnh được phép",
+      "invalidImageType": "Loại hình ảnh không hợp lệ. Được phép: PNG, JPEG, GIF, WebP",
+      "processPasteFailed": "Không thể xử lý hình ảnh đã dán",
+      "processDropFailed": "Không thể xử lý hình ảnh đã thả"
+    },
+    "classification": {
+      "category": "Danh mục",
+      "selectCategory": "Chọn danh mục",
+      "priority": "Ưu tiên",
+      "selectPriority": "Chọn mức ưu tiên",
+      "complexity": "Độ phức tạp",
+      "selectComplexity": "Chọn độ phức tạp",
+      "impact": "Tác động",
+      "selectImpact": "Chọn tác động",
+      "helpText": "Các nhãn này giúp tổ chức và sắp xếp thứ tự ưu tiên các tác vụ. Chúng là tùy chọn nhưng hữu ích để lọc.",
+      "values": {
+        "category": {
+          "feature": "Tính năng",
+          "bug_fix": "Sửa Lỗi",
+          "refactoring": "Tái cấu trúc",
+          "documentation": "Tài liệu",
+          "security": "Bảo mật"
+        },
+        "priority": {
+          "low": "Thấp",
+          "medium": "Trung bình",
+          "high": "Cao",
+          "urgent": "Khẩn cấp"
+        },
+        "complexity": {
+          "trivial": "Nhỏ nhặt",
+          "small": "Nhỏ",
+          "medium": "Trung bình",
+          "large": "Lớn",
+          "complex": "Phức tạp"
+        },
+        "impact": {
+          "low": "Tác động Thấp",
+          "medium": "Tác động Trung bình",
+          "high": "Tác động Cao",
+          "critical": "Tác động Quan trọng"
+        }
+      }
+    }
+  },
+  "subtasks": {
+    "untitled": "Tác vụ phụ không có tiêu đề"
+  },
+  "bulkPR": {
+    "selectAllInColumn": "Chọn tất cả các tác vụ trong cột",
+    "deselectAllInColumn": "Bỏ chọn tất cả các tác vụ",
+    "selectionMode": "Chế độ chọn đang hoạt động",
+    "exitSelectionMode": "Thoát chế độ chọn",
+    "noTasksToSelect": "Không có tác vụ nào để chọn",
+    "confirmBulkAction": "Xác nhận hành động hàng loạt cho {{count}} tác vụ",
+    "processingTasks": "Đang xử lý các tác vụ đã chọn..."
+  },
+  "apiProfile": {
+    "label": "Hồ sơ API",
+    "placeholder": "Chọn hồ sơ API",
+    "empty": "Không có hồ sơ API nào có sẵn",
+    "errors": {
+      "profileNotFound": "Không tìm thấy hồ sơ"
+    }
+  },
+  "taskProfile": {
+    "apiProfile": {
+      "label": "Hồ sơ API",
+      "placeholder": "Chọn hồ sơ API",
+      "limit": "Giới hạn",
+      "empty": "Không có hồ sơ API nào có sẵn",
+      "disabledBecausePool": "Bị tắt khi pool được chọn"
+    },
+    "pool": {
+      "label": "Pool",
+      "placeholder": "Chọn pool",
+      "profiles": "hồ sơ",
+      "empty": "Không có pool nào có sẵn",
+      "disabledBecauseProfile": "Bị tắt khi hồ sơ API được chọn"
+    },
+    "validation": {
+      "bothSelected": "Không thể chọn cả hồ sơ API và pool"
+    }
+  },
+  "screenshot": {
+    "title": "Chụp Ảnh Màn hình",
+    "description": "Chọn một màn hình hoặc cửa sổ để chụp làm hình ảnh tham chiếu",
+    "capture": "Chụp",
+    "capturing": "Đang chụp...",
+    "noSources": "Không tìm thấy màn hình hoặc cửa sổ",
+    "errors": {
+      "getSources": "Không thể lấy các nguồn ảnh chụp màn hình",
+      "fetchSources": "Không thể tìm nạp các nguồn ảnh chụp màn hình",
+      "capture": "Không thể chụp ảnh màn hình",
+      "captureFailed": "Không thể chụp ảnh màn hình"
+    }
+  },
+  "referenceImages": {
+    "title": "Hình ảnh Tham chiếu (tùy chọn)",
+    "description": "Thêm các tài liệu tham khảo hình ảnh như ảnh chụp màn hình hoặc thiết kế để giúp AI hiểu yêu cầu của bạn."
+  }
+}

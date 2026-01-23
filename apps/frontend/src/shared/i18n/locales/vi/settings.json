@@ -1,0 +1,897 @@
+{
+  "title": "Cài đặt",
+  "tabs": {
+    "app": "Cài đặt Ứng dụng",
+    "project": "Cài đặt Dự án"
+  },
+  "sections": {
+    "appearance": {
+      "title": "Giao diện",
+      "description": "Tùy chỉnh giao diện Auto Claude"
+    },
+    "display": {
+      "title": "Hiển thị",
+      "description": "Điều chỉnh kích thước các phần tử UI"
+    },
+    "language": {
+      "title": "Ngôn ngữ",
+      "description": "Chọn ngôn ngữ ưa thích của bạn"
+    },
+    "devtools": {
+      "title": "Công cụ dành cho nhà phát triển",
+      "description": "Tùy chọn IDE và terminal"
+    },
+    "agent": {
+      "title": "Cài đặt Agent",
+      "description": "Mô hình và framework mặc định"
+    },
+    "paths": {
+      "title": "Đường dẫn",
+      "description": "Công cụ CLI và đường dẫn framework"
+    },
+    "integrations": {
+      "title": "Tích hợp",
+      "description": "API keys & tài khoản Claude"
+    },
+    "api-profiles": {
+      "title": "Hồ sơ API",
+      "description": "Hồ sơ endpoint API tùy chỉnh"
+    },
+    "credential-profiles": {
+      "title": "Hồ sơ Thông tin xác thực",
+      "description": "Quản lý thông tin xác thực cho pool"
+    },
+    "updates": {
+      "title": "Cập nhật",
+      "description": "Cập nhật Auto Claude"
+    },
+    "notifications": {
+      "title": "Thông báo",
+      "description": "Tùy chọn cảnh báo"
+    },
+    "debug": {
+      "title": "Gỡ lỗi & Nhật ký",
+      "description": "Công cụ xử lý sự cố"
+    }
+  },
+  "apiProfiles": {
+    "title": "Hồ sơ API",
+    "description": "Cấu hình các endpoint API tương thích với Anthropic",
+    "addButton": "Thêm Hồ sơ",
+    "presets": {
+      "anthropic": "Anthropic",
+      "openrouter": "OpenRouter",
+      "groq": "Groq",
+      "glmGlobal": "GLM (Toàn cầu)",
+      "glmChina": "GLM (Trung Quốc)"
+    },
+    "fields": {
+      "name": "Tên",
+      "preset": "Mẫu",
+      "baseUrl": "Base URL",
+      "apiKey": "API Key"
+    },
+    "placeholders": {
+      "name": "API Tùy chỉnh Của Tôi",
+      "preset": "Chọn mẫu nhà cung cấp",
+      "baseUrl": "https://api.anthropic.com",
+      "apiKey": "sk-ant-..."
+    },
+    "hints": {
+      "preset": "Các mẫu sẽ điền base URL; bạn vẫn cần dán API key của mình.",
+      "baseUrl": "Ví dụ: https://api.anthropic.com hoặc http://localhost:8080"
+    },
+    "validation": {
+      "nameRequired": "Tên là bắt buộc",
+      "baseUrlRequired": "Base URL là bắt buộc",
+      "baseUrlInvalid": "Định dạng URL không hợp lệ (phải là http:// hoặc https://)",
+      "apiKeyRequired": "API Key là bắt buộc",
+      "apiKeyInvalid": "Định dạng API Key không hợp lệ"
+    },
+    "actions": {
+      "save": "Lưu Hồ sơ",
+      "saving": "Đang lưu...",
+      "cancel": "Hủy",
+      "changeKey": "Thay đổi",
+      "cancelKeyChange": "Hủy"
+    },
+    "testConnection": {
+      "label": "Kiểm tra Kết nối",
+      "testing": "Đang kiểm tra...",
+      "success": "Kết nối Thành công",
+      "failure": "Kết nối Thất bại"
+    },
+    "models": {
+      "title": "Tùy chọn: Ánh xạ Tên Mô hình",
+      "description": "Chọn mô hình từ nhà cung cấp API của bạn. Để trống để sử dụng mặc định.",
+      "defaultLabel": "Mô hình Mặc định (Tùy chọn)",
+      "haikuLabel": "Mô hình Haiku (Tùy chọn)",
+      "sonnetLabel": "Mô hình Sonnet (Tùy chọn)",
+      "opusLabel": "Mô hình Opus (Tùy chọn)",
+      "defaultPlaceholder": "ví dụ: claude-sonnet-4-5-20250929",
+      "haikuPlaceholder": "ví dụ: claude-haiku-4-5-20251001",
+      "sonnetPlaceholder": "ví dụ: claude-sonnet-4-5-20250929",
+      "opusPlaceholder": "ví dụ: claude-opus-4-5-20251101"
+    },
+    "empty": {
+      "title": "Chưa cấu hình hồ sơ API",
+      "description": "Tạo hồ sơ để cấu hình các endpoint API tùy chỉnh cho bản build của bạn.",
+      "action": "Tạo Hồ sơ Đầu tiên"
+    },
+    "switchToOauth": {
+      "label": "Chuyển sang OAuth",
+      "loading": "Đang chuyển..."
+    },
+    "activeBadge": "Đang hoạt động",
+    "customModels": "Mô hình tùy chỉnh: {{models}}",
+    "setActive": {
+      "label": "Đặt làm Hoạt động",
+      "loading": "Đang đặt..."
+    },
+    "tooltips": {
+      "edit": "Chỉnh sửa hồ sơ",
+      "deleteActive": "Chuyển sang OAuth trước khi xóa",
+      "deleteInactive": "Xóa hồ sơ"
+    },
+    "deleteAriaLabel": "Xóa hồ sơ {{name}}",
+    "toast": {
+      "create": {
+        "title": "Đã tạo hồ sơ",
+        "description": "\"{{name}}\" đã được thêm thành công."
+      },
+      "update": {
+        "title": "Đã cập nhật hồ sơ",
+        "description": "\"{{name}}\" đã được cập nhật thành công."
+      },
+      "delete": {
+        "title": "Đã xóa hồ sơ",
+        "description": "\"{{name}}\" đã được xóa.",
+        "errorTitle": "Không thể xóa hồ sơ",
+        "errorFallback": "Đã xảy ra lỗi khi xóa hồ sơ."
+      },
+      "switch": {
+        "oauthTitle": "Đã chuyển sang OAuth",
+        "oauthDescription": "Đang sử dụng xác thực OAuth",
+        "profileTitle": "Đã kích hoạt hồ sơ",
+        "profileDescription": "Đang sử dụng {{name}}",
+        "errorTitle": "Không thể chuyển phương thức xác thực",
+        "errorFallback": "Đã xảy ra lỗi khi chuyển phương thức xác thực."
+      }
+    },
+    "dialog": {
+      "createTitle": "Thêm Hồ sơ API",
+      "editTitle": "Chỉnh sửa Hồ sơ",
+      "description": "Cấu hình một endpoint API tương thích với Anthropic cho bản build của bạn.",
+      "deleteTitle": "Xóa Hồ sơ?",
+      "deleteDescription": "Bạn có chắc chắn muốn xóa \"{{name}}\"? Hành động này không thể hoàn tác.",
+      "cancel": "Hủy",
+      "delete": "Xóa",
+      "deleting": "Đang xóa..."
+    }
+  },
+  "credentialProfiles": {
+    "title": "Hồ sơ Thông tin xác thực",
+    "description": "Quản lý OAuth tokens và API keys với giới hạn sử dụng",
+    "addButton": "Thêm Hồ sơ",
+    "type": {
+      "api": "API",
+      "oauth": "OAuth"
+    },
+    "status": {
+      "active": "Đang hoạt động",
+      "rateLimited": "Giới hạn tốc độ",
+      "disabled": "Đã tắt"
+    },
+    "usageLimit": "Giới hạn sử dụng: {{limit}}",
+    "rotationMode": "Chuyển đổi: {{mode}}",
+    "usageMetrics": "{{requests}} yêu cầu, {{tokens}} tokens",
+    "empty": {
+      "title": "Chưa cấu hình hồ sơ thông tin xác thực",
+      "description": "Tạo hồ sơ để quản lý OAuth tokens và API keys của bạn với theo dõi việc sử dụng.",
+      "action": "Tạo Hồ sơ Đầu tiên"
+    },
+    "tooltips": {
+      "edit": "Chỉnh sửa hồ sơ",
+      "delete": "Xóa hồ sơ"
+    },
+    "deleteAriaLabel": "Xóa hồ sơ {{name}}",
+    "form": {
+      "nameLabel": "Tên Hồ sơ",
+      "namePlaceholder": "ví dụ: Production API Key",
+      "typeLabel": "Loại Hồ sơ",
+      "typePlaceholder": "Chọn loại hồ sơ",
+      "typeDescription": {
+        "api": "Hồ sơ API Key yêu cầu giới hạn sử dụng và hỗ trợ chiến lược chuyển đổi.",
+        "oauth": "Hồ sơ OAuth không có giới hạn sử dụng."
+      },
+      "credentialLabel": "Giá trị Thông tin xác thực",
+      "credentialPlaceholder": {
+        "api": "sk-ant-...",
+        "oauth": "OAuth token"
+      },
+      "changeCredential": "Thay đổi",
+      "cancelChange": "Hủy Thay đổi",
+      "usageLimitLabel": "Giới hạn Sử dụng",
+      "usageLimitPlaceholder": "ví dụ: 100",
+      "usageLimitHelp": "Số lượng yêu cầu tối đa được phép cho hồ sơ này.",
+      "rotationModeLabel": "Chế độ Chuyển đổi",
+      "rotationModePlaceholder": "Chọn chế độ chuyển đổi",
+      "rotationMode": {
+        "manual": "Thủ công",
+        "roundRobin": "Vòng tròn",
+        "usageBased": "Dựa trên Sử dụng",
+        "rateLimitAware": "Nhận thức Giới hạn Tốc độ"
+      },
+      "rotationModeDescription": {
+        "manual": "Chọn thủ công thông tin xác thực để sử dụng.",
+        "roundRobin": "Chuyển qua các thông tin xác thực theo thứ tự.",
+        "usageBased": "Sử dụng thông tin xác thực có mức sử dụng thấp nhất.",
+        "rateLimitAware": "Chuyển dựa trên ngưỡng giới hạn tốc độ."
+      },
+      "rateLimitThresholdLabel": "Ngưỡng Giới hạn Tốc độ",
+      "rateLimitThresholdPlaceholder": "ví dụ: 0.8",
+      "rateLimitThresholdHelp": "Ngưỡng (0.0-1.0) để chuyển thông tin xác thực khi gần đạt giới hạn tốc độ.",
+      "save": "Lưu Hồ sơ",
+      "saving": "Đang lưu...",
+      "cancel": "Hủy",
+      "validation": {
+        "nameRequired": "Tên là bắt buộc",
+        "credentialRequired": "Giá trị thông tin xác thực là bắt buộc",
+        "usageLimitRequired": "Giới hạn sử dụng là bắt buộc cho hồ sơ API",
+        "usageLimitNonNegative": "Giới hạn sử dụng phải là số không âm",
+        "thresholdRequired": "Ngưỡng giới hạn tốc độ là bắt buộc cho chế độ rate-limit-aware",
+        "thresholdBetween0And1": "Ngưỡng giới hạn tốc độ phải nằm giữa 0 và 1"
+      }
+    },
+    "dialog": {
+      "createTitle": "Tạo Hồ sơ Thông tin xác thực",
+      "editTitle": "Chỉnh sửa Hồ sơ Thông tin xác thực",
+      "deleteTitle": "Xóa Hồ sơ?",
+      "deleteDescription": "Bạn có chắc chắn muốn xóa \"{{name}}\"? Hành động này không thể hoàn tác.",
+      "cancel": "Hủy",
+      "delete": "Xóa",
+      "deleting": "Đang xóa..."
+    },
+    "toast": {
+      "create": {
+        "title": "Đã tạo hồ sơ",
+        "description": "\"{{name}}\" đã được thêm thành công."
+      },
+      "update": {
+        "title": "Đã cập nhật hồ sơ",
+        "description": "\"{{name}}\" đã được cập nhật thành công."
+      },
+      "delete": {
+        "title": "Đã xóa hồ sơ",
+        "description": "\"{{name}}\" đã được xóa.",
+        "errorTitle": "Không thể xóa hồ sơ",
+        "errorFallback": "Đã xảy ra lỗi khi xóa hồ sơ."
+      }
+    }
+  },
+  "pools": {
+    "title": "Pool Thông tin xác thực",
+    "description": "Nhóm nhiều hồ sơ thông tin xác thực với chiến lược chuyển đổi và giới hạn",
+    "addButton": "Thêm Pool",
+    "empty": {
+      "title": "Chưa cấu hình pool",
+      "description": "Tạo pool để nhóm nhiều hồ sơ thông tin xác thực với giới hạn và chuyển đổi chia sẻ.",
+      "action": "Tạo Pool Đầu tiên"
+    },
+    "profileCount": {
+      "single": "{{count}} hồ sơ",
+      "multiple": "{{count}} hồ sơ"
+    },
+    "profileType": {
+      "api": "API",
+      "oauth": "OAuth"
+    },
+    "rotationMode": {
+      "label": "Chuyển đổi",
+      "manual": "Thủ công",
+      "roundRobin": "Vòng tròn",
+      "usageBased": "Dựa trên Sử dụng",
+      "rateLimitAware": "Nhận thức Giới hạn Tốc độ"
+    },
+    "taskUsage": {
+      "label": "Tác vụ"
+    },
+    "rateLimitThreshold": "Ngưỡng: {{threshold}}",
+    "warnings": {
+      "noProfiles": "Chưa gán hồ sơ nào"
+    },
+    "tooltips": {
+      "edit": "Chỉnh sửa pool",
+      "delete": "Xóa pool"
+    },
+    "deleteAriaLabel": "Xóa pool {{name}}",
+    "form": {
+      "nameLabel": "Tên Pool",
+      "namePlaceholder": "ví dụ: Production Pool",
+      "profilesLabel": "Hồ sơ",
+      "profilesLabelApi": "Hồ sơ API Key",
+      "profilesLabelOauth": "Hồ sơ OAuth",
+      "profilesHelp": "Chọn ít nhất một hồ sơ để đưa vào pool này.",
+      "limitLabel": "Giới hạn Pool",
+      "limitPlaceholder": "ví dụ: 10",
+      "limitHelp": "Số tác vụ đồng thời tối đa (0 = không giới hạn).",
+      "rotationConfigLabel": "Cấu hình Chuyển đổi",
+      "rotationModeLabel": "Chế độ Chuyển đổi",
+      "rateLimitThresholdLabel": "Ngưỡng Giới hạn Tốc độ",
+      "maxRetriesLabel": "Số lần Thử lại Tối đa",
+      "retryDelayLabel": "Độ trễ Thử lại (giây)",
+      "save": "Lưu Pool",
+      "saving": "Đang lưu...",
+      "cancel": "Hủy",
+      "validation": {
+        "nameRequired": "Tên là bắt buộc",
+        "atLeastOneProfile": "Cần ít nhất một hồ sơ",
+        "limitRequired": "Giới hạn là bắt buộc",
+        "limitNonNegative": "Giới hạn phải là số không âm",
+        "thresholdRequired": "Ngưỡng giới hạn tốc độ là bắt buộc cho chế độ rate-limit-aware",
+        "thresholdBetween0And1": "Ngưỡng giới hạn tốc độ phải nằm giữa 0 và 1",
+        "maxRetriesRequired": "Số lần thử lại tối đa là bắt buộc",
+        "maxRetriesNonNegative": "Số lần thử lại tối đa phải là số không âm",
+        "retryDelayRequired": "Độ trễ thử lại là bắt buộc",
+        "retryDelayNonNegative": "Độ trễ thử lại phải là số không âm"
+      }
+    },
+    "dialog": {
+      "createTitle": "Tạo Pool Thông tin xác thực",
+      "editTitle": "Chỉnh sửa Pool Thông tin xác thực",
+      "deleteTitle": "Xóa Pool?",
+      "deleteDescription": "Bạn có chắc chắn muốn xóa \"{{name}}\"? Hành động này không thể hoàn tác.",
+      "cancel": "Hủy",
+      "delete": "Xóa",
+      "deleting": "Đang xóa..."
+    },
+    "toast": {
+      "create": {
+        "title": "Đã tạo pool",
+        "description": "\"{{name}}\" đã được thêm thành công."
+      },
+      "update": {
+        "title": "Đã cập nhật pool",
+        "description": "\"{{name}}\" đã được cập nhật thành công."
+      },
+      "delete": {
+        "title": "Đã xóa pool",
+        "description": "\"{{name}}\" đã được xóa.",
+        "errorTitle": "Không thể xóa pool",
+        "errorFallback": "Đã xảy ra lỗi khi xóa pool."
+      }
+    }
+  },
+  "profiles": {
+    "type": {
+      "oauth": "OAuth",
+      "apiKey": "API"
+    }
+  },
+  "usageMonitor": {
+    "title": "Giám sát Sử dụng",
+    "description": "Theo dõi thời gian thực việc sử dụng thông tin xác thực và pool",
+    "refresh": "Làm mới",
+    "lastUpdate": "Cập nhật lần cuối: {{time}}",
+    "tabs": {
+      "profiles": "Hồ sơ",
+      "pools": "Pools"
+    },
+    "profiles": {
+      "empty": "Chưa cấu hình hồ sơ thông tin xác thực"
+    },
+    "pools": {
+      "empty": "Chưa cấu hình pool"
+    },
+    "usage": {
+      "label": "{{current}}/{{limit}} đã sử dụng"
+    },
+    "unlimited": "Không giới hạn",
+    "noLimit": "Không giới hạn"
+  },
+  "modelSelect": {
+    "placeholder": "Chọn một mô hình hoặc nhập thủ công",
+    "placeholderManual": "Nhập tên mô hình (ví dụ: claude-sonnet-4-5-20250929)",
+    "searchPlaceholder": "Tìm kiếm mô hình...",
+    "noResults": "Không có mô hình nào khớp với tìm kiếm của bạn",
+    "discoveryNotAvailable": "Khám phá mô hình không khả dụng. Nhập tên mô hình thủ công."
+  },
+  "language": {
+    "label": "Ngôn ngữ Giao diện",
+    "description": "Chọn ngôn ngữ cho giao diện ứng dụng"
+  },
+  "scale": {
+    "presets": "Mẫu Tỷ lệ",
+    "presetsDescription": "Tùy chọn tỷ lệ nhanh cho các tùy chọn phổ biến",
+    "fineTune": "Chỉnh tỉnh Tỷ lệ",
+    "fineTuneDescription": "Điều chỉnh từ 75% đến 200% với bước 5%",
+    "default": "Mặc định",
+    "comfortable": "Thoải mái",
+    "large": "Lớn"
+  },
+  "general": {
+    "otherAgentSettings": "Cài đặt Agent Khác",
+    "otherAgentSettingsDescription": "Tùy chọn cấu hình agent bổ sung",
+    "agentFramework": "Agent Framework",
+    "agentFrameworkDescription": "Framework coding được sử dụng cho các tác vụ tự động",
+    "agentFrameworkAutoClaude": "Auto Claude",
+    "aiTerminalNaming": "Đặt tên Terminal AI",
+    "aiTerminalNamingDescription": "Tự động đặt tên cho terminals dựa trên lệnh (sử dụng Haiku)",
+    "featureModelSettings": "Cài đặt Mô hình Tính năng",
+    "featureModelSettingsDescription": "Mô hình và mức độ thinking cho Insights, Ideation và Roadmap",
+    "model": "Mô hình",
+    "thinkingLevel": "Mức độ Thinking",
+    "paths": "Đường dẫn",
+    "pathsDescription": "Cấu hình đường dẫn executable và framework",
+    "pythonPath": "Đường dẫn Python",
+    "pythonPathDescription": "Đường dẫn đến Python executable (để trống để tự động phát hiện)",
+    "pythonPathPlaceholder": "python3 (mặc định)",
+    "gitPath": "Đường dẫn Git",
+    "gitPathDescription": "Đường dẫn đến Git executable (để trống để tự động phát hiện)",
+    "gitPathPlaceholder": "git (mặc định)",
+    "githubCLIPath": "Đường dẫn GitHub CLI",
+    "githubCLIPathDescription": "Đường dẫn đến GitHub CLI (gh) executable (để trống để tự động phát hiện)",
+    "githubCLIPathPlaceholder": "gh (mặc định)",
+    "claudePath": "Đường dẫn Claude CLI",
+    "claudePathDescription": "Đường dẫn đến Claude CLI executable (để trống để tự động phát hiện)",
+    "claudePathPlaceholder": "claude (mặc định)",
+    "detectedPath": "Tự động phát hiện",
+    "detectedVersion": "Phiên bản",
+    "detectedSource": "Nguồn",
+    "sourceUserConfig": "Cấu hình Người dùng",
+    "sourceVenv": "Môi trường Ảo",
+    "sourceHomebrew": "Homebrew",
+    "sourceNvm": "NVM",
+    "sourceSystemPath": "PATH Hệ thống",
+    "sourceBundled": "Được đóng gói",
+    "sourceFallback": "Dự phòng",
+    "notDetected": "Không phát hiện được",
+    "autoClaudePath": "Đường dẫn Auto Claude",
+    "autoClaudePathDescription": "Đường dẫn tương đối đến thư mục auto-claude trong các dự án",
+    "autoClaudePathPlaceholder": "auto-claude (mặc định)",
+    "autoNameTerminals": "Tự động đặt tên terminals",
+    "autoNameTerminalsDescription": "Sử dụng AI để tạo các tên mô tả cho các tab terminal dựa trên hoạt động của chúng"
+  },
+  "insightsConcurrency": {
+    "title": "Đồng thời Insights",
+    "description": "Cấu hình giới hạn phiên đồng thời, hàng đợi và giới hạn tốc độ cho các lần tạo Insights",
+    "priorityLow": "Thấp",
+    "priorityNormal": "Bình thường",
+    "priorityHigh": "Cao",
+    "priorityUrgent": "Khẩn cấp",
+    "maxConcurrentSessions": "Số phiên Đồng thời Tối đa",
+    "maxConcurrentSessionsDescription": "Số lượng phiên tạo insight tối đa có thể chạy đồng thời trên tất cả các dự án",
+    "maxConcurrentSessionsHint": "Đặt thành 1 để tắt tạo song song, 3+ để bật",
+    "maxSessionsPerProject": "Số phiên Tối đa cho mỗi Dự án",
+    "maxSessionsPerProjectDescription": "Số lượng phiên đồng thời tối đa được phép cho một dự án",
+    "defaultSessionPriority": "Mức Ưu tiên Phiên Mặc định",
+    "defaultSessionPriorityDescription": "Mức ưu tiên cho các phiên tạo insight mới (các phiên có mức ưu tiên cao hơn sẽ thực thi trước khi được xếp hàng đợi)",
+    "rateLimiting": "Giới hạn Tốc độ",
+    "rateLimitingDescription": "Ngăn chặn lạm dụng bằng cách giới hạn tần suất bắt đầu phiên cho mỗi dự án",
+    "rateLimitCount": "Số lượng Giới hạn Tốc độ",
+    "rateLimitCountDescription": "Số lượng phiên tối đa được phép trong khung thời gian",
+    "rateLimitWindowMs": "Cửa sổ Giới hạn Tốc độ (mili-giây)",
+    "rateLimitWindowMsDescription": "Khung thời gian tính bằng mili-giây cho giới hạn tốc độ",
+    "rateLimitWindowMsHint": "Cửa sổ hiện tại: {{minutes}} phút"
+  },
+  "theme": {
+    "title": "Giao diện",
+    "description": "Tùy chỉnh giao diện Auto Claude",
+    "mode": "Chế độ",
+    "modeDescription": "Chọn giữa giao diện sáng và tối",
+    "light": "Sáng",
+    "dark": "Tối",
+    "system": "Hệ thống",
+    "colorTheme": "Chủ đề Màu sắc",
+    "colorThemeDescription": "Chọn bảng màu ưa thích của bạn"
+  },
+  "devtools": {
+    "title": "Công cụ dành cho nhà phát triển",
+    "description": "Cấu hình IDE và terminal ưa thích của bạn để làm việc với worktrees",
+    "detecting": "Đang phát hiện các công cụ đã cài đặt...",
+    "detectAgain": "Phát hiện Lại",
+    "ide": {
+      "label": "IDE Ưu tiên",
+      "description": "Auto Claude sẽ mở worktrees trong trình chỉnh sửa này",
+      "placeholder": "Chọn IDE...",
+      "customPath": "Đường dẫn IDE Tùy chỉnh",
+      "customPathPlaceholder": "/path/to/your/ide"
+    },
+    "terminal": {
+      "label": "Terminal Ưu tiên",
+      "description": "Auto Claude sẽ mở các phiên terminal ở đây",
+      "placeholder": "Chọn terminal...",
+      "customPath": "Đường dẫn Terminal Tùy chỉnh",
+      "customPathPlaceholder": "/path/to/your/terminal"
+    },
+    "detected": "Đã phát hiện",
+    "notInstalled": "Chưa cài đặt",
+    "detectedSummary": "Đã phát hiện trên hệ thống của bạn:",
+    "noToolsDetected": "Không phát hiện công cụ bổ sung nào (VS Code và terminal hệ thống sẽ được sử dụng)",
+    "autoNameClaude": {
+      "label": "Tự động đặt tên terminals Claude",
+      "description": "Sử dụng AI để tạo tên mô tả cho terminals Claude dựa trên tin nhắn đầu tiên của bạn"
+    },
+    "yoloMode": {
+      "label": "Chế độ YOLO",
+      "description": "Bắt đầu Claude với cờ --dangerously-skip-permissions, bỏ qua tất cả các lời nhắc an toàn. Sử dụng cực kỳ thận trọng.",
+      "warning": "Chế độ này bỏ qua hệ thống quyền của Claude. Chỉ bật nếu bạn hoàn toàn tin tưởng vào mã đang được thực thi."
+    }
+  },
+  "updates": {
+    "title": "Cập nhật",
+    "description": "Quản lý các bản cập nhật Auto Claude",
+    "appUpdateReady": "Đã Sẵn sàng Cập nhật Ứng dụng",
+    "newVersion": "Phiên bản Mới",
+    "released": "Đã phát hành",
+    "downloading": "Đang tải xuống...",
+    "updateDownloaded": "Đã tải xuống bản cập nhật! Nhấn Cài đặt để khởi động lại và áp dụng bản cập nhật.",
+    "installAndRestart": "Cài đặt và Khởi động lại",
+    "downloadUpdate": "Tải xuống Bản cập nhật",
+    "version": "Phiên bản",
+    "loading": "Đang tải...",
+    "checkingForUpdates": "Đang kiểm tra bản cập nhật...",
+    "newVersionAvailable": "Phiên bản mới có sẵn:",
+    "latestVersion": "Bạn đang chạy phiên bản mới nhất.",
+    "viewRelease": "Xem bản phát hành đầy đủ trên GitHub",
+    "unableToCheck": "Không thể kiểm tra bản cập nhật",
+    "checkForUpdates": "Kiểm tra Bản cập nhật",
+    "autoUpdateProjects": "Tự động Cập nhật Dự án",
+    "autoUpdateProjectsDescription": "Tự động cập nhật Auto Claude trong các dự án khi có phiên bản mới",
+    "betaUpdates": "Bản cập nhật Beta",
+    "betaUpdatesDescription": "Nhận các phiên bản beta trước phát hành với các tính năng mới (có thể ít ổn định hơn)",
+    "stableDowngradeAvailable": "Phiên bản Ổn định Có sẵn",
+    "stableDowngradeDescription": "Bạn hiện đang ở phiên bản beta. Vì bạn đã tắt bản cập nhật beta, bạn có thể chuyển sang bản phát hành ổn định mới nhất.",
+    "stableVersion": "Phiên bản Ổn định",
+    "downloadStableVersion": "Tải xuống Phiên bản Ổn định"
+  },
+  "notifications": {
+    "title": "Thông báo",
+    "description": "Cấu hình tùy chọn thông báo mặc định",
+    "onTaskComplete": "Khi Hoàn thành Tác vụ",
+    "onTaskCompleteDescription": "Thông báo khi một tác vụ hoàn thành thành công",
+    "onTaskFailed": "Khi Tác vụ Thất bại",
+    "onTaskFailedDescription": "Thông báo khi một tác vụ gặp lỗi",
+    "onReviewNeeded": "Khi Cần Xem xét",
+    "onReviewNeededDescription": "Thông báo khi QA cần xem xét của bạn",
+    "sound": "Âm thanh",
+    "soundDescription": "Phát âm thanh với thông báo"
+  },
+  "actions": {
+    "save": "Lưu Cài đặt",
+    "rerunWizard": "Chạy lại Wizard",
+    "rerunWizardDescription": "Bắt đầu trình hướng dẫn thiết lập lại"
+  },
+  "projectSections": {
+    "general": {
+      "title": "Chung",
+      "description": "Cấu hình Auto-Build và agent",
+      "useClaudeMd": "Sử dụng CLAUDE.md",
+      "useClaudeMdDescription": "Bao gồm hướng dẫn CLAUDE.md trong ngữ cảnh agent"
+    },
+    "claude": {
+      "title": "Xác thực Claude",
+      "description": "Xác thực Claude"
+    },
+    "linear": {
+      "title": "Linear",
+      "description": "Tích hợp Linear",
+      "integrationTitle": "Tích hợp Linear",
+      "integrationDescription": "Kết nối với Linear để theo dõi vấn đề và nhập tác vụ",
+      "syncDescription": "Đồng bộ với Linear để theo dõi vấn đề"
+    },
+    "github": {
+      "title": "GitHub",
+      "description": "Đồng bộ vấn đề GitHub",
+      "integrationTitle": "Tích hợp GitHub",
+      "integrationDescription": "Kết nối với GitHub để theo dõi vấn đề",
+      "syncDescription": "Đồng bộ với GitHub Issues"
+    },
+    "gitlab": {
+      "title": "GitLab",
+      "description": "Đồng bộ vấn đề GitLab",
+      "integrationTitle": "Tích hợp GitLab",
+      "integrationDescription": "Kết nối với GitLab để theo dõi vấn đề",
+      "syncDescription": "Đồng bộ với GitLab Issues"
+    },
+    "memory": {
+      "title": "Bộ nhớ",
+      "description": "Backend bộ nhớ Graphiti",
+      "integrationTitle": "Bộ nhớ",
+      "integrationDescription": "Cấu hình bộ nhớ liên tục qua phiên cho agents",
+      "syncDescription": "Cấu hình bộ nhớ liên tục"
+    }
+  },
+  "agentProfile": {
+    "label": "Hồ sơ Agent",
+    "title": "Hồ sơ Agent Mặc định",
+    "sectionDescription": "Chọn cấu hình mẫu cho mô hình và mức độ thinking",
+    "profilesInfo": "Hồ sơ agent cung cấp cấu hình mẫu cho mô hình Claude và mức độ thinking. Khi bạn tạo một tác vụ mới, các cài đặt này sẽ được sử dụng làm mặc định. Bạn luôn có thể ghi đè chúng trong wizard tạo tác vụ.",
+    "custom": "Tùy chỉnh",
+    "customConfiguration": "Cấu hình Tùy chỉnh",
+    "customDescription": "Chọn mô hình & mức độ thinking",
+    "phaseConfiguration": "Cấu hình Giai đoạn",
+    "phaseConfigurationDescription": "Tùy chỉnh mô hình và mức độ thinking cho mỗi giai đoạn",
+    "clickToCustomize": "Nhấn để tùy chỉnh",
+    "model": "Mô hình",
+    "thinking": "Thinking",
+    "thinkingLevel": "Mức độ Thinking",
+    "selectModel": "Chọn mô hình",
+    "selectThinkingLevel": "Chọn mức độ thinking",
+    "perPhaseOptimization": "(tối ưu hóa từng giai đoạn)",
+    "resetToDefaults": "Đặt lại về mặc định",
+    "resetToProfileDefaults": "Đặt lại về mặc định {{profile}}",
+    "customized": "Đã tùy chỉnh",
+    "phaseConfigNote": "Các cài đặt này sẽ được sử dụng làm mặc định khi tạo tác vụ mới với hồ sơ này. Bạn có thể ghi đè chúng cho từng tác vụ trong wizard tạo tác vụ.",
+    "phases": {
+      "spec": {
+        "label": "Tạo Spec",
+        "description": "Khám phá, yêu cầu, thu thập ngữ cảnh"
+      },
+      "planning": {
+        "label": "Lập kế hoạch",
+        "description": "Lập kế hoạch triển khai và kiến trúc"
+      },
+      "coding": {
+        "label": "Coding",
+        "description": "Triển khai mã thực tế"
+      },
+      "qa": {
+        "label": "Xem xét QA",
+        "description": "Đảm bảo chất lượng và xác thực"
+      }
+    }
+  },
+  "workspace": {
+    "roles": {
+      "backend": "Backend",
+      "frontend": "Frontend",
+      "mobile": "Mobile",
+      "shared": "Chia sẻ",
+      "apiGateway": "API Gateway",
+      "worker": "Worker",
+      "other": "Khác"
+    }
+  },
+  "integrations": {
+    "title": "Tích hợp",
+    "description": "Quản lý tài khoản Claude và API keys",
+    "claudeAccounts": "Tài khoản Claude",
+    "claudeAccountsDescription": "Thêm nhiều gói đăng ký Claude để tự động chuyển đổi giữa chúng khi bạn đạt giới hạn tốc độ.",
+    "noAccountsYet": "Chưa cấu hình tài khoản nào",
+    "default": "Mặc định",
+    "active": "Đang hoạt động",
+    "authenticated": "Đã xác thực",
+    "needsAuth": "Cần Xác thực",
+    "authenticate": "Xác thực",
+    "authenticating": "Đang xác thực...",
+    "setActive": "Đặt làm Hoạt động",
+    "manualTokenEntry": "Nhập Token Thủ công",
+    "runSetupToken": "Chạy claude và nhập /login để xác thực",
+    "tokenPlaceholder": "sk-ant-oat01-...",
+    "emailPlaceholder": "Email (tùy chọn, để hiển thị)",
+    "saveToken": "Lưu Token",
+    "accountNamePlaceholder": "Tên tài khoản (ví dụ: Công việc, Cá nhân)",
+    "autoSwitching": "Chuyển đổi Tài khoản Tự động",
+    "autoSwitchingDescription": "Tự động chuyển đổi giữa các tài khoản Claude để tránh gián đoạn. Cấu hình giám sát chủ động để chuyển đổi trước khi đạt giới hạn.",
+    "enableAutoSwitching": "Bật chuyển đổi tự động",
+    "masterSwitch": "Công tắc chính cho tất cả các tính năng tự động hoán đổi",
+    "proactiveMonitoring": "Giám sát Chủ động",
+    "proactiveDescription": "Kiểm tra việc sử dụng thường xuyên và hoán đổi trước khi đạt giới hạn",
+    "checkUsageEvery": "Kiểm tra sử dụng mỗi",
+    "seconds15": "15 giây",
+    "seconds30": "30 giây (khuyến nghị)",
+    "minute1": "1 phút",
+    "disabled": "Đã tắt",
+    "sessionThreshold": "Ngưỡng sử dụng phiên",
+    "sessionThresholdDescription": "Chuyển khi sử dụng phiên đạt mức này (khuyến nghị: 95%)",
+    "weeklyThreshold": "Ngưỡng sử dụng hàng tuần",
+    "weeklyThresholdDescription": "Chuyển khi sử dụng hàng tuần đạt mức này (khuyến nghị: 99%)",
+    "reactiveRecovery": "Phục hồi Phản ứng",
+    "reactiveDescription": "Tự động hoán đổi khi đạt giới hạn tốc độ bất ngờ",
+    "apiKeys": "API Keys",
+    "apiKeysInfo": "Các keys được đặt ở đây sẽ được sử dụng làm mặc định. Các dự án riêng lẻ có thể ghi đè chúng trong cài đặt của chúng.",
+    "openaiKey": "OpenAI API Key",
+    "openaiKeyDescription": "Bắt buộc cho backend bộ nhớ Graphiti (embeddings)",
+    "toast": {
+      "authSuccess": "Đã Xác thực Hồ sơ",
+      "authSuccessWithEmail": "Đã kết nối với tư cách {{email}}",
+      "authSuccessGeneric": "Xác thực hoàn tất. Bây giờ bạn có thể sử dụng hồ sơ này.",
+      "authStartFailed": "Xác thực Thất bại",
+      "addProfileFailed": "Không thể Thêm Hồ sơ",
+      "loadProfilesFailed": "Không thể Tải Hồ sơ",
+      "deleteProfileFailed": "Không thể Xóa Hồ sơ",
+      "renameProfileFailed": "Không thể Đổi tên Hồ sơ",
+      "setActiveProfileFailed": "Không thể Đặt Hồ sơ Hoạt động",
+      "profileCreatedAuthFailed": "Đã Tạo Hồ sơ - Cần Xác thực",
+      "profileCreatedAuthFailedDescription": "Hồ sơ đã được thêm nhưng không thể bắt đầu xác thực. Nhấn nút đăng nhập để xác thực.",
+      "tokenSaved": "Đã Lưu Token",
+      "tokenSavedDescription": "Token của bạn đã được lưu thành công.",
+      "tokenSaveFailed": "Không thể Lưu Token",
+      "settingsUpdateFailed": "Không thể Cập nhật Cài đặt",
+      "tryAgain": "Vui lòng thử lại.",
+      "terminalCreationFailed": "Không thể tạo terminal xác thực",
+      "terminalCreationFailedDescription": "Không thể bắt đầu quá trình xác thực. {{error}}",
+      "maxTerminalsReached": "Đã đạt số lượng terminal tối đa",
+      "maxTerminalsReachedDescription": "Vui lòng đóng một số terminal và thử lại. Bạn có thể mở tối đa 12 terminal.",
+      "terminalError": "Lỗi Terminal",
+      "terminalErrorDescription": "Không thể tạo terminal: {{error}}",
+      "authProcessFailed": "Quá trình xác thực không thể bắt đầu",
+      "authProcessFailedDescription": "Không thể tạo terminal xác thực. Vui lòng thử lại hoặc kiểm tra nhật ký để biết thêm chi tiết."
+    },
+    "alerts": {
+      "profileCreatedAuthFailed": "Đã tạo hồ sơ nhưng không thể chuẩn bị xác thực: {{error}}",
+      "authPrepareFailed": "Không thể chuẩn bị xác thực: {{error}}",
+      "authStartFailedMessage": "Không thể bắt đầu xác thực. Vui lòng thử lại."
+    }
+  },
+  "debug": {
+    "title": "Gỡ lỗi & Nhật ký",
+    "description": "Truy cập nhật ký và thông tin gỡ lỗi để xử lý sự cố",
+    "errorReporting": {
+      "label": "Báo cáo Lỗi Ẩn danh",
+      "description": "Gửi báo cáo sự cố để giúp cải thiện Auto Claude. Không có dữ liệu cá nhân hoặc mã nào được thu thập."
+    },
+    "openLogsFolder": "Mở Thư mục Nhật ký",
+    "copyDebugInfo": "Sao chép Thông tin Gỡ lỗi",
+    "copied": "Đã sao chép!",
+    "loadInfo": "Tải Thông tin Gỡ lỗi",
+    "systemInfo": "Thông tin Hệ thống",
+    "logsLocation": "Vị trí Nhật ký",
+    "recentErrors": "Lỗi Gần đây",
+    "noRecentErrors": "Không có lỗi gần đây",
+    "helpTitle": "Báo cáo Vấn đề",
+    "helpText": "Khi báo cáo lỗi, nhấn \"Sao chép Thông tin Gỡ lỗi\" để nhận thông tin hệ thống và các lỗi gần đây giúp chúng tôi chẩn đoán vấn đề."
+  },
+  "projectSettings": {
+    "noProjectSelected": {
+      "title": "Chưa Chọn Dự án",
+      "description": "Chọn một dự án từ thanh bên để cấu hình cài đặt của nó."
+    }
+  },
+  "mcp": {
+    "title": "Tổng quan Server MCP",
+    "titleWithProject": "Tổng quan Server MCP cho {{projectName}}",
+    "description": "Cấu hình các server MCP nào khả dụng cho agents trong dự án này",
+    "descriptionNoProject": "Chọn một dự án để cấu hình các server MCP",
+    "serversEnabled": "{{count}} servers đã bật",
+    "configuration": "Cấu hình Server MCP",
+    "configurationHint": "Các server bị tắt giảm sử dụng ngữ cảnh và thời gian khởi động",
+    "noProjectSelected": "Chưa Chọn Dự án",
+    "noProjectSelectedDescription": "Chọn một dự án từ menu thả xuống để xem và cấu hình các server MCP.",
+    "projectNotInitialized": "Dự án Chưa Khởi tạo",
+    "projectNotInitializedDescription": "Khởi tạo Auto Claude cho dự án này để cấu hình các server MCP.",
+    "browserAutomation": "Tự động hóa Trình duyệt (chỉ agents QA)",
+    "alwaysEnabled": "luôn luôn bật",
+    "addServer": "Thêm Server",
+    "addMcpTo": "Thêm Server MCP vào {{agent}}",
+    "addMcpDescription": "Chọn một server MCP để thêm vào agent này",
+    "allMcpsAdded": "Tất cả các server MCP có sẵn đều đã được thêm",
+    "added": "đã thêm",
+    "removed": "đã xóa",
+    "remove": "Xóa",
+    "restore": "Khôi phục",
+    "noMcpServers": "Không có server MCP",
+    "cannotRemove": "Không thể xóa (bắt buộc)",
+    "servers": {
+      "context7": {
+        "name": "Context7",
+        "description": "Tra cứu tài liệu cho các thư viện"
+      },
+      "graphiti": {
+        "name": "Bộ nhớ Graphiti",
+        "description": "Đồ thị kiến thức cho ngữ cảnh qua phiên",
+        "notConfigured": "Yêu cầu cấu hình bộ nhớ (xem cài đặt Bộ nhớ)"
+      },
+      "linear": {
+        "name": "Linear",
+        "description": "Tích hợp quản lý dự án",
+        "notConfigured": "Yêu cầu tích hợp Linear (xem cài đặt Linear)"
+      },
+      "electron": {
+        "name": "Electron",
+        "description": "Tự động hóa ứng dụng desktop qua Chrome DevTools"
+      },
+      "puppeteer": {
+        "name": "Puppeteer",
+        "description": "Tự động hóa trình duyệt web để kiểm thử"
+      },
+      "autoClaude": {
+        "name": "Công cụ Auto-Claude",
+        "description": "Theo dõi tiến độ build"
+      }
+    },
+    "customServers": "Servers Tùy chỉnh",
+    "addCustomServer": "Thêm Server Tùy chỉnh",
+    "import": "Nhập",
+    "export": "Xuất",
+    "importServers": "Nhập servers từ tệp JSON",
+    "exportServers": "Xuất servers sang tệp JSON",
+    "editCustomServer": "Chỉnh sửa Server Tùy chỉnh",
+    "customServerDescription": "Thêm một server MCP dựa trên lệnh hoặc HTTP",
+    "jsonMode": "Chế độ JSON",
+    "formMode": "Chế độ Biểu mẫu",
+    "switchToJsonMode": "Chuyển sang Chế độ JSON",
+    "switchToFormMode": "Chuyển sang Chế độ Biểu mẫu",
+    "jsonEditor": "Trình chỉnh sửa JSON",
+    "serverType": "Loại Server",
+    "typeCommand": "Lệnh (npx/npm)",
+    "typeHttp": "HTTP",
+    "serverName": "Tên",
+    "serverNamePlaceholder": "Server MCP Của Tôi",
+    "serverDescription": "Mô tả",
+    "serverDescriptionPlaceholder": "Server này làm gì",
+    "command": "Lệnh",
+    "args": "Đối số",
+    "argsHint": "Các đối số phân tách bằng dấu cách",
+    "url": "URL",
+    "headers": "Headers",
+    "headerName": "Tên Header",
+    "headerValue": "Giá trị Header",
+    "noCustomServers": "Chưa cấu hình server tùy chỉnh nào. Thêm một để sử dụng với các agents của bạn.",
+    "errorNameRequired": "Tên server là bắt buộc",
+    "errorIdExists": "Một server với ID này đã tồn tại",
+    "errorCommandRequired": "Lệnh là bắt buộc cho các server dựa trên lệnh",
+    "errorUrlRequired": "URL là bắt buộc cho các server dựa trên HTTP",
+    "testConnection": "Kiểm tra",
+    "testing": "Đang kiểm tra...",
+    "authToken": "Token Xác thực",
+    "authTokenPlaceholder": "Dán API token hoặc PAT của bạn vào đây",
+    "authTokenHint": "Được sử dụng làm Bearer token trong header Authorization",
+    "advancedHeaders": "Headers Bổ sung",
+    "status": {
+      "healthy": "Server đang phản hồi",
+      "unhealthy": "Server không phản hồi",
+      "needsAuth": "Cần xác thực",
+      "checking": "Đang kiểm tra...",
+      "unknown": "Trạng thái không xác định"
+    },
+    "hints": {
+      "github": "Đây có vẻ là một server MCP GitHub. Bạn sẽ cần Personal Access Token với các phạm vi phù hợp.",
+      "createGithubPat": "Tạo GitHub PAT",
+      "google": "Đây có vẻ là một API Google. Bạn sẽ cần OAuth token hoặc API key.",
+      "createGoogleToken": "Tạo Thông tin xác thực Google",
+      "anthropic": "Đây có vẻ là một API Anthropic. Bạn sẽ cần API key.",
+      "createAnthropicKey": "Tạo API Key Anthropic",
+      "openai": "Đây có vẻ là một API OpenAI. Bạn sẽ cần API key.",
+      "createOpenaiKey": "Tạo API Key OpenAI"
+    },
+    "importError": {
+      "title": "Nhập Thất bại",
+      "invalidFormat": "Định dạng không hợp lệ: mong đợi một mảng các servers",
+      "missingFields": "Định dạng server không hợp lệ: thiếu các trường bắt buộc (id, name, type)",
+      "invalidType": "Loại server không hợp lệ: {{type}}. Phải là một trong: stdio, sse, command",
+      "filePicker": "Không thể mở bộ chọn tệp",
+      "unknown": "Đã xảy ra lỗi không xác định"
+    },
+    "importSuccess": {
+      "title": "Đã nhập {{count}} server",
+      "title_plural": "Đã nhập {{count}} servers",
+      "descriptionMultiple": "Đã thêm {{count}} servers mới vào cấu hình của bạn"
+    },
+    "importNoNew": {
+      "title": "Không có Server Mới",
+      "description": "Tất cả các servers trong tệp đã tồn tại trong cấu hình của bạn"
+    },
+    "duplicateDialog": {
+      "title": "ID Server Trùng lặp",
+      "description": "Đã phát hiện {{duplicateCount}} server với ID trùng lặp. {{newCount}} server mới sẽ được thêm.",
+      "duplicateServers": "Servers Trùng lặp",
+      "newServers": "Servers Mới",
+      "skip": "Bỏ qua Trùng lặp",
+      "merge": "Hợp nhất",
+      "replace": "Thay thế Tất cả"
+    },
+    "backupDialog": {
+      "title": "Sao lưu Trước khi Nhập?",
+      "description": "Bạn sắp nhập {{count}} server. Bạn có muốn tạo bản sao lưu các servers hiện tại của mình trước không?",
+      "serversToImport": "Servers để Nhập",
+      "andMore": "...và {{count}} nữa",
+      "currentServersWarning": "Bạn có {{count}} server tùy chỉnh sẽ bị ảnh hưởng. Chúng tôi khuyến nghị tạo bản sao lưu trước khi nhập.",
+      "skip": "Bỏ qua Sao lưu",
+      "backupFirst": "Sao lưu Trước"
+    },
+    "backupCreated": "Đã Tạo Sao lưu",
+    "backupFailed": "Sao lưu Thất bại"
+  }
+}

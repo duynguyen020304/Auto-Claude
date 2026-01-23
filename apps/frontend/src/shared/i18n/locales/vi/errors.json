@@ -1,0 +1,9 @@
+{
+  "task": {
+    "parseImplementationPlan": "Không thể phân tích implementation_plan.json cho {{specId}}: {{error}}",
+    "jsonError": {
+      "titleSuffix": "(Lỗi JSON)",
+      "description": "⚠️ Lỗi Phân tích JSON: {{error}}\n\nTệp implementation_plan.json bị sai định dạng. Chạy tính năng tự động sửa của backend hoặc sửa tệp thủ công."
+    }
+  }
+}

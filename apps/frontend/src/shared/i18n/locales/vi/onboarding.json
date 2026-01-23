@@ -1,0 +1,243 @@
+{
+  "wizard": {
+    "title": "Trình hướng dẫn Thiết lập",
+    "description": "Cấu hình môi trường Auto Claude của bạn trong vài bước đơn giản",
+    "helpText": "Trình hướng dẫn này sẽ giúp bạn thiết lập môi trường của bạn chỉ trong vài bước. Bạn có thể cấu hình OAuth token Claude của mình, thiết lập các tính năng bộ nhớ, và tạo tác vụ đầu tiên của mình."
+  },
+  "welcome": {
+    "title": "Chào mừng đến với Auto Claude",
+    "subtitle": "Xây dựng phần mềm tự động với các AI agents",
+    "getStarted": "Bắt đầu",
+    "skip": "Bỏ qua Thiết lập",
+    "features": {
+      "aiPowered": {
+        "title": "Phát triển Dựa trên AI",
+        "description": "Tạo mã và xây dựng các tính năng sử dụng Claude Code agents"
+      },
+      "specDriven": {
+        "title": "Quy trình Dựa trên Spec",
+        "description": "Định nghĩa các tác vụ với các thông số kỹ thuật rõ ràng và để Auto Claude xử lý việc triển khai"
+      },
+      "memory": {
+        "title": "Bộ nhớ & Ngữ cảnh",
+        "description": "Bộ nhớ liên tục qua các phiên với Graphiti"
+      },
+      "parallel": {
+        "title": "Thực thi Song song",
+        "description": "Chạy nhiều agents song song để nhanh hơn chu kỳ phát triển"
+      }
+    }
+  },
+  "oauth": {
+    "title": "Xác thực Claude",
+    "description": "Kết nối tài khoản Claude của bạn để bật các tính năng AI",
+    "configureTitle": "Cấu hình Xác thực Claude",
+    "addAccountsDesc": "Thêm tài khoản Claude của bạn để bật các tính năng AI",
+    "multiAccountInfo": "Thêm nhiều gói đăng ký Claude để tự động chuyển đổi giữa chúng khi bạn đạt giới hạn tốc độ.",
+    "noAccountsYet": "Chưa cấu hình tài khoản nào",
+    "badges": {
+      "default": "Mặc định",
+      "active": "Đang hoạt động",
+      "authenticated": "Đã xác thực",
+      "needsAuth": "Cần Xác thực"
+    },
+    "buttons": {
+      "authenticate": "Xác thực",
+      "setActive": "Đặt làm Hoạt động",
+      "rename": "Đổi tên",
+      "delete": "Xóa",
+      "add": "Thêm",
+      "adding": "Đang thêm...",
+      "showToken": "Hiển thị Token",
+      "hideToken": "Ẩn Token",
+      "copyToken": "Sao chép Token",
+      "back": "Quay lại",
+      "continue": "Tiếp tục",
+      "skip": "Bỏ qua"
+    },
+    "labels": {
+      "accountName": "Tên tài khoản",
+      "namePlaceholder": "Tên hồ sơ (ví dụ: Công việc, Cá nhân)",
+      "tokenLabel": "OAuth Token",
+      "tokenPlaceholder": "Nhập token ở đây",
+      "tokenHint": "Dán token được hiển thị trong terminal của bạn sau khi hoàn thành đăng nhập OAuth."
+    },
+    "keychainTitle": "Lưu trữ An toàn",
+    "keychainDescription": "Các token của bạn được mã hóa sử dụng keychain của hệ thống. Bạn có thể thấy lời nhắc mật khẩu từ macOS — nhấn \"Luôn luôn Cho phép\" để tránh gặp lại nó.",
+    "toast": {
+      "authSuccess": "Đã xác thực hồ sơ thành công",
+      "authSuccessWithEmail": "Tài khoản: {{email}}",
+      "authSuccessGeneric": "Xác thực hoàn tất. Bây giờ bạn có thể sử dụng hồ sơ này.",
+      "authStartFailed": "Không thể bắt đầu xác thực",
+      "addProfileFailed": "Không thể thêm hồ sơ",
+      "tokenSaved": "Đã lưu Token",
+      "tokenSavedDescription": "Token của bạn đã được lưu thành công.",
+      "tokenSaveFailed": "Không thể Lưu Token",
+      "tryAgain": "Vui lòng thử lại."
+    },
+    "alerts": {
+      "profileCreatedAuthFailed": "Đã tạo hồ sơ nhưng không thể chuẩn bị xác thực: {{error}}",
+      "authPrepareFailed": "Không thể chuẩn bị xác thực: {{error}}",
+      "authStartFailedMessage": "Không thể bắt đầu xác thực. Vui lòng thử lại."
+    }
+  },
+  "memory": {
+    "title": "Bộ nhớ",
+    "description": "Cấu hình bộ nhớ liên tục qua phiên cho các agents",
+    "contextDescription": "Bộ nhớ Auto Claude giúp ghi nhớ ngữ cảnh qua các phiên coding của bạn",
+    "enableMemory": "Bật Bộ nhớ",
+    "enableMemoryDescription": "Bộ nhớ liên tục qua phiên sử dụng LadybugDB (cơ sở dữ liệu nhúng)",
+    "memoryDisabledInfo": "Bộ nhớ đang bị tắt. Các thông tin chi tiết phiên sẽ được lưu trữ trong các tệp cục bộ chỉ. Bật Bộ nhớ để có ngữ cảnh liên tục qua phiên với tìm kiếm ngữ nghĩa.",
+    "enableAgentAccess": "Bật Truy cập Bộ nhớ Agent",
+    "enableAgentAccessDescription": "Cho phép các agents tìm kiếm và thêm vào đồ thị kiến thức qua MCP",
+    "mcpServerUrl": "URL Máy chủ MCP Graphiti",
+    "mcpServerUrlDescription": "URL của máy chủ MCP Graphiti để truy cập bộ nhớ agent",
+    "embeddingProvider": "Nhà cung cấp Embedding",
+    "embeddingProviderDescription": "Nhà cung cấp cho tìm kiếm ngữ nghĩa (tùy chọn - tìm kiếm từ khóa hoạt động mà không cần)",
+    "selectEmbeddingModel": "Chọn Mô hình Embedding",
+    "openaiApiKey": "OpenAI API Key",
+    "openaiApiKeyDescription": "Bắt buộc cho embeddings OpenAI",
+    "openaiGetKey": "Nhận key của bạn từ",
+    "voyageApiKey": "Voyage AI API Key",
+    "voyageApiKeyDescription": "Bắt buộc cho embeddings Voyage AI",
+    "googleApiKey": "Google AI API Key",
+    "googleApiKeyDescription": "Bắt buộc cho embeddings Google AI",
+    "azureConfig": "Cấu hình Azure OpenAI",
+    "azureApiKey": "API Key",
+    "azureBaseUrl": "Base URL",
+    "azureEmbeddingDeployment": "Tên Triển khai Embedding",
+    "memoryInfo": "Bộ nhớ lưu trữ các khám phá, mẫu và thông tin chi tiết về cơ sở mã của bạn để các phiên trong tương lai bắt đầu với ngữ cảnh đã được tải. Không cần Docker — sử dụng một cơ sở dữ liệu nhúng.",
+    "learnMore": "Tìm hiểu thêm về Bộ nhớ",
+    "back": "Quay lại",
+    "skip": "Bỏ qua",
+    "saving": "Đang lưu...",
+    "saveAndContinue": "Lưu & Tiếp tục",
+    "providers": {
+      "ollama": "Ollama (Cục bộ - Miễn phí)",
+      "openai": "OpenAI",
+      "voyage": "Voyage AI",
+      "google": "Google AI",
+      "azure": "Azure OpenAI"
+    }
+  },
+  "completion": {
+    "title": "Bạn đã sẵn sàng!",
+    "subtitle": "Auto Claude đã sẵn sàng giúp bạn xây dựng phần mềm tuyệt vời",
+    "setupComplete": "Thiết lập Hoàn tất",
+    "setupCompleteDescription": "Môi trường của bạn đã được cấu hình và sẵn sàng. Bạn có thể bắt đầu tạo các tác vụ ngay lập tức hoặc khám phá ứng dụng theo tốc độ của riêng bạn.",
+    "whatsNext": "Tiếp theo là gì?",
+    "createTask": {
+      "title": "Tạo một Tác vụ",
+      "description": "Bắt đầu bằng cách tạo tác vụ đầu tiên của bạn để xem Auto Claude hoạt động.",
+      "action": "Mở Trình tạo Tác vụ"
+    },
+    "customizeSettings": {
+      "title": "Tùy chỉnh Cài đặt",
+      "description": "Tinh chỉnh các tùy chọn của bạn, cấu hình các tích hợp, hoặc chạy lại trình hướng dẫn này.",
+      "action": "Mở Cài đặt"
+    },
+    "exploreDocs": {
+      "title": "Khám phá Tài liệu",
+      "description": "Tìm hiểu thêm về các tính năng nâng cao, các phương pháp tốt nhất, và xử lý sự cố."
+    },
+    "finish": "Hoàn tất & Bắt đầu Xây dựng",
+    "rerunHint": "Bạn luôn có thể chạy lại trình hướng dẫn này từ Cài đặt → Ứng dụng"
+  },
+  "steps": {
+    "welcome": "Chào mừng",
+    "authChoice": "Phương thức Xác thực",
+    "auth": "Xác thực",
+    "claudeCode": "CLI",
+    "devtools": "Công cụ Phát triển",
+    "privacy": "Quyền riêng tư",
+    "memory": "Bộ nhớ",
+    "done": "Hoàn tất"
+  },
+  "privacy": {
+    "title": "Giúp Cải thiện Auto Claude",
+    "subtitle": "Báo cáo lỗi ẩn danh giúp chúng tôi sửa lỗi nhanh hơn",
+    "whatWeCollect": {
+      "title": "Chúng tôi thu thập những gì",
+      "crashReports": "Báo cáo sự cố và dấu vết stack lỗi",
+      "errorMessages": "Thông báo lỗi (với các đường dẫn tệp được ẩn danh)",
+      "appVersion": "Phiên bản ứng dụng và thông tin nền tảng"
+    },
+    "whatWeNeverCollect": {
+      "title": "Chúng tôi không bao giờ thu thập",
+      "code": "Mã hoặc các tệp dự án của bạn",
+      "filenames": "Đường dẫn tệp đầy đủ (tên người dùng bị che)",
+      "apiKeys": "API keys hoặc tokens",
+      "personalData": "Thông tin cá nhân hoặc dữ liệu sử dụng"
+    },
+    "toggle": {
+      "label": "Gửi báo cáo lỗi ẩn danh",
+      "description": "Giúp chúng tôi xác định và sửa các vấn đề"
+    }
+  },
+  "claudeCode": {
+    "title": "CLI Claude Code",
+    "description": "Cài đặt hoặc cập nhật CLI Claude Code để bật các tính năng dựa trên AI",
+    "detecting": "Đang kiểm tra cài đặt Claude Code...",
+    "info": {
+      "title": "Claude Code là gì?",
+      "description": "Claude Code là CLI chính thức của Anthropic cung cấp sức mạnh cho các tính năng AI của Auto Claude. Nó cung cấp xác thực an toàn và truy cập trực tiếp đến các mô hình Claude."
+    },
+    "status": {
+      "installed": "Đã cài đặt",
+      "outdated": "Có Bản cập nhật",
+      "notFound": "Chưa Cài đặt"
+    },
+    "version": {
+      "current": "Phiên bản Hiện tại",
+      "latest": "Phiên bản Mới nhất"
+    },
+    "install": {
+      "button": "Cài đặt Claude Code",
+      "updating": "Cập nhật Claude Code",
+      "inProgress": "Đang cài đặt...",
+      "success": "Lệnh cài đặt đã được gửi đến terminal. Vui lòng hoàn tất cài đặt ở đó.",
+      "instructions": "Trình cài đặt sẽ mở trong terminal của bạn. Làm theo các lời nhắc để hoàn tất cài đặt."
+    },
+    "learnMore": "Tìm hiểu thêm về Claude Code"
+  },
+  "devtools": {
+    "title": "Công cụ dành cho Nhà phát triển",
+    "description": "Chọn IDE và terminal ưa thích của bạn để làm việc với Auto Claude worktrees",
+    "detecting": "Đang phát hiện các công cụ đã cài đặt...",
+    "detectAgain": "Phát hiện Lại",
+    "whyConfigure": "Tại sao cấu hình những thứ này?",
+    "whyConfigureDescription": "Khi Auto Claude xây dựng các tính năng trong các worktrees cô lập, bạn có thể mở chúng trực tiếp trong IDE hoặc terminal ưa thích của mình để kiểm tra và xem xét các thay đổi.",
+    "ide": {
+      "label": "IDE Ưu tiên",
+      "description": "Auto Claude sẽ mở worktrees trong trình chỉnh sửa này",
+      "customPath": "Đường dẫn IDE Tùy chỉnh"
+    },
+    "terminal": {
+      "label": "Terminal Ưu tiên",
+      "description": "Auto Claude sẽ mở các phiên terminal ở đây",
+      "customPath": "Đường dẫn Terminal Tùy chỉnh"
+    },
+    "detectedSummary": "Đã phát hiện trên hệ thống của bạn:",
+    "noToolsDetected": "Không phát hiện công cụ bổ sung nào (VS Code và terminal hệ thống sẽ được sử dụng)",
+    "custom": "Tùy chỉnh...",
+    "saveAndContinue": "Lưu & Tiếp tục"
+  },
+  "ollama": {
+    "notInstalled": {
+      "title": "Chưa cài đặt Ollama",
+      "description": "Ollama cung cấp các mô hình embedding cục bộ miễn phí để tìm kiếm ngữ nghĩa. Cài đặt nó bằng một cú nhấp để bật tính năng này.",
+      "installSuccess": "Đã bắt đầu cài đặt trong terminal của bạn. Hoàn tất cài đặt ở đó, sau đó nhấn Thử lại.",
+      "installButton": "Cài đặt Ollama",
+      "installing": "Đang cài đặt...",
+      "retry": "Thử lại",
+      "learnMore": "Tìm hiểu thêm",
+      "fallbackNote": "Bộ nhớ vẫn sẽ hoạt động với tìm kiếm từ khóa ngay cả khi không có Ollama."
+    },
+    "notRunning": {
+      "title": "Ollama không đang chạy",
+      "description": "Ollama đã được cài đặt nhưng không đang chạy. Khởi động Ollama để sử dụng các mô hình embedding cục bộ.",
+      "retry": "Thử lại",
+      "fallbackNote": "Bộ nhớ vẫn sẽ hoạt động với tìm kiếm từ khóa ngay cả khi không có embeddings."
+    }
+  }
+}
