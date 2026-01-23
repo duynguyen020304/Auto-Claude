@@ -399,6 +399,148 @@ export function UsageIndicator() {
     );
   };
 
+  /**
+   * Custom SVG Area Chart Component
+   * Displays usage trends with gradient blue fill
+   * TODO: Replace placeholder data with real data in Phase 3 (subtask-2-4)
+   */
+  const renderAreaChart = () => {
+    // Placeholder data structure (7 days of usage)
+    // Each point represents daily usage percentage (0-100)
+    const dataPoints = [65, 72, 58, 81, 74, 69, 77];
+    const chartWidth = 600;
+    const chartHeight = 200;
+    const padding = { top: 20, right: 20, bottom: 30, left: 40 };
+
+    // Calculate scaling
+    const innerWidth = chartWidth - padding.left - padding.right;
+    const innerHeight = chartHeight - padding.top - padding.bottom;
+
+    // Generate path data for area chart
+    const generatePathData = (data: number[]) => {
+      const stepX = innerWidth / (data.length - 1);
+
+      // Start at bottom-left
+      let pathD = `M ${padding.left} ${chartHeight - padding.bottom}`;
+
+      // Draw line through each data point
+      data.forEach((value, index) => {
+        const x = padding.left + (index * stepX);
+        const y = padding.top + innerHeight - ((value / 100) * innerHeight);
+        pathD += ` L ${x} ${y}`;
+      });
+
+      // Close path at bottom-right
+      pathD += ` L ${padding.left + innerWidth} ${chartHeight - padding.bottom} Z`;
+
+      return pathD;
+    };
+
+    const pathData = generatePathData(dataPoints);
+
+    return (
+      <div className="w-full h-full flex items-center justify-center p-4">
+        <svg
+          viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+          className="w-full h-full"
+          preserveAspectRatio="xMidYMid meet"
+          role="img"
+          aria-label="Usage trend area chart"
+        >
+          {/* Gradient Definition */}
+          <defs>
+            <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.6" />
+              <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.05" />
+            </linearGradient>
+          </defs>
+
+          {/* Grid Lines (horizontal) */}
+          {[0, 25, 50, 75, 100].map((percent) => {
+            const y = padding.top + innerHeight - ((percent / 100) * innerHeight);
+            return (
+              <g key={`grid-${percent}`}>
+                <line
+                  x1={padding.left}
+                  y1={y}
+                  x2={chartWidth - padding.right}
+                  y2={y}
+                  stroke="currentColor"
+                  strokeOpacity="0.1"
+                  strokeWidth="1"
+                  className="text-muted-foreground"
+                />
+                <text
+                  x={padding.left - 10}
+                  y={y + 4}
+                  textAnchor="end"
+                  className="text-[10px] fill-muted-foreground tabular-nums"
+                >
+                  {percent}%
+                </text>
+              </g>
+            );
+          })}
+
+          {/* Area Path */}
+          <path
+            d={pathData}
+            fill="url(#chartGradient)"
+            stroke="none"
+          />
+
+          {/* Line Path (stroke only) */}
+          <path
+            d={pathData.replace(' Z', '')}
+            fill="none"
+            stroke="#3b82f6"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+
+          {/* Data Points */}
+          {dataPoints.map((value, index) => {
+            const stepX = innerWidth / (data.length - 1);
+            const x = padding.left + (index * stepX);
+            const y = padding.top + innerHeight - ((value / 100) * innerHeight);
+
+            return (
+              <circle
+                key={`point-${index}`}
+                cx={x}
+                cy={y}
+                r="4"
+                fill="#3b82f6"
+                stroke="white"
+                strokeWidth="2"
+                className="hover:r-6 transition-all duration-150"
+              />
+            );
+          })}
+
+          {/* X-Axis Labels (Days) */}
+          {dataPoints.map((_, index) => {
+            const stepX = innerWidth / (data.length - 1);
+            const x = padding.left + (index * stepX);
+
+            return (
+              <text
+                key={`label-${index}`}
+                x={x}
+                y={chartHeight - padding.bottom + 20}
+                textAnchor="middle"
+                className="text-[10px] fill-muted-foreground"
+              >
+                Day {index + 1}
+              </text>
+            );
+          })}
+        </svg>
+      </div>
+    );
+  };
+
   return (
     <TooltipProvider delayDuration={200}>
       <Tooltip>
