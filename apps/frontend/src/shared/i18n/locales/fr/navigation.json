@@ -26,7 +26,6 @@
   "tooltips": {
     "settings": "Paramètres de l'application",
     "help": "Aide & Feedback",
-    "credentialProfiles": "Gérer les identifiants API",
     "workspace": "Paramètres de l'espace de travail",
     "roadmap": "Voir la feuille de route du projet",
     "context": "Explorer le contexte de la base de code"

@@ -15,13 +15,6 @@
     "repositoryNotFound": "Dépôt non trouvé",
     "branchLoadError": "Impossible de charger les informations de la branche"
   },
-  "credentialProfiles": {
-    "saveFailed": "Échec de l'enregistrement du profil",
-    "deleteFailed": "Échec de la suppression du profil",
-    "createFailed": "Échec de la création du profil",
-    "invalidCredentials": "Identifiants invalides",
-    "tokenRequired": "Le jeton est requis"
-  },
   "workspace": {
     "createFailed": "Échec de la création de l'espace de travail",
     "updateFailed": "Échec de la mise à jour de l'espace de travail",

@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import type { AppSettings } from '../../shared/types';
 import type { APIProfile, ProfileFormData, TestConnectionResult, DiscoverModelsResult, ModelInfo } from '../../shared/types/profile';
-import type { CredentialProfile, Pool, CredentialProfileFormData, PoolFormData } from '../../shared/types/credential-profile';
 import type { ClaudeUsageSnapshot } from '../../shared/types/agent';
 import { DEFAULT_APP_SETTINGS } from '../../shared/constants';
 import { toast } from '../hooks/use-toast';
@@ -20,16 +19,6 @@ interface SettingsState {
   activeProfileId: string | null;
   profilesLoading: boolean;
   profilesError: string | null;
-
-  // Credential Profile state
-  credentialProfiles: CredentialProfile[];
-  credentialProfilesLoading: boolean;
-  credentialProfilesError: string | null;
-
-  // Pool state
-  pools: Pool[];
-  poolsLoading: boolean;
-  poolsError: string | null;
 
   // Test connection state
   isTestingConnection: boolean;
@@ -60,28 +49,6 @@ interface SettingsState {
   testConnection: (baseUrl: string, apiKey: string, signal?: AbortSignal) => Promise<TestConnectionResult | null>;
   discoverModels: (baseUrl: string, apiKey: string, signal?: AbortSignal) => Promise<ModelInfo[] | null>;
 
-  // Credential Profile actions
-  setCredentialProfiles: (profiles: CredentialProfile[]) => void;
-  addCredentialProfile: (profile: CredentialProfile) => void;
-  updateCredentialProfile: (profile: CredentialProfile) => void;
-  removeCredentialProfile: (profileId: string) => void;
-  setCredentialProfilesLoading: (loading: boolean) => void;
-  setCredentialProfilesError: (error: string | null) => void;
-  saveCredentialProfile: (profile: CredentialProfileFormData) => Promise<boolean>;
-  updateCredentialProfileAsync: (profile: CredentialProfile) => Promise<boolean>;
-  deleteCredentialProfile: (profileId: string) => Promise<boolean>;
-
-  // Pool actions
-  setPools: (pools: Pool[]) => void;
-  addPool: (pool: Pool) => void;
-  updatePool: (pool: Pool) => void;
-  removePool: (poolId: string) => void;
-  setPoolsLoading: (loading: boolean) => void;
-  setPoolsError: (error: string | null) => void;
-  savePool: (pool: Pool) => Promise<boolean>;
-  updatePoolAsync: (pool: Pool) => Promise<boolean>;
-  deletePool: (poolId: string) => Promise<boolean>;
-
   // Usage cache actions
   getCachedUsage: (profileId: string) => ClaudeUsageSnapshot | null;
   setCachedUsage: (profileId: string, data: ClaudeUsageSnapshot) => void;
@@ -98,16 +65,6 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   activeProfileId: null,
   profilesLoading: false,
   profilesError: null,
-
-  // Credential Profile state
-  credentialProfiles: [],
-  credentialProfilesLoading: false,
-  credentialProfilesError: null,
-
-  // Pool state
-  pools: [],
-  poolsLoading: false,
-  poolsError: null,
 
   // Test connection state
   isTestingConnection: false,
@@ -352,265 +309,6 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     }
   },
 
-  // Credential Profile actions
-  setCredentialProfiles: (credentialProfiles) => set({ credentialProfiles }),
-
-  addCredentialProfile: (profile) =>
-    set((state) => ({
-      credentialProfiles: [...state.credentialProfiles, profile]
-    })),
-
-  updateCredentialProfile: (profile) =>
-    set((state) => ({
-      credentialProfiles: state.credentialProfiles.map((p) =>
-        p.id === profile.id ? profile : p
-      )
-    })),
-
-  removeCredentialProfile: (profileId) =>
-    set((state) => ({
-      credentialProfiles: state.credentialProfiles.filter((p) => p.id !== profileId)
-    })),
-
-  setCredentialProfilesLoading: (credentialProfilesLoading) => set({ credentialProfilesLoading }),
-
-  setCredentialProfilesError: (credentialProfilesError) => set({ credentialProfilesError }),
-
-  saveCredentialProfile: async (profile: CredentialProfileFormData): Promise<boolean> => {
-    set({ credentialProfilesLoading: true, credentialProfilesError: null });
-    try {
-      const result = await window.electronAPI.saveCredentialProfile(profile);
-      if (result.success && result.data) {
-        // Re-fetch profiles from backend to get authoritative data
-        try {
-          const profilesResult = await window.electronAPI.listCredentialProfiles();
-          if (profilesResult.success && profilesResult.data) {
-            set({
-              credentialProfiles: profilesResult.data,
-              credentialProfilesLoading: false
-            });
-          } else {
-            // Fallback: add profile locally
-            set((state) => ({
-              credentialProfiles: [...state.credentialProfiles, result.data!],
-              credentialProfilesLoading: false
-            }));
-          }
-        } catch {
-          // Fallback on fetch error: add profile locally
-          set((state) => ({
-            credentialProfiles: [...state.credentialProfiles, result.data!],
-            credentialProfilesLoading: false
-          }));
-        }
-        return true;
-      }
-      set({
-        credentialProfilesError: result.error || 'Failed to save credential profile',
-        credentialProfilesLoading: false
-      });
-      return false;
-    } catch (error) {
-      set({
-        credentialProfilesError: error instanceof Error ? error.message : 'Failed to save credential profile',
-        credentialProfilesLoading: false
-      });
-      return false;
-    }
-  },
-
-  updateCredentialProfileAsync: async (profile: CredentialProfile): Promise<boolean> => {
-    set({ credentialProfilesLoading: true, credentialProfilesError: null });
-    try {
-      // Convert CredentialProfile to CredentialProfileFormData for the API
-      const formData: CredentialProfileFormData & { id: string } = {
-        id: profile.id,
-        type: profile.type,
-        name: profile.name,
-        credential_value: profile.credential_value,
-        usage_limit: profile.metadata?.usage_limit ? Number(profile.metadata.usage_limit) : undefined,
-        rotation_mode: profile.metadata?.rotation_mode as any,
-        rate_limit_threshold: profile.metadata?.rate_limit_threshold ? Number(profile.metadata.rate_limit_threshold) : undefined,
-        metadata: profile.metadata || undefined
-      };
-
-      const result = await window.electronAPI.saveCredentialProfile(formData);
-      if (result.success && result.data) {
-        set((state) => ({
-          credentialProfiles: state.credentialProfiles.map((p) =>
-            p.id === result.data!.id ? result.data! : p
-          ),
-          credentialProfilesLoading: false
-        }));
-        return true;
-      }
-      set({
-        credentialProfilesError: result.error || 'Failed to update credential profile',
-        credentialProfilesLoading: false
-      });
-      return false;
-    } catch (error) {
-      set({
-        credentialProfilesError: error instanceof Error ? error.message : 'Failed to update credential profile',
-        credentialProfilesLoading: false
-      });
-      return false;
-    }
-  },
-
-  deleteCredentialProfile: async (profileId: string): Promise<boolean> => {
-    set({ credentialProfilesLoading: true, credentialProfilesError: null });
-    try {
-      const result = await window.electronAPI.deleteCredentialProfile(profileId);
-      if (result.success) {
-        set((state) => ({
-          credentialProfiles: state.credentialProfiles.filter((p) => p.id !== profileId),
-          credentialProfilesLoading: false
-        }));
-        return true;
-      }
-      set({
-        credentialProfilesError: result.error || 'Failed to delete credential profile',
-        credentialProfilesLoading: false
-      });
-      return false;
-    } catch (error) {
-      set({
-        credentialProfilesError: error instanceof Error ? error.message : 'Failed to delete credential profile',
-        credentialProfilesLoading: false
-      });
-      return false;
-    }
-  },
-
-  // Pool actions
-  setPools: (pools) => set({ pools }),
-
-  addPool: (pool) =>
-    set((state) => ({
-      pools: [...state.pools, pool]
-    })),
-
-  updatePool: (pool) =>
-    set((state) => ({
-      pools: state.pools.map((p) =>
-        p.id === pool.id ? pool : p
-      )
-    })),
-
-  removePool: (poolId) =>
-    set((state) => ({
-      pools: state.pools.filter((p) => p.id !== poolId)
-    })),
-
-  setPoolsLoading: (poolsLoading) => set({ poolsLoading }),
-
-  setPoolsError: (poolsError) => set({ poolsError }),
-
-  savePool: async (pool: Pool): Promise<boolean> => {
-    set({ poolsLoading: true, poolsError: null });
-    try {
-      const result = await window.electronAPI.saveCredentialPool(pool);
-      if (result.success && result.data) {
-        // Re-fetch pools from backend to get authoritative data
-        try {
-          const poolsResult = await window.electronAPI.listCredentialPools();
-          if (poolsResult.success && poolsResult.data) {
-            set({
-              pools: poolsResult.data,
-              poolsLoading: false
-            });
-          } else {
-            // Fallback: add pool locally
-            set((state) => ({
-              pools: [...state.pools, result.data!],
-              poolsLoading: false
-            }));
-          }
-        } catch {
-          // Fallback on fetch error: add pool locally
-          set((state) => ({
-            pools: [...state.pools, result.data!],
-            poolsLoading: false
-          }));
-        }
-        return true;
-      }
-      set({
-        poolsError: result.error || 'Failed to save pool',
-        poolsLoading: false
-      });
-      return false;
-    } catch (error) {
-      set({
-        poolsError: error instanceof Error ? error.message : 'Failed to save pool',
-        poolsLoading: false
-      });
-      return false;
-    }
-  },
-
-  updatePoolAsync: async (pool: Pool): Promise<boolean> => {
-    set({ poolsLoading: true, poolsError: null });
-    try {
-      // Convert Pool to PoolFormData for the API (they have the same structure)
-      const formData: PoolFormData & { id: string } = {
-        id: pool.id,
-        name: pool.name,
-        profile_ids: pool.profile_ids,
-        limit: pool.limit,
-        rotation_config: pool.rotation_config
-      };
-
-      const result = await window.electronAPI.saveCredentialPool(formData);
-      if (result.success && result.data) {
-        set((state) => ({
-          pools: state.pools.map((p) =>
-            p.id === result.data!.id ? result.data! : p
-          ),
-          poolsLoading: false
-        }));
-        return true;
-      }
-      set({
-        poolsError: result.error || 'Failed to update pool',
-        poolsLoading: false
-      });
-      return false;
-    } catch (error) {
-      set({
-        poolsError: error instanceof Error ? error.message : 'Failed to update pool',
-        poolsLoading: false
-      });
-      return false;
-    }
-  },
-
-  deletePool: async (poolId: string): Promise<boolean> => {
-    set({ poolsLoading: true, poolsError: null });
-    try {
-      const result = await window.electronAPI.deleteCredentialPool(poolId);
-      if (result.success) {
-        set((state) => ({
-          pools: state.pools.filter((p) => p.id !== poolId),
-          poolsLoading: false
-        }));
-        return true;
-      }
-      set({
-        poolsError: result.error || 'Failed to delete pool',
-        poolsLoading: false
-      });
-      return false;
-    } catch (error) {
-      set({
-        poolsError: error instanceof Error ? error.message : 'Failed to delete pool',
-        poolsLoading: false
-      });
-      return false;
-    }
-  },
-
   getCachedUsage: (profileId: string): ClaudeUsageSnapshot | null => {
     const state = useSettingsStore.getState();
     const cached = state.cachedUsage.get(profileId);
@@ -760,43 +458,5 @@ export async function loadProfiles(): Promise<void> {
     store.setProfilesError(error instanceof Error ? error.message : 'Failed to load profiles');
   } finally {
     store.setProfilesLoading(false);
-  }
-}
-
-/**
- * Load credential profiles from main process
- */
-export async function loadCredentialProfiles(): Promise<void> {
-  const store = useSettingsStore.getState();
-  store.setCredentialProfilesLoading(true);
-
-  try {
-    const result = await window.electronAPI.listCredentialProfiles();
-    if (result.success && result.data) {
-      store.setCredentialProfiles(result.data);
-    }
-  } catch (error) {
-    store.setCredentialProfilesError(error instanceof Error ? error.message : 'Failed to load credential profiles');
-  } finally {
-    store.setCredentialProfilesLoading(false);
-  }
-}
-
-/**
- * Load credential pools from main process
- */
-export async function loadPools(): Promise<void> {
-  const store = useSettingsStore.getState();
-  store.setPoolsLoading(true);
-
-  try {
-    const result = await window.electronAPI.listCredentialPools();
-    if (result.success && result.data) {
-      store.setPools(result.data);
-    }
-  } catch (error) {
-    store.setPoolsError(error instanceof Error ? error.message : 'Failed to load pools');
-  } finally {
-    store.setPoolsLoading(false);
   }
 }

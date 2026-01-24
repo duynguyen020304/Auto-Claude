@@ -18,7 +18,6 @@ import {
   Globe,
   Code,
   Bug,
-  Shield,
   Users,
 } from "lucide-react";
 
@@ -65,7 +64,6 @@ import {
 } from "./ProjectSettingsContent";
 import { useProjectStore } from "../../stores/project-store";
 import type { UseProjectSettingsReturn } from "../project-settings/hooks/useProjectSettings";
-import { CredentialProfilesManagement } from "../credential-profiles";
 
 interface AppSettingsDialogProps {
   open: boolean;
@@ -84,7 +82,6 @@ export type AppSection =
   | "agent"
   | "paths"
   | "accounts"
-  | "credential-profiles"
   | "updates"
   | "notifications"
   | "debug";
@@ -102,7 +99,6 @@ const appNavItemsConfig: NavItemConfig<AppSection>[] = [
   { id: "agent", icon: Bot },
   { id: "paths", icon: FolderOpen },
   { id: "accounts", icon: Users },
-  { id: "credential-profiles", icon: Shield },
   { id: "updates", icon: Package },
   { id: "notifications", icon: Bell },
   { id: "debug", icon: Bug },
@@ -275,8 +271,6 @@ export function AppSettingsDialog({
             isOpen={open}
           />
         );
-      case "credential-profiles":
-        return <CredentialProfilesManagement />;
       case "updates":
         return (
           <AdvancedSettings

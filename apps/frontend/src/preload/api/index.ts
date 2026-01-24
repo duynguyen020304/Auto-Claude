@@ -13,7 +13,6 @@ import { DebugAPI, createDebugAPI } from './modules/debug-api';
 import { ClaudeCodeAPI, createClaudeCodeAPI } from './modules/claude-code-api';
 import { McpAPI, createMcpAPI } from './modules/mcp-api';
 import { ProfileAPI, createProfileAPI } from './profile-api';
-import { CredentialProfileAPI, createCredentialProfileAPI } from './credential-profile-api';
 import { ScreenshotAPI, createScreenshotAPI } from './screenshot-api';
 
 export interface ElectronAPI extends
@@ -31,7 +30,6 @@ export interface ElectronAPI extends
   ClaudeCodeAPI,
   McpAPI,
   ProfileAPI,
-  CredentialProfileAPI,
   ScreenshotAPI {
   github: GitHubAPI;
 }
@@ -48,7 +46,6 @@ export const createElectronAPI = (): ElectronAPI => ({
   ...createClaudeCodeAPI(),
   ...createMcpAPI(),
   ...createProfileAPI(),
-  ...createCredentialProfileAPI(),
   ...createScreenshotAPI(),
   github: createGitHubAPI()
 });
@@ -68,7 +65,6 @@ export {
   createDebugAPI,
   createClaudeCodeAPI,
   createMcpAPI,
-  createCredentialProfileAPI,
   createScreenshotAPI
 };
 
@@ -88,6 +84,5 @@ export type {
   DebugAPI,
   ClaudeCodeAPI,
   McpAPI,
-  CredentialProfileAPI,
   ScreenshotAPI
 };

@@ -134,12 +134,6 @@ import type {
   GitLabNewCommitsCheck
 } from './integrations';
 import type { APIProfile, ProfilesFile, TestConnectionResult, DiscoverModelsResult } from './profile';
-import type {
-  CredentialProfile,
-  Pool,
-  CredentialProfileFormData,
-  PoolFormData
-} from './credential-profile';
 
 // Electron API exposed via contextBridge
 // Tab state interface (persisted in main process)
@@ -356,17 +350,6 @@ export interface ElectronAPI {
   // Note: AbortSignal is handled in preload via separate cancel IPC channels, not passed through IPC
   testConnection: (baseUrl: string, apiKey: string, signal?: AbortSignal) => Promise<IPCResult<TestConnectionResult>>;
   discoverModels: (baseUrl: string, apiKey: string, signal?: AbortSignal) => Promise<IPCResult<DiscoverModelsResult>>;
-
-  // Credential Profile management (OAuth and API key profiles with rotation)
-  listCredentialProfiles: () => Promise<IPCResult<CredentialProfile[]>>;
-  saveCredentialProfile: (profile: CredentialProfileFormData & { id?: string }) => Promise<IPCResult<CredentialProfile>>;
-  deleteCredentialProfile: (profileId: string) => Promise<IPCResult<void>>;
-
-  // Credential Pool management (group profiles with shared limits)
-  listCredentialPools: () => Promise<IPCResult<Pool[]>>;
-  saveCredentialPool: (pool: PoolFormData & { id?: string }) => Promise<IPCResult<Pool>>;
-  deleteCredentialPool: (poolId: string) => Promise<IPCResult<void>>;
-  updateCredentialPoolLimits: (poolId: string, limit: number) => Promise<IPCResult<void>>;
 
   // Dialog operations
   selectDirectory: () => Promise<string | null>;

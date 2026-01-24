@@ -15,13 +15,6 @@
     "repositoryNotFound": "Repository not found",
     "branchLoadError": "Unable to load branch information"
   },
-  "credentialProfiles": {
-    "saveFailed": "Failed to save profile",
-    "deleteFailed": "Failed to delete profile",
-    "createFailed": "Failed to create profile",
-    "invalidCredentials": "Invalid credentials",
-    "tokenRequired": "Token is required"
-  },
   "workspace": {
     "createFailed": "Failed to create workspace",
     "updateFailed": "Failed to update workspace",

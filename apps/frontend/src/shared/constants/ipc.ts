@@ -153,17 +153,6 @@ export const IPC_CHANNELS = {
   PROFILES_DISCOVER_MODELS: 'profiles:discover-models',
   PROFILES_DISCOVER_MODELS_CANCEL: 'profiles:discover-models-cancel',
 
-  // Credential Profile management (OAuth and API key profiles)
-  CREDENTIAL_PROFILE_LIST: 'credential-profile:list',
-  CREDENTIAL_PROFILE_SAVE: 'credential-profile:save',
-  CREDENTIAL_PROFILE_DELETE: 'credential-profile:delete',
-
-  // Credential Pool management (groups credential profiles)
-  CREDENTIAL_POOL_LIST: 'credential-pool:list',
-  CREDENTIAL_POOL_SAVE: 'credential-pool:save',
-  CREDENTIAL_POOL_DELETE: 'credential-pool:delete',
-  CREDENTIAL_POOL_UPDATE_LIMITS: 'credential-pool:update-limits',
-
   // Dialogs
   DIALOG_SELECT_DIRECTORY: 'dialog:selectDirectory',
   DIALOG_CREATE_PROJECT_FOLDER: 'dialog:createProjectFolder',

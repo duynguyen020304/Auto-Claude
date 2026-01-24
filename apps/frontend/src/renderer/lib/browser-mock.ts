@@ -161,65 +161,6 @@ const browserMockAPI: ElectronAPI = {
     }
   }),
 
-  // Credential Profile Management (OAuth and API key profiles with rotation)
-  listCredentialProfiles: async () => ({
-    success: true,
-    data: []
-  }),
-
-  saveCredentialProfile: async (profile) => ({
-    success: true,
-    data: {
-      id: profile.id || `mock-cred-${Date.now()}`,
-      type: profile.type,
-      name: profile.name,
-      status: 'active' as const,
-      credential_value: profile.credential_value,
-      usage_metrics: {
-        total_requests: 0,
-        total_tokens: 0,
-        input_tokens: 0,
-        output_tokens: 0,
-        cache_read_tokens: 0,
-        cache_creation_tokens: 0,
-        last_used: null
-      },
-      rate_limit_info: null,
-      last_validated: null,
-      created_at: Date.now(),
-      metadata: profile.metadata || null
-    }
-  }),
-
-  deleteCredentialProfile: async (_profileId: string) => ({
-    success: true
-  }),
-
-  // Credential Pool Management (group profiles with shared limits)
-  listCredentialPools: async () => ({
-    success: true,
-    data: []
-  }),
-
-  saveCredentialPool: async (pool) => ({
-    success: true,
-    data: {
-      id: pool.id || `mock-pool-${Date.now()}`,
-      name: pool.name,
-      profile_ids: pool.profile_ids,
-      limit: pool.limit,
-      rotation_config: pool.rotation_config
-    }
-  }),
-
-  deleteCredentialPool: async (_poolId: string) => ({
-    success: true
-  }),
-
-  updateCredentialPoolLimits: async (_poolId: string, _limit: number) => ({
-    success: true
-  }),
-
   // GitHub API
   github: {
     getGitHubRepositories: async () => ({ success: true, data: [] }),
