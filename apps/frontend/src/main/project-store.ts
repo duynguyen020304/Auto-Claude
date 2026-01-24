@@ -253,7 +253,6 @@ export class ProjectStore {
     const now = Date.now();
 
     if (cached && (now - cached.timestamp) < this.CACHE_TTL_MS) {
-      console.debug('[ProjectStore] Returning cached tasks for project:', projectId, '(age:', now - cached.timestamp, 'ms)');
       return cached.tasks;
     }
 
@@ -343,7 +342,6 @@ export class ProjectStore {
    */
   invalidateTasksCache(projectId: string): void {
     this.tasksCache.delete(projectId);
-    console.debug('[ProjectStore] Invalidated tasks cache for project:', projectId);
   }
 
   /**
@@ -786,7 +784,6 @@ export class ProjectStore {
           }
 
           writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
-          console.log(`[ProjectStore] archiveTasks: Successfully archived task ${taskId} at ${specPath}`);
         } catch (error) {
           console.error(`[ProjectStore] archiveTasks: Failed to archive task ${taskId} at ${specPath}:`, error);
           hasErrors = true;
