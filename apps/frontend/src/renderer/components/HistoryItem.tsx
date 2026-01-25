@@ -1,9 +1,19 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Trash2 } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from './ui/alert-dialog';
 import { cn, formatRelativeTime } from '../lib/utils';
 import type {
   ChatHistory,
@@ -39,7 +49,7 @@ interface HistoryItemProps {
  * Features:
  * - Type-specific display (version for roadmap, repo name for repo, etc.)
  * - Relative time formatting for created/updated dates
- * - Delete button with callback
+ * - Delete button with confirmation dialog
  * - i18n support for all UI text
  * - Memoized for performance optimization
  *
@@ -54,8 +64,17 @@ interface HistoryItemProps {
 export const HistoryItem = memo<HistoryItemProps>(({ item, onDelete, className }) => {
   const { t } = useTranslation(['tasks', 'common']);
 
+  // State for delete confirmation dialog
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
   // Extract common data
   const { type, data } = item;
+
+  // Handle delete action
+  const handleDelete = () => {
+    setShowDeleteDialog(false);
+    onDelete?.();
+  };
 
   // Get title based on type (repo history uses repo_name instead of title)
   const getTitle = () => {
@@ -156,41 +175,64 @@ export const HistoryItem = memo<HistoryItemProps>(({ item, onDelete, className }
   };
 
   return (
-    <Card className={cn('group hover:border-primary/50 transition-colors', className)}>
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-4">
-          {/* Main content */}
-          <div className="flex-1 min-w-0">
-            {/* Title */}
-            <h3 className="font-medium text-base truncate mb-2">{title}</h3>
+    <>
+      <Card className={cn('group hover:border-primary/50 transition-colors', className)}>
+        <CardContent className="p-4">
+          <div className="flex items-start justify-between gap-4">
+            {/* Main content */}
+            <div className="flex-1 min-w-0">
+              {/* Title */}
+              <h3 className="font-medium text-base truncate mb-2">{title}</h3>
 
-            {/* Type-specific info */}
-            {renderTypeSpecificInfo()}
+              {/* Type-specific info */}
+              {renderTypeSpecificInfo()}
 
-            {/* Additional metadata for specific types */}
-            {type === 'chat' && (data as ChatHistory).messages && (
-              <p className="text-xs text-muted-foreground mt-1">
-                {(data as ChatHistory).messages.length}{' '}
-                {(data as ChatHistory).messages.length === 1 ? 'message' : 'messages'}
-              </p>
+              {/* Additional metadata for specific types */}
+              {type === 'chat' && (data as ChatHistory).messages && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {(data as ChatHistory).messages.length}{' '}
+                  {(data as ChatHistory).messages.length === 1 ? 'message' : 'messages'}
+                </p>
+              )}
+            </div>
+
+            {/* Actions */}
+            {onDelete && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowDeleteDialog(true)}
+                className="opacity-0 group-hover:opacity-100 transition-opacity"
+                aria-label={t('tasks:history.actions.delete')}
+              >
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
             )}
           </div>
+        </CardContent>
+      </Card>
 
-          {/* Actions */}
-          {onDelete && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onDelete}
-              className="opacity-0 group-hover:opacity-100 transition-opacity"
-              aria-label={t('tasks:history.actions.delete')}
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('tasks:history.actions.deleteConfirm')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('tasks:history.actions.deleteConfirmDescription')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('tasks:history.actions.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              <Trash2 className="h-4 w-4 text-destructive" />
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+              {t('tasks:history.actions.confirm')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 });
 
