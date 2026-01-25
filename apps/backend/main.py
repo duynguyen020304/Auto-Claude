@@ -773,6 +773,78 @@ async def get_user_github_accounts_endpoint(
         )
 
 
+@app.delete("/github/unlink/{account_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["GitHub"])
+async def unlink_github_account_endpoint(
+    account_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Unlink a GitHub account from the authenticated user.
+
+    This endpoint removes the link between a GitHub account and the authenticated user.
+    The GitHub account record is permanently deleted from the database.
+
+    Args:
+        account_id: ID of the GitHub account to unlink
+        current_user: Current authenticated user (injected by dependency)
+        db: Database session (injected by FastAPI)
+
+    Returns:
+        None: HTTP 204 No Content on success
+
+    Raises:
+        HTTPException 401: If no valid token is provided
+        HTTPException 403: If GitHub account does not belong to the user
+        HTTPException 404: If GitHub account not found
+        HTTPException 500: If unlinking fails
+
+    Example:
+        DELETE /github/unlink/1
+        Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+        Response:
+        HTTP 204 No Content
+
+    Note:
+        - This is a protected route that requires a valid JWT token
+        - Users can only unlink their own GitHub accounts
+        - Hard delete - GitHub account link permanently removed from database
+        - Returns 204 No Content on successful deletion
+        - Returns 403 if account exists but belongs to different user
+        - Returns 404 if account not found
+        - Does NOT delete the user account, only the GitHub link
+    """
+    try:
+        # Unlink the GitHub account (service layer verifies ownership)
+        unlinked_account = unlink_github_account(db, current_user, account_id)
+
+        if not unlinked_account:
+            # Account not found
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"GitHub account with ID {account_id} not found"
+            )
+
+        # Return 204 No Content (FastAPI does this automatically with status_code=204)
+
+    except ValueError as e:
+        # Account ownership verification failed
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(e)
+        )
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        # Handle any other errors during unlinking
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to unlink GitHub account: {str(e)}"
+        )
+
+
 # ============================================================================
 # History Endpoints
 # ============================================================================
