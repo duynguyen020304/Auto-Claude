@@ -114,6 +114,17 @@ export function SettingsPage() {
   };
 
   /**
+   * Handle logout with redirect
+   */
+  const handleLogout = () => {
+    logout();
+    // Redirect to login page using hash navigation
+    window.location.hash = '#login';
+    // Trigger a page reload to ensure clean state
+    window.location.reload();
+  };
+
+  /**
    * Handle GitHub OAuth callback
    *
    * This function is called when the user is redirected back to the settings page
@@ -337,7 +348,7 @@ export function SettingsPage() {
                   <AlertDialogFooter>
                     <AlertDialogCancel>{t('buttons.cancel')}</AlertDialogCancel>
                     <AlertDialogAction
-                      onClick={logout}
+                      onClick={handleLogout}
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     >
                       {t('settings:userProfile.logout')}
