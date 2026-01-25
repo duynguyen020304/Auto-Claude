@@ -80,6 +80,7 @@ def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta]
     Note:
         Tokens are base64 encoded, NOT encrypted. Never store sensitive data
         like passwords or API keys in the token payload.
+        The "sub" claim is automatically converted to string as required by JWT spec.
     """
     to_encode = data.copy()
 
@@ -89,6 +90,11 @@ def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta]
         expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
     to_encode.update({"exp": expire})
+
+    # Convert "sub" claim to string if it's an integer (JWT spec requirement)
+    if "sub" in to_encode and isinstance(to_encode["sub"], int):
+        to_encode["sub"] = str(to_encode["sub"])
+
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
     return encoded_jwt
@@ -107,9 +113,18 @@ def verify_token(token: str) -> Optional[Dict[str, Any]]:
     Note:
         Returns None for any JWT error (invalid signature, expired token,
         malformed token, etc.). Caller should check for None return value.
+        The "sub" claim is automatically converted back to integer if it's a numeric string.
     """
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+
+        # Convert "sub" back to integer if it's a numeric string
+        if "sub" in payload and isinstance(payload["sub"], str):
+            try:
+                payload["sub"] = int(payload["sub"])
+            except ValueError:
+                pass  # Keep as string if not numeric
+
         return payload
     except jwt.PyJWTError:
         return None
