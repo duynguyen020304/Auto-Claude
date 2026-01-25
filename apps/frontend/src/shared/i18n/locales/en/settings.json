@@ -643,6 +643,48 @@
       "description": "Select a project from the sidebar to configure its settings."
     }
   },
+  "userProfile": {
+    "title": "User Profile",
+    "description": "Manage your account information and authentication",
+    "email": "Email",
+    "memberSince": "Member since {{date}}",
+    "logout": "Logout",
+    "logoutDescription": "Sign out of your account"
+  },
+  "githubAccounts": {
+    "title": "GitHub Accounts",
+    "description": "Link and manage your GitHub accounts",
+    "linkAccount": "Link GitHub Account",
+    "linkAccountDescription": "Connect your GitHub account to enable features like issue tracking and repository access",
+    "noAccounts": "No GitHub accounts linked",
+    "noAccountsDescription": "Link your GitHub account to access GitHub features",
+    "unlinkAccount": "Unlink",
+    "unlinking": "Unlinking...",
+    "linkedAt": "Linked {{date}}",
+    "accountAlreadyLinked": "This GitHub account is already linked to your profile",
+    "linkSuccess": {
+      "title": "GitHub Account Linked",
+      "description": "\"{{username}}\" has been successfully linked to your account."
+    },
+    "linkError": {
+      "title": "Linking Failed",
+      "description": "Failed to link GitHub account. Please try again."
+    },
+    "unlinkSuccess": {
+      "title": "GitHub Account Unlinked",
+      "description": "\"{{username}}\" has been removed from your account."
+    },
+    "unlinkError": {
+      "title": "Unlinking Failed",
+      "description": "Failed to unlink GitHub account. Please try again."
+    }
+  },
+  "historyManagement": {
+    "title": "History Management",
+    "description": "View and manage your chat, ideation, roadmap, and repository history",
+    "viewHistory": "View History",
+    "viewHistoryDescription": "Access your past conversations and activities"
+  },
   "mcp": {
     "title": "MCP Server Overview",
     "titleWithProject": "MCP Server Overview for {{projectName}}",

@@ -643,6 +643,48 @@
       "description": "Sélectionnez un projet dans la barre latérale pour configurer ses paramètres."
     }
   },
+  "userProfile": {
+    "title": "Profil utilisateur",
+    "description": "Gérez vos informations de compte et votre authentification",
+    "email": "E-mail",
+    "memberSince": "Membre depuis {{date}}",
+    "logout": "Déconnexion",
+    "logoutDescription": "Se déconnecter de votre compte"
+  },
+  "githubAccounts": {
+    "title": "Comptes GitHub",
+    "description": "Lie et gérez vos comptes GitHub",
+    "linkAccount": "Lier un compte GitHub",
+    "linkAccountDescription": "Connectez votre compte GitHub pour activer des fonctionnalités comme le suivi des problèmes et l'accès aux dépôts",
+    "noAccounts": "Aucun compte GitHub lié",
+    "noAccountsDescription": "Liez votre compte GitHub pour accéder aux fonctionnalités GitHub",
+    "unlinkAccount": "Détacher",
+    "unlinking": "Détachement...",
+    "linkedAt": "Lié le {{date}}",
+    "accountAlreadyLinked": "Ce compte GitHub est déjà lié à votre profil",
+    "linkSuccess": {
+      "title": "Compte GitHub lié",
+      "description": "\"{{username}}\" a été lié avec succès à votre compte."
+    },
+    "linkError": {
+      "title": "Échec de la liaison",
+      "description": "Échec de la liaison du compte GitHub. Veuillez réessayer."
+    },
+    "unlinkSuccess": {
+      "title": "Compte GitHub détaché",
+      "description": "\"{{username}}\" a été retiré de votre compte."
+    },
+    "unlinkError": {
+      "title": "Échec du détachement",
+      "description": "Échec du détachement du compte GitHub. Veuillez réessayer."
+    }
+  },
+  "historyManagement": {
+    "title": "Gestion de l'historique",
+    "description": "Affichez et gérez vos historiques de chat, d'idéation, de roadmap et de dépôt",
+    "viewHistory": "Voir l'historique",
+    "viewHistoryDescription": "Accédez à vos conversations et activités passées"
+  },
   "mcp": {
     "title": "Aperçu des serveurs MCP",
     "titleWithProject": "Aperçu des serveurs MCP pour {{projectName}}",

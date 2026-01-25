@@ -206,5 +206,44 @@
   "workspace": {
     "addWorkspace": "Ajouter un espace de travail",
     "addWorkspaceDescription": "Ajouter un nouvel espace de travail à votre projet"
+  },
+  "auth": {
+    "loginSuccess": {
+      "title": "Connexion réussie",
+      "message": "Vous avez été connecté avec succès."
+    },
+    "registerSuccess": {
+      "title": "Inscription réussie",
+      "message": "Votre compte a été créé. Vous pouvez maintenant vous connecter."
+    },
+    "logout": {
+      "title": "Déconnexion",
+      "message": "Êtes-vous sûr de vouloir vous déconnecter ?",
+      "confirm": "Se déconnecter",
+      "cancel": "Annuler",
+      "loggingOut": "Déconnexion..."
+    },
+    "linkGithub": {
+      "title": "Lier un compte GitHub",
+      "description": "Vous serez redirigé vers GitHub pour autoriser l'accès à votre compte.",
+      "confirm": "Continuer vers GitHub",
+      "cancel": "Annuler"
+    },
+    "unlinkGithub": {
+      "title": "Détacher le compte GitHub ?",
+      "description": "Êtes-vous sûr de vouloir détacher \"{{username}}\" de votre compte ? Vous perdrez l'accès aux fonctionnalités qui dépendent de ce compte GitHub.",
+      "confirm": "Détacher le compte",
+      "cancel": "Annuler",
+      "unlinking": "Détachement..."
+    }
+  },
+  "history": {
+    "deleteItem": {
+      "title": "Supprimer l'élément d'historique ?",
+      "description": "Êtes-vous sûr de vouloir supprimer \"{{title}}\" ? Cette action ne peut pas être annulée.",
+      "confirm": "Supprimer",
+      "cancel": "Annuler",
+      "deleting": "Suppression..."
+    }
   }
 }

@@ -308,6 +308,60 @@ export interface ElectronAPI {
   /** Retry a rate-limited operation with a different profile */
   retryWithProfile: (request: RetryWithProfileRequest) => Promise<IPCResult>;
 
+  // User History API (Chat, Ideation, Roadmap, Repo)
+  /** Get all chat histories for authenticated user with optional filtering/pagination */
+  getChatHistories: (queryParams?: {
+    search?: string;
+    date_start?: string;
+    date_end?: string;
+    sort?: 'newest' | 'oldest';
+    page?: number;
+    limit?: number;
+  }) => Promise<IPCResult<import('./auth').ChatHistoryListResponse>>;
+  /** Get a single chat history by ID */
+  getChatHistory: (chatId: number) => Promise<IPCResult<import('./auth').ChatHistory>>;
+  /** Create a new chat history */
+  createChatHistory: (data: import('./auth').ChatHistoryCreate) => Promise<IPCResult<import('./auth').ChatHistory>>;
+  /** Update an existing chat history */
+  updateChatHistory: (chatId: number, updates: import('./auth').ChatHistoryUpdate) => Promise<IPCResult<import('./auth').ChatHistory>>;
+  /** Delete a chat history */
+  deleteChatHistory: (chatId: number) => Promise<IPCResult>;
+  /** Get all ideation histories for authenticated user with optional filtering/pagination */
+  getIdeationHistories: (queryParams?: {
+    search?: string;
+    date_start?: string;
+    date_end?: string;
+    sort?: 'newest' | 'oldest';
+    page?: number;
+    limit?: number;
+  }) => Promise<IPCResult<import('./auth').IdeationHistoryListResponse>>;
+  /** Get a single ideation history by ID */
+  getIdeationHistory: (ideationId: number) => Promise<IPCResult<import('./auth').IdeationHistory>>;
+  /** Create a new ideation history */
+  createIdeationHistory: (data: import('./auth').IdeationHistoryCreate) => Promise<IPCResult<import('./auth').IdeationHistory>>;
+  /** Update an existing ideation history */
+  updateIdeationHistory: (ideationId: number, updates: import('./auth').IdeationHistoryUpdate) => Promise<IPCResult<import('./auth').IdeationHistory>>;
+  /** Delete an ideation history */
+  deleteIdeationHistory: (ideationId: number) => Promise<IPCResult>;
+
+  /** Get all roadmap histories for authenticated user with optional filtering/pagination */
+  getRoadmapHistories: (queryParams?: {
+    search?: string;
+    date_start?: string;
+    date_end?: string;
+    sort?: 'newest' | 'oldest';
+    page?: number;
+    limit?: number;
+  }) => Promise<IPCResult<import('./auth').RoadmapHistoryListResponse>>;
+  /** Get a single roadmap history by ID */
+  getRoadmapHistory: (roadmapId: number) => Promise<IPCResult<import('./auth').RoadmapHistory>>;
+  /** Create a new roadmap history */
+  createRoadmapHistory: (data: import('./auth').RoadmapHistoryCreate) => Promise<IPCResult<import('./auth').RoadmapHistory>>;
+  /** Update an existing roadmap history */
+  updateRoadmapHistory: (roadmapId: number, updates: import('./auth').RoadmapHistoryUpdate) => Promise<IPCResult<import('./auth').RoadmapHistory>>;
+  /** Delete a roadmap history */
+  deleteRoadmapHistory: (roadmapId: number) => Promise<IPCResult>;
+
   // Usage Monitoring (Proactive Account Switching)
   /** Request current usage snapshot */
   requestUsageUpdate: () => Promise<IPCResult<ClaudeUsageSnapshot | null>>;

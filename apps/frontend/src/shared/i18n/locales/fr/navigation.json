@@ -16,21 +16,24 @@
     "gitlabIssues": "Issues GitLab",
     "gitlabMRs": "MRs GitLab",
     "worktrees": "Worktrees",
-    "agentTools": "Aperçu MCP"
+    "agentTools": "Aperçu MCP",
+    "history": "Historique"
   },
   "actions": {
     "settings": "Paramètres",
     "help": "Aide & Feedback",
     "newTask": "Nouvelle tâche",
     "collapseSidebar": "Réduire la barre latérale",
-    "expandSidebar": "Développer la barre latérale"
+    "expandSidebar": "Développer la barre latérale",
+    "viewHistory": "Voir l'historique"
   },
   "tooltips": {
     "settings": "Paramètres de l'application",
     "help": "Aide & Feedback",
     "workspace": "Paramètres de l'espace de travail",
     "roadmap": "Voir la feuille de route du projet",
-    "context": "Explorer le contexte de la base de code"
+    "context": "Explorer le contexte de la base de code",
+    "history": "Voir votre historique"
   },
   "messages": {
     "initializeToCreateTasks": "Initialisez Auto Claude pour créer des tâches"

@@ -161,6 +161,97 @@ const browserMockAPI: ElectronAPI = {
     }
   }),
 
+  // User History API (Chat, Ideation, Roadmap, Repo)
+  getChatHistories: async () => ({
+    success: true,
+    data: {
+      items: [],
+      total: 0,
+      page: 1,
+      limit: 20,
+      hasMore: false
+    }
+  }) as any,
+
+  getChatHistory: async (_chatId: number) => ({
+    success: true,
+    data: null as any
+  }),
+
+  createChatHistory: async (_data: any) => ({
+    success: true,
+    data: null as any
+  }),
+
+  updateChatHistory: async (_chatId: number, _updates: any) => ({
+    success: true,
+    data: null as any
+  }),
+
+  deleteChatHistory: async (_chatId: number) => ({
+    success: true
+  }),
+
+  getIdeationHistories: async () => ({
+    success: true,
+    data: {
+      items: [],
+      total: 0,
+      page: 1,
+      limit: 20,
+      hasMore: false
+    }
+  }) as any,
+
+  getIdeationHistory: async (_ideationId: number) => ({
+    success: true,
+    data: null as any
+  }),
+
+  createIdeationHistory: async (_data: any) => ({
+    success: true,
+    data: null as any
+  }),
+
+  updateIdeationHistory: async (_ideationId: number, _updates: any) => ({
+    success: true,
+    data: null as any
+  }),
+
+  deleteIdeationHistory: async (_ideationId: number) => ({
+    success: true
+  }),
+
+  getRoadmapHistories: async () => ({
+    success: true,
+    data: {
+      items: [],
+      total: 0,
+      page: 1,
+      limit: 20,
+      hasMore: false
+    }
+  }) as any,
+
+  getRoadmapHistory: async (_roadmapId: number) => ({
+    success: true,
+    data: null as any
+  }),
+
+  createRoadmapHistory: async (_data: any) => ({
+    success: true,
+    data: null as any
+  }),
+
+  updateRoadmapHistory: async (_roadmapId: number, _updates: any) => ({
+    success: true,
+    data: null as any
+  }),
+
+  deleteRoadmapHistory: async (_roadmapId: number) => ({
+    success: true
+  }),
+
   // GitHub API
   github: {
     getGitHubRepositories: async () => ({ success: true, data: [] }),

@@ -6,6 +6,7 @@
 export * from './common';
 
 // Domain-specific types
+export * from './auth';
 export * from './project';
 export * from './task';
 export * from './terminal';

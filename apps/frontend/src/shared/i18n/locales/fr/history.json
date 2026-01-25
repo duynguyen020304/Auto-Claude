@@ -1,0 +1,39 @@
+{
+  "title": "Historique",
+  "tabs": {
+    "chat": "Chat",
+    "ideation": "Idéation",
+    "roadmap": "Feuille de route",
+    "repo": "Dépôt"
+  },
+  "empty": {
+    "title": "Aucun historique",
+    "description": "Votre historique apparaîtra ici une fois que vous commencerez à utiliser cette fonctionnalité"
+  },
+  "actions": {
+    "search": "Rechercher dans l'historique...",
+    "delete": "Supprimer",
+    "confirmDelete": "Êtes-vous sûr de vouloir supprimer cet élément ?"
+  },
+  "filters": {
+    "title": "Filtres",
+    "timePeriod": "Période",
+    "timePeriods": {
+      "all": "Toutes les périodes",
+      "today": "Aujourd'hui",
+      "yesterday": "Hier",
+      "last7Days": "7 derniers jours",
+      "last30Days": "30 derniers jours",
+      "last90Days": "90 derniers jours"
+    },
+    "status": "Statut",
+    "statuses": {
+      "all": "Tous les statuts",
+      "active": "Actif",
+      "completed": "Terminé",
+      "archived": "Archivé"
+    },
+    "clear": "Effacer les filtres",
+    "noResults": "Aucun résultat trouvé"
+  }
+}

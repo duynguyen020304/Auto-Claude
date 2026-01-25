@@ -334,5 +334,64 @@
   "referenceImages": {
     "title": "Reference Images (optional)",
     "description": "Add visual references like screenshots or designs to help the AI understand your requirements."
+  },
+  "history": {
+    "title": "History",
+    "tabs": {
+      "chat": "Chat",
+      "ideation": "Ideation",
+      "roadmap": "Roadmap",
+      "repo": "Repository"
+    },
+    "empty": {
+      "title": "No history yet",
+      "description": "Your {{type}} history will appear here"
+    },
+    "search": {
+      "placeholder": "Search history...",
+      "noResults": "No results found",
+      "clearSearch": "Clear search"
+    },
+    "filter": {
+      "title": "Filter",
+      "dateRange": "Date Range",
+      "dateFrom": "From",
+      "dateTo": "To",
+      "sort": "Sort",
+      "sortNewest": "Newest first",
+      "sortOldest": "Oldest first",
+      "clearFilters": "Clear filters"
+    },
+    "actions": {
+      "delete": "Delete",
+      "deleteConfirm": "Delete this item?",
+      "deleteConfirmDescription": "This action cannot be undone.",
+      "cancel": "Cancel",
+      "confirm": "Confirm",
+      "view": "View",
+      "refresh": "Refresh"
+    },
+    "item": {
+      "title": "Title",
+      "createdAt": "Created",
+      "updatedAt": "Updated",
+      "version": "Version",
+      "repoName": "Repository",
+      "interactionType": "Type",
+      "noTitle": "Untitled"
+    },
+    "types": {
+      "chat": "Chat History",
+      "ideation": "Ideation History",
+      "roadmap": "Roadmap History",
+      "repo": "Repository History"
+    },
+    "interactionTypes": {
+      "clone": "Clone",
+      "pull": "Pull",
+      "push": "Push",
+      "fetch": "Fetch",
+      "other": "Other"
+    }
   }
 }

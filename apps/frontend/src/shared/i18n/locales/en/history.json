@@ -1,0 +1,39 @@
+{
+  "title": "History",
+  "tabs": {
+    "chat": "Chat",
+    "ideation": "Ideation",
+    "roadmap": "Roadmap",
+    "repo": "Repository"
+  },
+  "empty": {
+    "title": "No history yet",
+    "description": "Your history will appear here once you start using this feature"
+  },
+  "actions": {
+    "search": "Search history...",
+    "delete": "Delete",
+    "confirmDelete": "Are you sure you want to delete this item?"
+  },
+  "filters": {
+    "title": "Filters",
+    "timePeriod": "Time Period",
+    "timePeriods": {
+      "all": "All Time",
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "last7Days": "Last 7 Days",
+      "last30Days": "Last 30 Days",
+      "last90Days": "Last 90 Days"
+    },
+    "status": "Status",
+    "statuses": {
+      "all": "All Status",
+      "active": "Active",
+      "completed": "Completed",
+      "archived": "Archived"
+    },
+    "clear": "Clear Filters",
+    "noResults": "No results found"
+  }
+}
