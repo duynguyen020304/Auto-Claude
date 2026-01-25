@@ -64,3 +64,8 @@ tests/
 
 # Auto Claude data directory
 .auto-claude/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
