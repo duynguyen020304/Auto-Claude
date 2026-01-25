@@ -33,9 +33,15 @@ import secrets
 # Import database, models, schemas, services, and auth utilities
 from database import engine, get_db, init_db
 from models import User, Base
-from schemas import UserCreate, UserResponse, Token, ChatHistoryCreate, ChatHistoryResponse
+from schemas import (
+    UserCreate, UserResponse, Token,
+    ChatHistoryCreate, ChatHistoryResponse, ChatHistoryUpdate
+)
 from services.auth_service import create_user, authenticate_user, get_user_by_id
-from services.history_service import create_chat_history, get_user_chat_histories
+from services.history_service import (
+    create_chat_history, get_user_chat_histories,
+    get_chat_history, update_chat_history, delete_chat_history
+)
 from auth import create_access_token, get_current_user
 from typing import Dict, Any, Optional
 
@@ -708,6 +714,207 @@ async def get_user_chat_histories_endpoint(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve chat histories: {str(e)}"
+        )
+
+
+@app.get("/history/chat/{history_id}", response_model=ChatHistoryResponse, tags=["History"])
+async def get_chat_history_endpoint(
+    history_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+) -> ChatHistoryResponse:
+    """
+    Get a specific chat history by ID for the authenticated user.
+
+    Args:
+        history_id: Chat history record ID
+        current_user: Current authenticated user (injected by dependency)
+        db: Database session (injected by FastAPI)
+
+    Returns:
+        ChatHistoryResponse: Chat history record if found and owned by user
+
+    Raises:
+        HTTPException 401: If no valid token is provided
+        HTTPException 404: If history not found or not owned by user
+        HTTPException 500: If retrieval fails
+
+    Example:
+        GET /history/chat/1
+        Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+        Response:
+        {
+            "id": 1,
+            "title": "Project Planning Discussion",
+            "messages": [...],
+            "created_at": "2025-01-25T10:00:00Z",
+            "updated_at": "2025-01-25T11:00:00Z"
+        }
+
+    Note:
+        - This is a protected route that requires a valid JWT token
+        - Users can only access their own chat histories
+        - Returns 404 if history exists but belongs to different user
+    """
+    try:
+        # Get chat history (service layer enforces user isolation)
+        history = get_chat_history(db, history_id, current_user.id)
+
+        if not history:
+            # History not found or not owned by user
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Chat history with ID {history_id} not found"
+            )
+
+        return history
+
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        # Handle any other errors during retrieval
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve chat history: {str(e)}"
+        )
+
+
+@app.put("/history/chat/{history_id}", response_model=ChatHistoryResponse, tags=["History"])
+async def update_chat_history_endpoint(
+    history_id: int,
+    history_data: ChatHistoryUpdate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+) -> ChatHistoryResponse:
+    """
+    Update a specific chat history by ID for the authenticated user.
+
+    Args:
+        history_id: Chat history record ID
+        history_data: Update data (title, messages)
+        current_user: Current authenticated user (injected by dependency)
+        db: Database session (injected by FastAPI)
+
+    Returns:
+        ChatHistoryResponse: Updated chat history record
+
+    Raises:
+        HTTPException 401: If no valid token is provided
+        HTTPException 404: If history not found or not owned by user
+        HTTPException 500: If update fails
+
+    Example:
+        PUT /history/chat/1
+        Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        Content-Type: application/json
+
+        {
+            "title": "Updated Project Planning Discussion",
+            "messages": [
+                {"role": "user", "content": "How do I create a spec?"},
+                {"role": "assistant", "content": "Use the spec_runner.py command."},
+                {"role": "user", "content": "Thanks!"}
+            ]
+        }
+
+        Response:
+        {
+            "id": 1,
+            "title": "Updated Project Planning Discussion",
+            "messages": [...],
+            "created_at": "2025-01-25T10:00:00Z",
+            "updated_at": "2025-01-25T12:00:00Z"
+        }
+
+    Note:
+        - This is a protected route that requires a valid JWT token
+        - Users can only update their own chat histories
+        - Only updates fields that are provided (partial update supported)
+        - updated_at timestamp auto-updated by database
+    """
+    try:
+        # Update chat history (service layer enforces user isolation)
+        updated_history = update_chat_history(db, history_id, current_user.id, history_data)
+
+        if not updated_history:
+            # History not found or not owned by user
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Chat history with ID {history_id} not found"
+            )
+
+        return updated_history
+
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        # Handle any other errors during update
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update chat history: {str(e)}"
+        )
+
+
+@app.delete("/history/chat/{history_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["History"])
+async def delete_chat_history_endpoint(
+    history_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Delete a specific chat history by ID for the authenticated user.
+
+    Args:
+        history_id: Chat history record ID
+        current_user: Current authenticated user (injected by dependency)
+        db: Database session (injected by FastAPI)
+
+    Returns:
+        None: HTTP 204 No Content on success
+
+    Raises:
+        HTTPException 401: If no valid token is provided
+        HTTPException 404: If history not found or not owned by user
+        HTTPException 500: If deletion fails
+
+    Example:
+        DELETE /history/chat/1
+        Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+        Response:
+        HTTP 204 No Content
+
+    Note:
+        - This is a protected route that requires a valid JWT token
+        - Users can only delete their own chat histories
+        - Hard delete - record permanently removed from database
+        - Returns 204 No Content on successful deletion
+        - Returns 404 if history exists but belongs to different user
+    """
+    try:
+        # Delete chat history (service layer enforces user isolation)
+        deleted = delete_chat_history(db, history_id, current_user.id)
+
+        if not deleted:
+            # History not found or not owned by user
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Chat history with ID {history_id} not found"
+            )
+
+        # Return 204 No Content (FastAPI does this automatically with status_code=204)
+
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        # Handle any other errors during deletion
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete chat history: {str(e)}"
         )
 
 
