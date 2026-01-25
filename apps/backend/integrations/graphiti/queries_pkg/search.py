@@ -415,37 +415,3 @@ class GraphitiSearch:
             logger.warning(f"Failed to get credential usage for {credential_id}: {e}")
             return {}
 
-    async def get_least_used_credential(self, pool_ids: list[str]) -> str | None:
-        """
-        Find the least used credential from a pool of credential IDs.
-
-        Args:
-            pool_ids: List of credential IDs to compare
-
-        Returns:
-            Credential ID with lowest total token usage, or None if pool is empty
-        """
-        if not pool_ids:
-            logger.warning("Cannot get least used credential from empty pool")
-            return None
-
-        try:
-            # Get usage for all credentials in pool
-            usage_by_credential = {}
-            for cred_id in pool_ids:
-                usage = await self.get_credential_usage(cred_id)
-                usage_by_credential[cred_id] = usage.get("total_tokens", 0)
-
-            # Find credential with minimum usage
-            least_used_id = min(usage_by_credential, key=usage_by_credential.get)
-            least_used_tokens = usage_by_credential[least_used_id]
-
-            logger.debug(
-                f"Least used credential: {least_used_id} ({least_used_tokens} tokens)"
-            )
-            return least_used_id
-
-        except Exception as e:
-            logger.warning(f"Failed to get least used credential: {e}")
-            # Fallback: return first credential in pool
-            return pool_ids[0] if pool_ids else None

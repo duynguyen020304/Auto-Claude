@@ -421,21 +421,6 @@ class GraphitiMemory:
 
         return await self._search.get_credential_usage(credential_id)
 
-    async def get_least_used_credential(self, pool_ids: list[str]) -> str | None:
-        """
-        Find the least used credential from a pool of credential IDs.
-
-        Args:
-            pool_ids: List of credential IDs to compare
-
-        Returns:
-            Credential ID with lowest total token usage, or None if pool is empty
-        """
-        if not await self._ensure_initialized():
-            return None
-
-        return await self._search.get_least_used_credential(pool_ids)
-
     # Status and utility methods
 
     def get_status_summary(self) -> dict:
