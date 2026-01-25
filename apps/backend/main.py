@@ -23,13 +23,14 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 # Import database, models, schemas, services, and auth utilities
 from database import engine, get_db, init_db
 from models import User, Base
 from schemas import UserCreate, UserResponse, Token
-from services.auth_service import create_user
+from services.auth_service import create_user, authenticate_user
 from auth import create_access_token
 
 
@@ -166,6 +167,58 @@ async def register_user(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Registration failed: {str(e)}"
         )
+
+
+@app.post("/auth/login", response_model=Token, tags=["Authentication"])
+async def login_user(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+) -> Token:
+    """
+    Login a user with email and password.
+
+    Args:
+        form_data: OAuth2 password request form (username=email, password)
+        db: Database session (injected by FastAPI)
+
+    Returns:
+        Token: JWT access token for authenticated user
+
+    Raises:
+        HTTPException 401: If email or password is incorrect
+
+    Example:
+        POST /auth/login
+        Content-Type: application/x-www-form-urlencoded
+
+        username=test@example.com&password=testpass123
+
+        Response:
+        {
+            "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            "token_type": "bearer"
+        }
+
+    Note:
+        Uses OAuth2PasswordRequestForm for OAuth2 compatibility.
+        The 'username' field maps to the user's email address.
+    """
+    # Authenticate user with email (username field) and password
+    user = authenticate_user(db, form_data.username, form_data.password)
+
+    # If authentication fails, return 401 Unauthorized
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Create JWT access token
+    access_token = create_access_token(data={"sub": str(user.id)})
+
+    # Return token
+    return Token(access_token=access_token, token_type="bearer")
 
 
 # Placeholder for router imports
