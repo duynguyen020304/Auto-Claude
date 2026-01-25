@@ -21,7 +21,7 @@ from __future__ import annotations
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Depends, HTTPException, status, Request
+from fastapi import FastAPI, Depends, HTTPException, status, Request, Query
 from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
@@ -35,9 +35,9 @@ from database import engine, get_db, init_db
 from models import User, Base
 from schemas import UserCreate, UserResponse, Token, ChatHistoryCreate, ChatHistoryResponse
 from services.auth_service import create_user, authenticate_user, get_user_by_id
-from services.history_service import create_chat_history
+from services.history_service import create_chat_history, get_user_chat_histories
 from auth import create_access_token, get_current_user
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 
 # Environment variables
@@ -617,6 +617,97 @@ async def create_chat_history_endpoint(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create chat history: {str(e)}"
+        )
+
+
+@app.get("/history/chat", response_model=list[ChatHistoryResponse], tags=["History"])
+async def get_user_chat_histories_endpoint(
+    page: int = Query(1, ge=1, description="Page number (starts from 1)"),
+    limit: int = Query(20, ge=1, le=100, description="Number of items per page"),
+    search: Optional[str] = Query(None, description="Search term for title"),
+    date_start: Optional[str] = Query(None, description="Start date filter (YYYY-MM-DD)"),
+    date_end: Optional[str] = Query(None, description="End date filter (YYYY-MM-DD)"),
+    sort: str = Query("newest", regex="^(newest|oldest)$", description="Sort order: newest or oldest"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+) -> list[ChatHistoryResponse]:
+    """
+    Get all chat histories for the authenticated user with pagination and filtering.
+
+    Args:
+        page: Page number (starts from 1, default: 1)
+        limit: Number of items per page (default: 20, max: 100)
+        search: Optional search term for title (case-insensitive partial match)
+        date_start: Optional start date filter (YYYY-MM-DD format)
+        date_end: Optional end date filter (YYYY-MM-DD format)
+        sort: Sort order - "newest" (default) or "oldest"
+        current_user: Current authenticated user (injected by dependency)
+        db: Database session (injected by FastAPI)
+
+    Returns:
+        list[ChatHistoryResponse]: List of chat history records for the user
+
+    Raises:
+        HTTPException 401: If no valid token is provided
+        HTTPException 500: If retrieval fails
+
+    Example:
+        GET /history/chat?page=1&limit=20&search=project&sort=newest
+        Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+        Response:
+        [
+            {
+                "id": 2,
+                "title": "Project Planning Discussion",
+                "messages": [...],
+                "created_at": "2025-01-25T10:00:00Z",
+                "updated_at": "2025-01-25T11:00:00Z"
+            },
+            {
+                "id": 1,
+                "title": "Code Review Notes",
+                "messages": [...],
+                "created_at": "2025-01-24T15:30:00Z",
+                "updated_at": "2025-01-24T15:30:00Z"
+            }
+        ]
+
+    Note:
+        - This is a protected route that requires a valid JWT token
+        - Only returns chat histories belonging to the authenticated user
+        - Pagination: page 1 returns items 1-20, page 2 returns items 21-40, etc.
+        - Search performs case-insensitive partial match on title field
+        - Date filters apply to created_at timestamp
+        - Sort defaults to newest first (created_at descending)
+    """
+    try:
+        # Calculate skip offset for pagination (page 1 = skip 0, page 2 = skip 20, etc.)
+        skip = (page - 1) * limit
+
+        # Determine sort order
+        sort_newest = (sort == "newest")
+
+        # Get user's chat histories with filtering and pagination
+        histories = get_user_chat_histories(
+            db,
+            current_user.id,
+            skip=skip,
+            limit=limit,
+            search=search,
+            date_start=date_start,
+            date_end=date_end,
+            sort_newest=sort_newest
+        )
+
+        # Return list of histories (FastAPI automatically converts to response model)
+        return histories
+
+    except Exception as e:
+        # Handle any errors during retrieval
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve chat histories: {str(e)}"
         )
 
 
