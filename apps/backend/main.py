@@ -33,8 +33,9 @@ import secrets
 # Import database, models, schemas, services, and auth utilities
 from database import engine, get_db, init_db
 from models import User, Base
-from schemas import UserCreate, UserResponse, Token
+from schemas import UserCreate, UserResponse, Token, ChatHistoryCreate, ChatHistoryResponse
 from services.auth_service import create_user, authenticate_user, get_user_by_id
+from services.history_service import create_chat_history
 from auth import create_access_token, get_current_user
 from typing import Dict, Any
 
@@ -546,6 +547,76 @@ async def github_callback(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"GitHub OAuth callback failed: {str(e)}"
+        )
+
+
+
+# ============================================================================
+# History Endpoints
+# ============================================================================
+
+@app.post("/history/chat", response_model=ChatHistoryResponse, status_code=status.HTTP_201_CREATED, tags=["History"])
+async def create_chat_history_endpoint(
+    history_data: ChatHistoryCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+) -> ChatHistoryResponse:
+    """
+    Create a new chat history record for the authenticated user.
+
+    Args:
+        history_data: Chat history creation data (title, messages)
+        current_user: Current authenticated user (injected by dependency)
+        db: Database session (injected by FastAPI)
+
+    Returns:
+        ChatHistoryResponse: Created chat history record
+
+    Raises:
+        HTTPException 401: If no valid token is provided
+        HTTPException 500: If creation fails
+
+    Example:
+        POST /history/chat
+        Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        Content-Type: application/json
+
+        {
+            "title": "Project Planning Discussion",
+            "messages": [
+                {"role": "user", "content": "How do I create a spec?"},
+                {"role": "assistant", "content": "Use the spec_runner.py command."}
+            ]
+        }
+
+        Response:
+        {
+            "id": 1,
+            "title": "Project Planning Discussion",
+            "messages": [
+                {"role": "user", "content": "How do I create a spec?"},
+                {"role": "assistant", "content": "Use the spec_runner.py command."}
+            ],
+            "created_at": "2025-01-25T10:00:00Z",
+            "updated_at": "2025-01-25T10:00:00Z"
+        }
+
+    Note:
+        This is a protected route that requires a valid JWT token.
+        The chat history is automatically linked to the authenticated user.
+    """
+    try:
+        # Create chat history linked to authenticated user
+        new_history = create_chat_history(db, current_user.id, history_data)
+
+        # Return created history
+        return new_history
+
+    except Exception as e:
+        # Handle any errors during creation
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create chat history: {str(e)}"
         )
 
 
