@@ -220,7 +220,30 @@
       "title": "Logout",
       "message": "Are you sure you want to logout?",
       "confirm": "Logout",
+      "cancel": "Cancel",
+      "loggingOut": "Logging out..."
+    },
+    "linkGithub": {
+      "title": "Link GitHub Account",
+      "description": "You will be redirected to GitHub to authorize access to your account.",
+      "confirm": "Continue to GitHub",
       "cancel": "Cancel"
+    },
+    "unlinkGithub": {
+      "title": "Unlink GitHub Account?",
+      "description": "Are you sure you want to unlink \"{{username}}\" from your account? You will lose access to features that depend on this GitHub account.",
+      "confirm": "Unlink Account",
+      "cancel": "Cancel",
+      "unlinking": "Unlinking..."
+    }
+  },
+  "history": {
+    "deleteItem": {
+      "title": "Delete History Item?",
+      "description": "Are you sure you want to delete \"{{title}}\"? This action cannot be undone.",
+      "confirm": "Delete",
+      "cancel": "Cancel",
+      "deleting": "Deleting..."
     }
   }
 }
