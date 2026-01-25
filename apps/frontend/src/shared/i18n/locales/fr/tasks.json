@@ -333,5 +333,64 @@
   "referenceImages": {
     "title": "Images de référence (facultatif)",
     "description": "Ajoutez des références visuelles comme des captures d'écran ou des conceptions pour aider l'IA à comprendre vos exigences."
+  },
+  "history": {
+    "title": "Historique",
+    "tabs": {
+      "chat": "Chat",
+      "ideation": "Idéation",
+      "roadmap": "Feuille de route",
+      "repo": "Dépôt"
+    },
+    "empty": {
+      "title": "Aucun historique pour le moment",
+      "description": "Votre historique {{type}} apparaîtra ici"
+    },
+    "search": {
+      "placeholder": "Rechercher dans l'historique...",
+      "noResults": "Aucun résultat trouvé",
+      "clearSearch": "Effacer la recherche"
+    },
+    "filter": {
+      "title": "Filtrer",
+      "dateRange": "Plage de dates",
+      "dateFrom": "De",
+      "dateTo": "À",
+      "sort": "Trier",
+      "sortNewest": "Plus récents d'abord",
+      "sortOldest": "Plus anciens d'abord",
+      "clearFilters": "Effacer les filtres"
+    },
+    "actions": {
+      "delete": "Supprimer",
+      "deleteConfirm": "Supprimer cet élément ?",
+      "deleteConfirmDescription": "Cette action ne peut pas être annulée.",
+      "cancel": "Annuler",
+      "confirm": "Confirmer",
+      "view": "Voir",
+      "refresh": "Actualiser"
+    },
+    "item": {
+      "title": "Titre",
+      "createdAt": "Créé le",
+      "updatedAt": "Mis à jour le",
+      "version": "Version",
+      "repoName": "Dépôt",
+      "interactionType": "Type",
+      "noTitle": "Sans titre"
+    },
+    "types": {
+      "chat": "Historique des chats",
+      "ideation": "Historique des idéations",
+      "roadmap": "Historique des feuilles de route",
+      "repo": "Historique des dépôts"
+    },
+    "interactionTypes": {
+      "clone": "Cloner",
+      "pull": "Tirer",
+      "push": "Pousser",
+      "fetch": "Récupérer",
+      "other": "Autre"
+    }
   }
 }
