@@ -21,11 +21,14 @@ from __future__ import annotations
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Request
+from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from authlib.integrations.starlette_client import OAuth
+import secrets
 
 # Import database, models, schemas, services, and auth utilities
 from database import engine, get_db, init_db
@@ -40,6 +43,7 @@ from typing import Dict, Any
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 API_TITLE = "Auto Claude Authentication API"
 API_VERSION = "1.0.0"
+SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_urlsafe(32))
 
 # GitHub OAuth configuration
 GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID")
@@ -73,6 +77,14 @@ app = FastAPI(
 )
 
 
+# Add SessionMiddleware for OAuth flow (required by authlib)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SECRET_KEY,
+    max_age=None,  # Session expires when browser closes
+)
+
+
 # Configure CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -96,7 +108,9 @@ oauth.register(
     name='github',
     client_id=GITHUB_CLIENT_ID,
     client_secret=GITHUB_CLIENT_SECRET,
-    server_metadata_url='https://api.github.com/.well-known/oauth-authorization-server',
+    access_token_url='https://github.com/login/oauth/access_token',
+    authorize_url='https://github.com/login/oauth/authorize',
+    api_base_url='https://api.github.com/',
     client_kwargs={
         'scope': 'user:email'
     }
@@ -327,6 +341,50 @@ async def get_current_user_info(
         in the Authorization header.
     """
     return current_user
+
+
+@app.get("/auth/github", tags=["Authentication"])
+async def github_login(request: Request) -> RedirectResponse:
+    """
+    Redirect to GitHub OAuth authorization page.
+
+    This endpoint initiates the GitHub OAuth flow by redirecting the user
+    to GitHub's authorization page where they can grant access to their account.
+
+    Args:
+        request: FastAPI request object (needed for OAuth redirect URL generation)
+
+    Returns:
+        RedirectResponse: HTTP 302 redirect to GitHub authorization page
+
+    Raises:
+        HTTPException 500: If GitHub OAuth is not configured or redirect fails
+
+    Example:
+        GET /auth/github
+
+        Response:
+        HTTP 302 Found
+        Location: https://github.com/login/oauth/authorize?client_id=...&scope=...
+
+    Note:
+        The user will be redirected back to /auth/github/callback after
+        authorizing on GitHub. The callback will be implemented in subtask-3-3.
+    """
+    try:
+        # Generate the redirect URL to GitHub OAuth authorization page
+        # The redirect_uri points to our callback endpoint (to be implemented)
+        redirect_uri = f"{FRONTEND_URL}/auth/github/callback"
+
+        # Use authlib to create the authorization redirect
+        return await oauth.github.authorize_redirect(request, redirect_uri)
+
+    except Exception as e:
+        # Handle any errors during redirect generation
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to initiate GitHub OAuth: {str(e)}"
+        )
 
 
 # Placeholder for router imports
