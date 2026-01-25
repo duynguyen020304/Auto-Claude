@@ -21,8 +21,16 @@ from __future__ import annotations
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
+
+# Import database, models, schemas, services, and auth utilities
+from database import engine, get_db, init_db
+from models import User, Base
+from schemas import UserCreate, UserResponse, Token
+from services.auth_service import create_user
+from auth import create_access_token
 
 
 # Environment variables
@@ -98,6 +106,66 @@ async def health_check() -> dict[str, str]:
         dict: Health status
     """
     return {"status": "healthy", "service": "auth-api"}
+
+
+# ============================================================================
+# Authentication Endpoints
+# ============================================================================
+
+@app.post("/auth/register", response_model=Token, status_code=status.HTTP_201_CREATED, tags=["Authentication"])
+async def register_user(
+    user_data: UserCreate,
+    db: Session = Depends(get_db)
+) -> Token:
+    """
+    Register a new user with email and password.
+
+    Args:
+        user_data: User registration data (email and password)
+        db: Database session (injected by FastAPI)
+
+    Returns:
+        Token: JWT access token for the newly created user
+
+    Raises:
+        HTTPException 400: If validation fails (email format, password length)
+        HTTPException 409: If email already exists
+
+    Example:
+        POST /auth/register
+        {
+            "email": "user@example.com",
+            "password": "securepass123"
+        }
+
+        Response:
+        {
+            "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            "token_type": "bearer"
+        }
+    """
+    try:
+        # Create user in database (password is hashed in service layer)
+        new_user = create_user(db, user_data)
+
+        # Create JWT access token
+        access_token = create_access_token(data={"sub": str(new_user.id)})
+
+        # Return token
+        return Token(access_token=access_token, token_type="bearer")
+
+    except ValueError as e:
+        # Email already exists
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e)
+        )
+    except Exception as e:
+        # Other errors (validation, database, etc.)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Registration failed: {str(e)}"
+        )
 
 
 # Placeholder for router imports
