@@ -37,7 +37,8 @@ from schemas import (
     UserCreate, UserResponse, Token,
     ChatHistoryCreate, ChatHistoryResponse, ChatHistoryUpdate,
     IdeationHistoryCreate, IdeationHistoryResponse, IdeationHistoryUpdate,
-    RoadmapHistoryCreate, RoadmapHistoryResponse, RoadmapHistoryUpdate
+    RoadmapHistoryCreate, RoadmapHistoryResponse, RoadmapHistoryUpdate,
+    RepoHistoryCreate, RepoHistoryResponse, RepoHistoryUpdate
 )
 from services.auth_service import create_user, authenticate_user, get_user_by_id
 from services.history_service import (
@@ -46,7 +47,9 @@ from services.history_service import (
     create_ideation_history, get_user_ideation_histories,
     get_ideation_history, update_ideation_history, delete_ideation_history,
     create_roadmap_history, get_user_roadmap_histories,
-    get_roadmap_history, update_roadmap_history, delete_roadmap_history
+    get_roadmap_history, update_roadmap_history, delete_roadmap_history,
+    create_repo_history, get_user_repo_histories,
+    get_repo_history, update_repo_history, delete_repo_history
 )
 from auth import create_access_token, get_current_user
 from typing import Dict, Any, Optional
@@ -1629,6 +1632,359 @@ async def delete_roadmap_history_endpoint(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete roadmap history: {str(e)}"
+        )
+
+
+@app.post("/history/repo", response_model=RepoHistoryResponse, status_code=status.HTTP_201_CREATED, tags=["History"])
+async def create_repo_history_endpoint(
+    history_data: RepoHistoryCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+) -> RepoHistoryResponse:
+    """
+    Create a new repo history record for the authenticated user.
+
+    Args:
+        history_data: Repo history creation data (repo_name, repo_url, interaction_type, interaction_metadata)
+        current_user: Current authenticated user (injected by dependency)
+        db: Database session (injected by FastAPI)
+
+    Returns:
+        RepoHistoryResponse: Created repo history record
+
+    Raises:
+        HTTPException 401: If no valid token is provided
+        HTTPException 500: If creation fails
+
+    Example:
+        POST /history/repo
+        Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        Content-Type: application/json
+
+        {
+            "repo_name": "Andymik90/Auto-Claude",
+            "repo_url": "https://github.com/Andymik90/Auto-Claude",
+            "interaction_type": "clone",
+            "interaction_metadata": {"branch": "develop", "commit": "abc123"}
+        }
+
+        Response:
+        {
+            "id": 1,
+            "repo_name": "Andymik90/Auto-Claude",
+            "repo_url": "https://github.com/Andymik90/Auto-Claude",
+            "interaction_type": "clone",
+            "interaction_metadata": {"branch": "develop", "commit": "abc123"},
+            "created_at": "2025-01-25T10:00:00Z"
+        }
+
+    Note:
+        This is a protected route that requires a valid JWT token.
+        The repo history is automatically linked to the authenticated user.
+    """
+    try:
+        # Create repo history linked to authenticated user
+        new_history = create_repo_history(db, current_user.id, history_data)
+
+        # Return created history
+        return new_history
+
+    except Exception as e:
+        # Handle any errors during creation
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create repo history: {str(e)}"
+        )
+
+
+@app.get("/history/repo", response_model=list[RepoHistoryResponse], tags=["History"])
+async def get_user_repo_histories_endpoint(
+    page: int = Query(1, ge=1, description="Page number (starts from 1)"),
+    limit: int = Query(20, ge=1, le=100, description="Number of items per page"),
+    search: Optional[str] = Query(None, description="Search term for repo_name or repo_url"),
+    date_start: Optional[str] = Query(None, description="Start date filter (YYYY-MM-DD)"),
+    date_end: Optional[str] = Query(None, description="End date filter (YYYY-MM-DD)"),
+    sort: str = Query("newest", regex="^(newest|oldest)$", description="Sort order: newest or oldest"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+) -> list[RepoHistoryResponse]:
+    """
+    Get all repo histories for the authenticated user with pagination and filtering.
+
+    Args:
+        page: Page number (starts from 1, default: 1)
+        limit: Number of items per page (default: 20, max: 100)
+        search: Optional search term for repo_name or repo_url (case-insensitive partial match)
+        date_start: Optional start date filter (YYYY-MM-DD format)
+        date_end: Optional end date filter (YYYY-MM-DD format)
+        sort: Sort order - "newest" (default) or "oldest"
+        current_user: Current authenticated user (injected by dependency)
+        db: Database session (injected by FastAPI)
+
+    Returns:
+        list[RepoHistoryResponse]: List of repo history records for the user
+
+    Raises:
+        HTTPException 401: If no valid token is provided
+        HTTPException 500: If retrieval fails
+
+    Example:
+        GET /history/repo?page=1&limit=20&search=auto-claude&sort=newest
+        Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+        Response:
+        [
+            {
+                "id": 2,
+                "repo_name": "Andymik90/Auto-Claude",
+                "repo_url": "https://github.com/Andymik90/Auto-Claude",
+                "interaction_type": "clone",
+                "interaction_metadata": {"branch": "develop"},
+                "created_at": "2025-01-25T10:00:00Z"
+            },
+            {
+                "id": 1,
+                "repo_name": "user/test-repo",
+                "repo_url": "https://github.com/user/test-repo",
+                "interaction_type": "pr",
+                "interaction_metadata": {"pr_number": 123},
+                "created_at": "2025-01-24T15:30:00Z"
+            }
+        ]
+
+    Note:
+        - This is a protected route that requires a valid JWT token
+        - Only returns repo histories belonging to the authenticated user
+        - Pagination: page 1 returns items 1-20, page 2 returns items 21-40, etc.
+        - Search performs case-insensitive partial match on repo_name OR repo_url fields
+        - Date filters apply to created_at timestamp
+        - Sort defaults to newest first (created_at descending)
+    """
+    try:
+        # Calculate skip offset for pagination (page 1 = skip 0, page 2 = skip 20, etc.)
+        skip = (page - 1) * limit
+
+        # Determine sort order
+        sort_newest = (sort == "newest")
+
+        # Get user's repo histories with filtering and pagination
+        histories = get_user_repo_histories(
+            db,
+            current_user.id,
+            skip=skip,
+            limit=limit,
+            search=search,
+            date_start=date_start,
+            date_end=date_end,
+            sort_newest=sort_newest
+        )
+
+        # Return list of histories (FastAPI automatically converts to response model)
+        return histories
+
+    except Exception as e:
+        # Handle any errors during retrieval
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve repo histories: {str(e)}"
+        )
+
+
+@app.get("/history/repo/{history_id}", response_model=RepoHistoryResponse, tags=["History"])
+async def get_repo_history_endpoint(
+    history_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+) -> RepoHistoryResponse:
+    """
+    Get a specific repo history by ID for the authenticated user.
+
+    Args:
+        history_id: Repo history record ID
+        current_user: Current authenticated user (injected by dependency)
+        db: Database session (injected by FastAPI)
+
+    Returns:
+        RepoHistoryResponse: Repo history record if found and owned by user
+
+    Raises:
+        HTTPException 401: If no valid token is provided
+        HTTPException 404: If history not found or not owned by user
+        HTTPException 500: If retrieval fails
+
+    Example:
+        GET /history/repo/1
+        Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+        Response:
+        {
+            "id": 1,
+            "repo_name": "Andymik90/Auto-Claude",
+            "repo_url": "https://github.com/Andymik90/Auto-Claude",
+            "interaction_type": "clone",
+            "interaction_metadata": {"branch": "develop", "commit": "abc123"},
+            "created_at": "2025-01-25T10:00:00Z"
+        }
+
+    Note:
+        - This is a protected route that requires a valid JWT token
+        - Users can only access their own repo histories
+        - Returns 404 if history exists but belongs to different user
+    """
+    try:
+        # Get repo history (service layer enforces user isolation)
+        history = get_repo_history(db, history_id, current_user.id)
+
+        if not history:
+            # History not found or not owned by user
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Repo history with ID {history_id} not found"
+            )
+
+        return history
+
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        # Handle any other errors during retrieval
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve repo history: {str(e)}"
+        )
+
+
+@app.put("/history/repo/{history_id}", response_model=RepoHistoryResponse, tags=["History"])
+async def update_repo_history_endpoint(
+    history_id: int,
+    history_data: RepoHistoryUpdate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+) -> RepoHistoryResponse:
+    """
+    Update a specific repo history by ID for the authenticated user.
+
+    Args:
+        history_id: Repo history record ID
+        history_data: Update data (interaction_metadata only - other fields are immutable)
+        current_user: Current authenticated user (injected by dependency)
+        db: Database session (injected by FastAPI)
+
+    Returns:
+        RepoHistoryResponse: Updated repo history record
+
+    Raises:
+        HTTPException 401: If no valid token is provided
+        HTTPException 404: If history not found or not owned by user
+        HTTPException 500: If update fails
+
+    Example:
+        PUT /history/repo/1
+        Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        Content-Type: application/json
+
+        {
+            "interaction_metadata": {"branch": "main", "commit": "def456", "notes": "Updated metadata"}
+        }
+
+        Response:
+        {
+            "id": 1,
+            "repo_name": "Andymik90/Auto-Claude",
+            "repo_url": "https://github.com/Andymik90/Auto-Claude",
+            "interaction_type": "clone",
+            "interaction_metadata": {"branch": "main", "commit": "def456", "notes": "Updated metadata"},
+            "created_at": "2025-01-25T10:00:00Z"
+        }
+
+    Note:
+        - This is a protected route that requires a valid JWT token
+        - Users can only update their own repo histories
+        - Only interaction_metadata can be updated (other fields are immutable for audit trail)
+        - Only updates fields that are provided (partial update supported)
+    """
+    try:
+        # Update repo history (service layer enforces user isolation)
+        updated_history = update_repo_history(db, history_id, current_user.id, history_data)
+
+        if not updated_history:
+            # History not found or not owned by user
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Repo history with ID {history_id} not found"
+            )
+
+        return updated_history
+
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        # Handle any other errors during update
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update repo history: {str(e)}"
+        )
+
+
+@app.delete("/history/repo/{history_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["History"])
+async def delete_repo_history_endpoint(
+    history_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Delete a specific repo history by ID for the authenticated user.
+
+    Args:
+        history_id: Repo history record ID
+        current_user: Current authenticated user (injected by dependency)
+        db: Database session (injected by FastAPI)
+
+    Returns:
+        None: HTTP 204 No Content on success
+
+    Raises:
+        HTTPException 401: If no valid token is provided
+        HTTPException 404: If history not found or not owned by user
+        HTTPException 500: If deletion fails
+
+    Example:
+        DELETE /history/repo/1
+        Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+        Response:
+        HTTP 204 No Content
+
+    Note:
+        - This is a protected route that requires a valid JWT token
+        - Users can only delete their own repo histories
+        - Hard delete - record permanently removed from database
+        - Returns 204 No Content on successful deletion
+        - Returns 404 if history exists but belongs to different user
+    """
+    try:
+        # Delete repo history (service layer enforces user isolation)
+        deleted = delete_repo_history(db, history_id, current_user.id)
+
+        if not deleted:
+            # History not found or not owned by user
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Repo history with ID {history_id} not found"
+            )
+
+        # Return 204 No Content (FastAPI does this automatically with status_code=204)
+
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        # Handle any other errors during deletion
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete repo history: {str(e)}"
         )
 
 
