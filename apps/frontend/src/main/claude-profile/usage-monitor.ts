@@ -1936,11 +1936,16 @@ export class UsageMonitor extends EventEmitter {
       day.hourlyData!.push(hourlyPoint);
 
       // Add to daily totals (skip null values)
-      if (modelData.tokensUsage[i]) day.tokensUsage += modelData.tokensUsage[i];
-      if (modelData.modelCallCount[i]) day.modelCallCount += modelData.modelCallCount[i];
-      if (toolData.networkSearchCount[i]) day.toolsUsage += toolData.networkSearchCount[i];
-      if (toolData.webReadMcpCount[i]) day.toolsUsage += toolData.webReadMcpCount[i];
-      if (toolData.zreadMcpCount[i]) day.toolsUsage += toolData.zreadMcpCount[i];
+      const tokenValue = modelData.tokensUsage?.[i];
+      if (tokenValue) day.tokensUsage += tokenValue;
+      const callCount = modelData.modelCallCount?.[i];
+      if (callCount) day.modelCallCount += callCount;
+      const networkCount = toolData.networkSearchCount?.[i];
+      if (networkCount) day.toolsUsage += networkCount;
+      const webReadCount = toolData.webReadMcpCount?.[i];
+      if (webReadCount) day.toolsUsage += webReadCount;
+      const zreadCount = toolData.zreadMcpCount?.[i];
+      if (zreadCount) day.toolsUsage += zreadCount;
     }
 
     return Array.from(dailyMap.values());

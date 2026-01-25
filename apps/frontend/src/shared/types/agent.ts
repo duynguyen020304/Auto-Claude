@@ -347,9 +347,9 @@ export interface ProviderQuotaLimitResponse {
       type: 'TOKENS_LIMIT' | 'TIME_LIMIT';
       unit?: string;
       number?: number;
-      usage: number;           // Total quota
-      currentValue: number;    // Used quota
-      remaining: number;
+      usage?: number;           // Total quota
+      currentValue?: number;    // Used quota
+      remaining?: number;
       percentage: number;      // 0-100
       nextResetTime?: number;  // Unix timestamp (milliseconds)
       usageDetails?: Record<string, unknown>;
@@ -359,9 +359,9 @@ export interface ProviderQuotaLimitResponse {
     type: 'TOKENS_LIMIT' | 'TIME_LIMIT';
     unit?: string;
     number?: number;
-    usage: number;
-    currentValue: number;
-    remaining: number;
+    usage?: number;
+    currentValue?: number;
+    remaining?: number;
     percentage: number;
     nextResetTime?: number;
     usageDetails?: Record<string, unknown>;

@@ -7,6 +7,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { detectProvider, getUsageEndpoint, UsageMonitor, getUsageMonitor } from './usage-monitor';
 import type { ApiProvider } from './usage-monitor';
+import type { ProviderQuotaLimitResponse } from '../../shared/types/agent';
 import { hasHardcodedText } from '../../shared/utils/format-time';
 
 // Mock getClaudeProfileManager
@@ -308,7 +309,7 @@ describe('usage-monitor', () => {
       const sessionReset = new Date(now.getTime() + 2 * 60 * 60 * 1000); // 2 hours from now
 
       // Use quota/limit format with limits array
-      const rawData = {
+      const rawData: ProviderQuotaLimitResponse = {
         limits: [
           {
             type: 'TOKENS_LIMIT',
@@ -341,7 +342,7 @@ describe('usage-monitor', () => {
     it('should try alternative field names for z.ai response', () => {
       const monitor = getUsageMonitor();
       // Use quota/limit format with limits array
-      const rawData = {
+      const rawData: ProviderQuotaLimitResponse = {
         limits: [
           {
             type: 'TOKENS_LIMIT',
@@ -374,7 +375,7 @@ describe('usage-monitor', () => {
       const rawData = {
         unknown_field: 'some_value',
         another_field: 123
-      };
+      } as unknown as ProviderQuotaLimitResponse;
 
       const usage = monitor['normalizeZAIResponse'](rawData, 'zai-profile-1', 'z.ai Profile');
 
@@ -415,7 +416,7 @@ describe('usage-monitor', () => {
             nextResetTime: nextResetTime
           }
         ]
-      };
+      } as unknown as ProviderQuotaLimitResponse;
 
       const usage = monitor['normalizeZAIResponse'](rawData, 'zai-profile-1', 'z.ai Profile');
 
@@ -457,7 +458,7 @@ describe('usage-monitor', () => {
             // Missing nextResetTime - should fall back to now + 5 hours
           }
         ]
-      };
+      } as unknown as ProviderQuotaLimitResponse;
 
       const usage = monitor['normalizeZAIResponse'](rawData, 'zai-profile-1', 'z.ai Profile');
 
@@ -470,7 +471,7 @@ describe('usage-monitor', () => {
     it('should handle missing currentValue and usage fields', () => {
       const monitor = getUsageMonitor();
 
-      const rawData = {
+      const rawData: ProviderQuotaLimitResponse = {
         limits: [
           {
             type: 'TIME_LIMIT',
@@ -501,7 +502,7 @@ describe('usage-monitor', () => {
     it('should normalize ZHIPU response with usage/limit fields', () => {
       const monitor = getUsageMonitor();
       // Use quota/limit format with limits array
-      const rawData = {
+      const rawData: ProviderQuotaLimitResponse = {
         limits: [
           {
             type: 'TOKENS_LIMIT',
@@ -530,7 +531,7 @@ describe('usage-monitor', () => {
     it('should try alternative field names for ZHIPU response', () => {
       const monitor = getUsageMonitor();
       // Use quota/limit format with limits array
-      const rawData = {
+      const rawData: ProviderQuotaLimitResponse = {
         limits: [
           {
             type: 'TOKENS_LIMIT',
@@ -586,7 +587,7 @@ describe('usage-monitor', () => {
             nextResetTime: nextResetTime
           }
         ]
-      };
+      } as unknown as ProviderQuotaLimitResponse;
 
       const usage = monitor['normalizeZhipuResponse'](rawData, 'zhipu-profile-1', 'ZHIPU Profile');
 
@@ -606,7 +607,7 @@ describe('usage-monitor', () => {
     it('should handle ZHIPU quota/limit response without nextResetTime', () => {
       const monitor = getUsageMonitor();
 
-      const rawData = {
+      const rawData: ProviderQuotaLimitResponse = {
         limits: [
           {
             type: 'TIME_LIMIT',
@@ -637,7 +638,7 @@ describe('usage-monitor', () => {
     it('should calculate percentages correctly from usage/limit values', () => {
       const monitor = getUsageMonitor();
       // Use quota/limit format - percentages are pre-calculated by the API
-      const rawData = {
+      const rawData: ProviderQuotaLimitResponse = {
         limits: [
           {
             type: 'TOKENS_LIMIT',
@@ -659,7 +660,7 @@ describe('usage-monitor', () => {
     it('should handle division by zero (zero limit)', () => {
       const monitor = getUsageMonitor();
       // When percentage is 0 or missing, default to 0
-      const rawData = {
+      const rawData: ProviderQuotaLimitResponse = {
         limits: [
           {
             type: 'TOKENS_LIMIT',
@@ -688,7 +689,7 @@ describe('usage-monitor', () => {
         session_limit: 'also not a number',
         weekly_usage: null,
         weekly_limit: undefined
-      };
+      } as unknown as ProviderQuotaLimitResponse;
 
       const usage = monitor['normalizeZAIResponse'](rawData, 'test-profile', 'Test Profile');
 
@@ -705,7 +706,7 @@ describe('usage-monitor', () => {
         nested: {
           data: 'value'
         }
-      };
+      } as unknown as ProviderQuotaLimitResponse;
 
       const usage = monitor['normalizeZAIResponse'](rawData, 'test-profile', 'Test Profile');
 

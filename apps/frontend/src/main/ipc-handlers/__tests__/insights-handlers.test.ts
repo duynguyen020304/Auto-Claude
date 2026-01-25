@@ -9,7 +9,6 @@ import type {
   InsightsSession,
   InsightsSessionSummary,
   InsightsModelConfig,
-  Task,
   ActiveSession,
 } from '../../../shared/types';
 
@@ -250,7 +249,7 @@ describe('insights IPC handlers', () => {
         messages: [],
         modelConfig: {
           profileId: 'balanced',
-          model: 'claude-sonnet-4-5-20250929',
+          model: 'sonnet',
           thinkingLevel: 'medium',
         },
         createdAt: new Date(),
@@ -265,7 +264,7 @@ describe('insights IPC handlers', () => {
       mockInsightsService.loadSession.mockReturnValue(mockSession);
 
       const handler = getHandler(IPC_CHANNELS.INSIGHTS_GET_SESSION);
-      const result = await handler({}, 'project-1');
+      const result = await handler!({}, 'project-1');
 
       expect(mockInsightsService.loadSession).toHaveBeenCalledWith('project-1', '/tmp/project');
       expect(result.success).toBe(true);
@@ -275,7 +274,7 @@ describe('insights IPC handlers', () => {
       mockProjectStore.getProject.mockReturnValue(undefined);
 
       const handler = getHandler(IPC_CHANNELS.INSIGHTS_GET_SESSION);
-      const result = await handler({}, 'project-1');
+      const result = await handler!({}, 'project-1');
 
       expect(result).toEqual({
         success: false,
@@ -293,7 +292,7 @@ describe('insights IPC handlers', () => {
       mockInsightsService.clearSession.mockReturnValue(undefined);
 
       const handler = getHandler(IPC_CHANNELS.INSIGHTS_CLEAR_SESSION);
-      const result = await handler({}, 'session-1', 'project-1');
+      const result = await handler!({}, 'session-1', 'project-1');
 
       expect(mockInsightsService.clearSession).toHaveBeenCalledWith('project-1', '/tmp/project');
       expect(result.success).toBe(true);
@@ -319,7 +318,7 @@ describe('insights IPC handlers', () => {
       mockInsightsService.listSessions.mockReturnValue(mockSessions);
 
       const handler = getHandler(IPC_CHANNELS.INSIGHTS_LIST_SESSIONS);
-      const result = await handler({}, 'project-1');
+      const result = await handler!({}, 'project-1');
 
       expect(mockInsightsService.listSessions).toHaveBeenCalledWith('/tmp/project');
       expect(result.success).toBe(true);
@@ -334,7 +333,7 @@ describe('insights IPC handlers', () => {
         messages: [],
         modelConfig: {
           profileId: 'balanced',
-          model: 'claude-sonnet-4-5-20250929',
+          model: 'sonnet',
           thinkingLevel: 'medium',
         },
         createdAt: new Date(),
@@ -349,7 +348,7 @@ describe('insights IPC handlers', () => {
       mockInsightsService.createNewSession.mockReturnValue(mockSession);
 
       const handler = getHandler(IPC_CHANNELS.INSIGHTS_NEW_SESSION);
-      const result = await handler({}, 'project-1');
+      const result = await handler!({}, 'project-1');
 
       expect(mockInsightsService.createNewSession).toHaveBeenCalledWith('project-1', '/tmp/project');
       expect(result.success).toBe(true);
@@ -360,7 +359,7 @@ describe('insights IPC handlers', () => {
       mockInsightsService.cancelSession.mockReturnValue(true);
 
       const handler = getHandler(IPC_CHANNELS.INSIGHTS_CANCEL_SESSION);
-      const result = await handler({}, 'session-1');
+      const result = await handler!({}, 'session-1');
 
       expect(mockInsightsService.cancelSession).toHaveBeenCalledWith('session-1');
       expect(result.success).toBe(true);
@@ -370,7 +369,7 @@ describe('insights IPC handlers', () => {
       mockInsightsService.cancelSession.mockReturnValue(false);
 
       const handler = getHandler(IPC_CHANNELS.INSIGHTS_CANCEL_SESSION);
-      const result = await handler({}, 'session-nonexistent');
+      const result = await handler!({}, 'session-nonexistent');
 
       expect(result).toEqual({
         success: false,
@@ -383,14 +382,14 @@ describe('insights IPC handlers', () => {
         {
           sessionId: 'session-1',
           projectId: 'project-1',
-          status: 'running',
+          startedAt: Date.now(),
         },
       ];
 
       mockInsightsService.getActiveSessions.mockReturnValue(mockActiveSessions);
 
       const handler = getHandler(IPC_CHANNELS.INSIGHTS_GET_ACTIVE_SESSIONS);
-      const result = await handler();
+      const result = await handler!();
 
       expect(mockInsightsService.getActiveSessions).toHaveBeenCalled();
       expect(result.success).toBe(true);
@@ -406,7 +405,7 @@ describe('insights IPC handlers', () => {
       mockInsightsService.deleteSession.mockReturnValue(true);
 
       const handler = getHandler(IPC_CHANNELS.INSIGHTS_DELETE_SESSION);
-      const result = await handler({}, 'project-1', 'session-1');
+      const result = await handler!({}, 'project-1', 'session-1');
 
       expect(mockInsightsService.deleteSession).toHaveBeenCalledWith('project-1', '/tmp/project', 'session-1');
       expect(result.success).toBe(true);
@@ -421,7 +420,7 @@ describe('insights IPC handlers', () => {
       mockInsightsService.renameSession.mockReturnValue(true);
 
       const handler = getHandler(IPC_CHANNELS.INSIGHTS_RENAME_SESSION);
-      const result = await handler({}, 'project-1', 'session-1', 'New Title');
+      const result = await handler!({}, 'project-1', 'session-1', 'New Title');
 
       expect(mockInsightsService.renameSession).toHaveBeenCalledWith('/tmp/project', 'session-1', 'New Title');
       expect(result.success).toBe(true);
@@ -430,7 +429,7 @@ describe('insights IPC handlers', () => {
     it('should call insightsService.updateSessionModelConfig for INSIGHTS_UPDATE_MODEL_CONFIG', async () => {
       const mockConfig: InsightsModelConfig = {
         profileId: 'fast',
-        model: 'claude-haiku-4-5-20250929',
+        model: 'haiku',
         thinkingLevel: 'low',
       };
 
@@ -442,7 +441,7 @@ describe('insights IPC handlers', () => {
       mockInsightsService.updateSessionModelConfig.mockReturnValue(true);
 
       const handler = getHandler(IPC_CHANNELS.INSIGHTS_UPDATE_MODEL_CONFIG);
-      const result = await handler({}, 'project-1', 'session-1', mockConfig);
+      const result = await handler!({}, 'project-1', 'session-1', mockConfig);
 
       expect(mockInsightsService.updateSessionModelConfig).toHaveBeenCalledWith('/tmp/project', 'session-1', mockConfig);
       expect(result.success).toBe(true);
@@ -456,7 +455,7 @@ describe('insights IPC handlers', () => {
         messages: [],
         modelConfig: {
           profileId: 'balanced',
-          model: 'claude-sonnet-4-5-20250929',
+          model: 'sonnet',
           thinkingLevel: 'medium',
         },
         createdAt: new Date(),
@@ -471,7 +470,7 @@ describe('insights IPC handlers', () => {
       mockInsightsService.switchSession.mockReturnValue(mockSession);
 
       const handler = getHandler(IPC_CHANNELS.INSIGHTS_SWITCH_SESSION);
-      const result = await handler({}, 'project-1', 'session-2');
+      const result = await handler!({}, 'project-1', 'session-2');
 
       expect(mockInsightsService.switchSession).toHaveBeenCalledWith('project-1', '/tmp/project', 'session-2');
       expect(result.success).toBe(true);
