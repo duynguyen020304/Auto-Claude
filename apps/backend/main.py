@@ -369,11 +369,11 @@ async def github_login(request: Request) -> RedirectResponse:
 
     Note:
         The user will be redirected back to /auth/github/callback after
-        authorizing on GitHub. The callback will be implemented in subtask-3-3.
+        authorizing on GitHub.
     """
     try:
         # Generate the redirect URL to GitHub OAuth authorization page
-        # The redirect_uri points to our callback endpoint (to be implemented)
+        # The redirect_uri points to our callback endpoint
         redirect_uri = f"{FRONTEND_URL}/auth/github/callback"
 
         # Use authlib to create the authorization redirect
@@ -384,6 +384,168 @@ async def github_login(request: Request) -> RedirectResponse:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to initiate GitHub OAuth: {str(e)}"
+        )
+
+
+@app.get("/auth/github/callback", tags=["Authentication"])
+async def github_callback(
+    request: Request,
+    db: Session = Depends(get_db)
+) -> RedirectResponse:
+    """
+    Handle GitHub OAuth callback and create/login user.
+
+    This endpoint receives the OAuth callback from GitHub after user authorization.
+    It exchanges the authorization code for an access token, fetches the user's
+    GitHub profile, creates a new user account or links to an existing one,
+    and returns a JWT token via URL redirect to the frontend.
+
+    Args:
+        request: FastAPI request object (contains OAuth state and code)
+        db: Database session (injected by FastAPI)
+
+    Returns:
+        RedirectResponse: HTTP 302 redirect to frontend with JWT token in URL hash
+
+    Raises:
+        HTTPException 401: If OAuth authorization fails or code is invalid
+        HTTPException 500: If user creation fails or GitHub API error occurs
+
+    Example:
+        GET /auth/github/callback?code=xxx&state=yyy
+
+        Response:
+        HTTP 302 Found
+        Location: http://localhost:3000/auth/callback#access_token=eyJhbG...
+
+    Note:
+        - Token is passed in URL hash (fragment) to prevent it from being sent to server
+        - Frontend should extract token from URL hash and store in localStorage
+        - If GitHub account already exists, user is logged in
+        - If GitHub account is new, a new user is created automatically
+        - User's email is retrieved from GitHub API for account creation
+    """
+    try:
+        # Exchange authorization code for access token
+        # authlib handles the OAuth token exchange automatically
+        token = await oauth.github.authorize_access_token(request)
+
+        # Fetch user profile from GitHub API using the access token
+        # The 'user' endpoint returns: id, login, name, email, avatar_url, etc.
+        response = await oauth.github.get('user', token=token)
+        github_user = response.json()
+
+        # Extract relevant GitHub user information
+        github_id = github_user.get('id')
+        github_username = github_user.get('login')
+        github_email = github_user.get('email')
+        github_avatar = github_user.get('avatar_url')
+        github_access_token = token.get('access_token')
+
+        # Validate that we received required data
+        if not github_id or not github_username:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid GitHub user data received"
+            )
+
+        # Import models here to avoid circular imports
+        from models import GitHubAccount
+
+        # Check if GitHub account already exists in our database
+        existing_github_account = db.query(GitHubAccount).filter(
+            GitHubAccount.github_id == github_id
+        ).first()
+
+        user = None
+
+        if existing_github_account:
+            # GitHub account already linked - login the existing user
+            user = existing_github_account.user
+
+            # Update access token and profile data
+            existing_github_account.access_token = github_access_token
+            existing_github_account.username = github_username
+            if github_avatar:
+                existing_github_account.avatar_url = github_avatar
+            db.commit()
+
+        else:
+            # New GitHub account - create new user
+            # Use GitHub email if available, otherwise use a placeholder
+            # Note: GitHub users can choose to hide their email
+            if not github_email:
+                # Generate a unique email based on GitHub username
+                github_email = f"{github_username}@github.local"
+
+            # Check if user with this email already exists
+            # (User might have registered with email/password previously)
+            existing_user = db.query(User).filter(User.email == github_email).first()
+
+            if existing_user:
+                # Link GitHub account to existing user
+                user = existing_user
+
+                # Create GitHub account link
+                new_github_account = GitHubAccount(
+                    user_id=user.id,
+                    github_id=github_id,
+                    username=github_username,
+                    avatar_url=github_avatar,
+                    access_token=github_access_token
+                )
+                db.add(new_github_account)
+                db.commit()
+
+            else:
+                # Create completely new user with GitHub account
+                # Generate a random password (user won't use it for GitHub login)
+                import random
+                import string
+                random_password = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
+
+                # Hash the random password
+                from auth import hash_password
+                hashed_password = hash_password(random_password)
+
+                # Create new user
+                new_user = User(
+                    email=github_email,
+                    hashed_password=hashed_password
+                )
+                db.add(new_user)
+                db.flush()  # Flush to get the user ID before creating GitHub account
+
+                # Create GitHub account link
+                new_github_account = GitHubAccount(
+                    user_id=new_user.id,
+                    github_id=github_id,
+                    username=github_username,
+                    avatar_url=github_avatar,
+                    access_token=github_access_token
+                )
+                db.add(new_github_account)
+                db.commit()
+
+                user = new_user
+
+        # Create JWT access token for the user
+        access_token = create_access_token(data={"sub": str(user.id)})
+
+        # Redirect to frontend with token in URL hash
+        # Using hash (fragment) prevents token from being sent in redirect request
+        frontend_callback_url = f"{FRONTEND_URL}/auth/callback#access_token={access_token}"
+
+        return RedirectResponse(frontend_callback_url)
+
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        # Handle any other errors (GitHub API errors, database errors, etc.)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"GitHub OAuth callback failed: {str(e)}"
         )
 
 
