@@ -30,8 +30,9 @@ from sqlalchemy.orm import Session
 from database import engine, get_db, init_db
 from models import User, Base
 from schemas import UserCreate, UserResponse, Token
-from services.auth_service import create_user, authenticate_user
-from auth import create_access_token
+from services.auth_service import create_user, authenticate_user, get_user_by_id
+from auth import create_access_token, get_current_user
+from typing import Dict, Any
 
 
 # Environment variables
@@ -219,6 +220,92 @@ async def login_user(
 
     # Return token
     return Token(access_token=access_token, token_type="bearer")
+
+
+async def get_current_active_user(
+    token_payload: Dict[str, Any] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> User:
+    """
+    Dependency to get the current authenticated user from database.
+
+    Args:
+        token_payload: Decoded JWT token payload (contains user_id in "sub" field)
+        db: Database session (injected by FastAPI)
+
+    Returns:
+        User: Current authenticated user object
+
+    Raises:
+        HTTPException 401: If token is invalid or user not found
+
+    Note:
+        Extracts user_id from token payload's "sub" field and queries
+        the database to get the full user object.
+    """
+    # Extract user_id from token payload
+    user_id = token_payload.get("sub")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Convert to int if it's a string
+    try:
+        user_id = int(user_id)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid user ID in token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Query database for user
+    user = get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return user
+
+
+@app.get("/auth/me", response_model=UserResponse, tags=["Authentication"])
+async def get_current_user_info(
+    current_user: User = Depends(get_current_active_user)
+) -> UserResponse:
+    """
+    Get current authenticated user information.
+
+    Args:
+        current_user: Current authenticated user (injected by dependency)
+
+    Returns:
+        UserResponse: Current user's information (id, email, created_at)
+
+    Raises:
+        HTTPException 401: If no valid token is provided
+
+    Example:
+        GET /auth/me
+        Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+        Response:
+        {
+            "id": 1,
+            "email": "user@example.com",
+            "created_at": "2025-01-25T10:00:00Z"
+        }
+
+    Note:
+        This is a protected route that requires a valid JWT token
+        in the Authorization header.
+    """
+    return current_user
 
 
 # Placeholder for router imports
