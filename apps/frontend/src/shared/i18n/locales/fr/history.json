@@ -1,0 +1,18 @@
+{
+  "title": "Historique",
+  "tabs": {
+    "chat": "Chat",
+    "ideation": "Idéation",
+    "roadmap": "Feuille de route",
+    "repo": "Dépôt"
+  },
+  "empty": {
+    "title": "Aucun historique",
+    "description": "Votre historique apparaîtra ici une fois que vous commencerez à utiliser cette fonctionnalité"
+  },
+  "actions": {
+    "search": "Rechercher dans l'historique...",
+    "delete": "Supprimer",
+    "confirmDelete": "Êtes-vous sûr de vouloir supprimer cet élément ?"
+  }
+}
