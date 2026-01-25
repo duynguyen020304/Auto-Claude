@@ -35,12 +35,15 @@ from database import engine, get_db, init_db
 from models import User, Base
 from schemas import (
     UserCreate, UserResponse, Token,
-    ChatHistoryCreate, ChatHistoryResponse, ChatHistoryUpdate
+    ChatHistoryCreate, ChatHistoryResponse, ChatHistoryUpdate,
+    IdeationHistoryCreate, IdeationHistoryResponse, IdeationHistoryUpdate
 )
 from services.auth_service import create_user, authenticate_user, get_user_by_id
 from services.history_service import (
     create_chat_history, get_user_chat_histories,
-    get_chat_history, update_chat_history, delete_chat_history
+    get_chat_history, update_chat_history, delete_chat_history,
+    create_ideation_history, get_user_ideation_histories,
+    get_ideation_history, update_ideation_history, delete_ideation_history
 )
 from auth import create_access_token, get_current_user
 from typing import Dict, Any, Optional
@@ -915,6 +918,360 @@ async def delete_chat_history_endpoint(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete chat history: {str(e)}"
+        )
+
+
+@app.post("/history/ideation", response_model=IdeationHistoryResponse, status_code=status.HTTP_201_CREATED, tags=["History"])
+async def create_ideation_history_endpoint(
+    history_data: IdeationHistoryCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+) -> IdeationHistoryResponse:
+    """
+    Create a new ideation history record for the authenticated user.
+
+    Args:
+        history_data: Ideation history creation data (title, content, tags)
+        current_user: Current authenticated user (injected by dependency)
+        db: Database session (injected by FastAPI)
+
+    Returns:
+        IdeationHistoryResponse: Created ideation history record
+
+    Raises:
+        HTTPException 401: If no valid token is provided
+        HTTPException 500: If creation fails
+
+    Example:
+        POST /history/ideation
+        Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        Content-Type: application/json
+
+        {
+            "title": "Product Brainstorm",
+            "content": "# Ideas\\n- Feature A\\n- Feature B\\n- Feature C",
+            "tags": ["product", "brainstorm", "features"]
+        }
+
+        Response:
+        {
+            "id": 1,
+            "title": "Product Brainstorm",
+            "content": "# Ideas\\n- Feature A\\n- Feature B\\n- Feature C",
+            "tags": ["product", "brainstorm", "features"],
+            "created_at": "2025-01-25T10:00:00Z",
+            "updated_at": "2025-01-25T10:00:00Z"
+        }
+
+    Note:
+        This is a protected route that requires a valid JWT token.
+        The ideation history is automatically linked to the authenticated user.
+    """
+    try:
+        # Create ideation history linked to authenticated user
+        new_history = create_ideation_history(db, current_user.id, history_data)
+
+        # Return created history
+        return new_history
+
+    except Exception as e:
+        # Handle any errors during creation
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create ideation history: {str(e)}"
+        )
+
+
+@app.get("/history/ideation", response_model=list[IdeationHistoryResponse], tags=["History"])
+async def get_user_ideation_histories_endpoint(
+    page: int = Query(1, ge=1, description="Page number (starts from 1)"),
+    limit: int = Query(20, ge=1, le=100, description="Number of items per page"),
+    search: Optional[str] = Query(None, description="Search term for title or content"),
+    date_start: Optional[str] = Query(None, description="Start date filter (YYYY-MM-DD)"),
+    date_end: Optional[str] = Query(None, description="End date filter (YYYY-MM-DD)"),
+    sort: str = Query("newest", regex="^(newest|oldest)$", description="Sort order: newest or oldest"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+) -> list[IdeationHistoryResponse]:
+    """
+    Get all ideation histories for the authenticated user with pagination and filtering.
+
+    Args:
+        page: Page number (starts from 1, default: 1)
+        limit: Number of items per page (default: 20, max: 100)
+        search: Optional search term for title or content (case-insensitive partial match)
+        date_start: Optional start date filter (YYYY-MM-DD format)
+        date_end: Optional end date filter (YYYY-MM-DD format)
+        sort: Sort order - "newest" (default) or "oldest"
+        current_user: Current authenticated user (injected by dependency)
+        db: Database session (injected by FastAPI)
+
+    Returns:
+        list[IdeationHistoryResponse]: List of ideation history records for the user
+
+    Raises:
+        HTTPException 401: If no valid token is provided
+        HTTPException 500: If retrieval fails
+
+    Example:
+        GET /history/ideation?page=1&limit=20&search=product&sort=newest
+        Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+        Response:
+        [
+            {
+                "id": 2,
+                "title": "Product Brainstorm",
+                "content": "# Ideas\\n- Feature A\\n- Feature B",
+                "tags": ["product", "brainstorm"],
+                "created_at": "2025-01-25T10:00:00Z",
+                "updated_at": "2025-01-25T11:00:00Z"
+            },
+            {
+                "id": 1,
+                "title": "Feature Ideas",
+                "content": "## Features\\n- Authentication",
+                "tags": ["features"],
+                "created_at": "2025-01-24T15:30:00Z",
+                "updated_at": "2025-01-24T15:30:00Z"
+            }
+        ]
+
+    Note:
+        - This is a protected route that requires a valid JWT token
+        - Only returns ideation histories belonging to the authenticated user
+        - Pagination: page 1 returns items 1-20, page 2 returns items 21-40, etc.
+        - Search performs case-insensitive partial match on title OR content fields
+        - Date filters apply to created_at timestamp
+        - Sort defaults to newest first (created_at descending)
+    """
+    try:
+        # Calculate skip offset for pagination (page 1 = skip 0, page 2 = skip 20, etc.)
+        skip = (page - 1) * limit
+
+        # Determine sort order
+        sort_newest = (sort == "newest")
+
+        # Get user's ideation histories with filtering and pagination
+        histories = get_user_ideation_histories(
+            db,
+            current_user.id,
+            skip=skip,
+            limit=limit,
+            search=search,
+            date_start=date_start,
+            date_end=date_end,
+            sort_newest=sort_newest
+        )
+
+        # Return list of histories (FastAPI automatically converts to response model)
+        return histories
+
+    except Exception as e:
+        # Handle any errors during retrieval
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve ideation histories: {str(e)}"
+        )
+
+
+@app.get("/history/ideation/{history_id}", response_model=IdeationHistoryResponse, tags=["History"])
+async def get_ideation_history_endpoint(
+    history_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+) -> IdeationHistoryResponse:
+    """
+    Get a specific ideation history by ID for the authenticated user.
+
+    Args:
+        history_id: Ideation history record ID
+        current_user: Current authenticated user (injected by dependency)
+        db: Database session (injected by FastAPI)
+
+    Returns:
+        IdeationHistoryResponse: Ideation history record if found and owned by user
+
+    Raises:
+        HTTPException 401: If no valid token is provided
+        HTTPException 404: If history not found or not owned by user
+        HTTPException 500: If retrieval fails
+
+    Example:
+        GET /history/ideation/1
+        Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+        Response:
+        {
+            "id": 1,
+            "title": "Product Brainstorm",
+            "content": "# Ideas\\n- Feature A\\n- Feature B\\n- Feature C",
+            "tags": ["product", "brainstorm", "features"],
+            "created_at": "2025-01-25T10:00:00Z",
+            "updated_at": "2025-01-25T11:00:00Z"
+        }
+
+    Note:
+        - This is a protected route that requires a valid JWT token
+        - Users can only access their own ideation histories
+        - Returns 404 if history exists but belongs to different user
+    """
+    try:
+        # Get ideation history (service layer enforces user isolation)
+        history = get_ideation_history(db, history_id, current_user.id)
+
+        if not history:
+            # History not found or not owned by user
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Ideation history with ID {history_id} not found"
+            )
+
+        return history
+
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        # Handle any other errors during retrieval
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve ideation history: {str(e)}"
+        )
+
+
+@app.put("/history/ideation/{history_id}", response_model=IdeationHistoryResponse, tags=["History"])
+async def update_ideation_history_endpoint(
+    history_id: int,
+    history_data: IdeationHistoryUpdate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+) -> IdeationHistoryResponse:
+    """
+    Update a specific ideation history by ID for the authenticated user.
+
+    Args:
+        history_id: Ideation history record ID
+        history_data: Update data (title, content, tags)
+        current_user: Current authenticated user (injected by dependency)
+        db: Database session (injected by FastAPI)
+
+    Returns:
+        IdeationHistoryResponse: Updated ideation history record
+
+    Raises:
+        HTTPException 401: If no valid token is provided
+        HTTPException 404: If history not found or not owned by user
+        HTTPException 500: If update fails
+
+    Example:
+        PUT /history/ideation/1
+        Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        Content-Type: application/json
+
+        {
+            "title": "Updated Product Brainstorm",
+            "content": "# Updated Ideas\\n- Feature A\\n- Feature B\\n- Feature C\\n- Feature D",
+            "tags": ["product", "brainstorm", "features", "updated"]
+        }
+
+        Response:
+        {
+            "id": 1,
+            "title": "Updated Product Brainstorm",
+            "content": "# Updated Ideas\\n- Feature A\\n- Feature B\\n- Feature C\\n- Feature D",
+            "tags": ["product", "brainstorm", "features", "updated"],
+            "created_at": "2025-01-25T10:00:00Z",
+            "updated_at": "2025-01-25T12:00:00Z"
+        }
+
+    Note:
+        - This is a protected route that requires a valid JWT token
+        - Users can only update their own ideation histories
+        - Only updates fields that are provided (partial update supported)
+        - updated_at timestamp auto-updated by database
+    """
+    try:
+        # Update ideation history (service layer enforces user isolation)
+        updated_history = update_ideation_history(db, history_id, current_user.id, history_data)
+
+        if not updated_history:
+            # History not found or not owned by user
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Ideation history with ID {history_id} not found"
+            )
+
+        return updated_history
+
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        # Handle any other errors during update
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update ideation history: {str(e)}"
+        )
+
+
+@app.delete("/history/ideation/{history_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["History"])
+async def delete_ideation_history_endpoint(
+    history_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Delete a specific ideation history by ID for the authenticated user.
+
+    Args:
+        history_id: Ideation history record ID
+        current_user: Current authenticated user (injected by dependency)
+        db: Database session (injected by FastAPI)
+
+    Returns:
+        None: HTTP 204 No Content on success
+
+    Raises:
+        HTTPException 401: If no valid token is provided
+        HTTPException 404: If history not found or not owned by user
+        HTTPException 500: If deletion fails
+
+    Example:
+        DELETE /history/ideation/1
+        Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+        Response:
+        HTTP 204 No Content
+
+    Note:
+        - This is a protected route that requires a valid JWT token
+        - Users can only delete their own ideation histories
+        - Hard delete - record permanently removed from database
+        - Returns 204 No Content on successful deletion
+        - Returns 404 if history exists but belongs to different user
+    """
+    try:
+        # Delete ideation history (service layer enforces user isolation)
+        deleted = delete_ideation_history(db, history_id, current_user.id)
+
+        if not deleted:
+            # History not found or not owned by user
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Ideation history with ID {history_id} not found"
+            )
+
+        # Return 204 No Content (FastAPI does this automatically with status_code=204)
+
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        # Handle any other errors during deletion
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete ideation history: {str(e)}"
         )
 
 
