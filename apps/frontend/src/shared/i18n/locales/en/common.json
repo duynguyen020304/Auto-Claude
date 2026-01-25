@@ -702,7 +702,8 @@
       "passwordTooShort": "Password must be at least 8 characters",
       "confirmPasswordRequired": "Please confirm your password",
       "passwordsDoNotMatch": "Passwords do not match",
-      "invalidEmail": "Please enter a valid email address"
+      "invalidEmail": "Please enter a valid email address",
+      "emailAlreadyExists": "An account with this email already exists"
     },
     "failure": {
       "title": "Authentication Required",
