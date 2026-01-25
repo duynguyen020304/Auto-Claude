@@ -12,6 +12,7 @@ import { debugLog, debugError } from '../../shared/utils/debug-logger';
 import { migrateSession } from '../claude-profile/session-utils';
 import { DEFAULT_CLAUDE_CONFIG_DIR, createProfileDirectory } from '../claude-profile/profile-utils';
 import { isValidConfigDir } from '../utils/config-path-validator';
+import { loadProfilesFile } from '../utils/profile-manager';
 
 
 /**
@@ -552,6 +553,40 @@ export function registerTerminalHandlers(
         return {
           success: false,
           error: error instanceof Error ? error.message : 'Failed to get all profiles usage'
+        };
+      }
+    }
+  );
+
+  // Request historical usage data (7d/30d) - only available for z.ai provider
+  ipcMain.handle(
+    IPC_CHANNELS.HISTORICAL_USAGE_REQUEST,
+    async (_, days: 7 | 30): Promise<IPCResult<import('../../shared/types/agent').DailyUsageData[] | null>> => {
+      try {
+        // Get active API profile
+        const profilesFile = await loadProfilesFile();
+        const activeProfile = profilesFile.profiles.find(p => p.id === profilesFile.activeProfileId);
+
+        if (!activeProfile || !activeProfile.apiKey) {
+          return {
+            success: false,
+            error: 'No active API profile with API key found'
+          };
+        }
+
+        const monitor = getUsageMonitor();
+        const historicalUsage = await monitor.getHistoricalUsage(
+          activeProfile.id,
+          activeProfile.baseUrl,
+          activeProfile.apiKey,
+          days
+        );
+
+        return { success: true, data: historicalUsage };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to get historical usage'
         };
       }
     }

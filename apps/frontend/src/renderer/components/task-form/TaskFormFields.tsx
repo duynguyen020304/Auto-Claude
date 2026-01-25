@@ -51,10 +51,6 @@ interface TaskFormFieldsProps {
   description: string;
   onDescriptionChange: (value: string) => void;
   descriptionPlaceholder?: string;
-  /** Optional custom content to render inside the description field (e.g., autocomplete popup) */
-  descriptionOverlay?: ReactNode;
-  /** Optional ref for the description textarea (used for @ mention autocomplete positioning) */
-  descriptionRef?: React.RefObject<HTMLTextAreaElement | null>;
 
   // Title field
   title: string;
@@ -110,17 +106,12 @@ interface TaskFormFieldsProps {
 
   /** Optional children to render after description (e.g., @ mention highlight overlay) */
   children?: ReactNode;
-
-  /** Callback when a file reference is dropped (from FileTreeItem drag) */
-  onFileReferenceDrop?: (reference: string, data: FileReferenceData) => void;
 }
 
 export function TaskFormFields({
   description,
   onDescriptionChange,
   descriptionPlaceholder,
-  descriptionOverlay,
-  descriptionRef: externalDescriptionRef,
   title,
   onTitleChange,
   profileId,
@@ -154,12 +145,10 @@ export function TaskFormFields({
   onError,
   idPrefix = "",
   children,
-  onFileReferenceDrop,
 }: TaskFormFieldsProps) {
   const { t } = useTranslation(["tasks", "common"]);
-  // Use external ref if provided (for @ mention autocomplete), otherwise use internal ref
-  const internalDescriptionRef = useRef<HTMLTextAreaElement>(null);
-  const descriptionRef = externalDescriptionRef || internalDescriptionRef;
+  // Internal ref for description textarea
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
   const prefix = idPrefix ? `${idPrefix}-` : "";
 
   // Reference Images section state
@@ -196,7 +185,6 @@ export function TaskFormFields({
       processPasteFailed: t("tasks:form.errors.processPasteFailed"),
       processDropFailed: t("tasks:form.errors.processDropFailed"),
     },
-    onFileReferenceDrop,
   });
 
   /**
@@ -248,8 +236,6 @@ export function TaskFormFields({
             <span className="text-destructive">*</span>
           </Label>
           <div className="relative">
-            {/* Optional overlay (e.g., @ mention highlighting) */}
-            {descriptionOverlay}
             <Textarea
               ref={descriptionRef}
               id={`${prefix}description`}
@@ -267,13 +253,11 @@ export function TaskFormFields({
               aria-required="true"
               aria-describedby={`${prefix}description-help`}
               className={cn(
-                "resize-y min-h-[150px] max-h-[400px] relative",
-                descriptionOverlay && "bg-transparent",
+                "resize-y min-h-[150px] max-h-[400px]",
                 isDragOver &&
                   !disabled &&
                   "border-primary bg-primary/5 ring-2 ring-primary/20",
               )}
-              style={descriptionOverlay ? { caretColor: "auto" } : undefined}
             />
           </div>
           <p
@@ -284,9 +268,6 @@ export function TaskFormFields({
               shortcut: navigator.platform.includes("Mac") ? "⌘V" : "Ctrl+V",
             })}
           </p>
-
-          {/* Optional children (e.g., @ mention autocomplete) */}
-          {children}
         </div>
 
         {/* Paste Success Indicator */}

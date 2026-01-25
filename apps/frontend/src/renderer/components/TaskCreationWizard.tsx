@@ -6,11 +6,10 @@
  *
  * Features unique to creation (not in TaskEditDialog):
  * - Draft persistence (auto-save to localStorage)
- * - @ mention autocomplete for file references
  * - File explorer drawer sidebar
  * - Git branch selection options
  */
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Loader2, ChevronDown, ChevronUp, RotateCcw, FolderTree, GitBranch, Info } from 'lucide-react';
 import { Button } from './ui/button';
@@ -18,9 +17,7 @@ import { Label } from './ui/label';
 import { Combobox, type ComboboxOption } from './ui/combobox';
 import { TaskModalLayout } from './task-form/TaskModalLayout';
 import { TaskFormFields } from './task-form/TaskFormFields';
-import { type FileReferenceData } from './task-form/useImageUpload';
 import { TaskFileExplorerDrawer } from './TaskFileExplorerDrawer';
-import { FileAutocomplete } from './FileAutocomplete';
 import { createTask, saveDraft, loadDraft, clearDraft, isDraftEmpty } from '../stores/task-store';
 import { useProjectStore } from '../stores/project-store';
 import { cn } from '../lib/utils';
@@ -122,22 +119,6 @@ export function TaskCreationWizard({
 
   // Draft state
   const [isDraftRestored, setIsDraftRestored] = useState(false);
-
-  // @ autocomplete state
-  const descriptionRef = useRef<HTMLTextAreaElement>(null);
-  // Ref to track latest description value (avoids stale closure in handleFileReferenceDrop)
-  const descriptionValueRef = useRef(description);
-  const [autocomplete, setAutocomplete] = useState<{
-    show: boolean;
-    query: string;
-    startPos: number;
-    position: { top: number; left: number };
-  } | null>(null);
-
-  // Keep description ref in sync for use in callbacks
-  useEffect(() => {
-    descriptionValueRef.current = description;
-  }, [description]);
 
   // Load draft when dialog opens
   useEffect(() => {
@@ -262,144 +243,11 @@ export function TaskCreationWizard({
   }), [projectId, title, description, category, priority, complexity, impact, profileId, model, thinkingLevel, phaseModels, phaseThinking, apiProfileId, images, referencedFiles, requireReviewBeforeCoding]);
 
   /**
-   * Detect @ mention being typed and show autocomplete
+   * Handle description change
    */
-  const detectAtMention = useCallback((text: string, cursorPos: number) => {
-    const beforeCursor = text.slice(0, cursorPos);
-    const match = beforeCursor.match(/@([\w\-./\\]*)$/);
-    if (match) {
-      return { query: match[1], startPos: cursorPos - match[0].length };
-    }
-    return null;
-  }, []);
-
-  /**
-   * Handle description change and check for @ mentions
-   */
-  const handleDescriptionChange = useCallback((newValue: string) => {
-    const textarea = descriptionRef.current;
-    const cursorPos = textarea?.selectionStart || 0;
-
+  const handleDescriptionChange = (newValue: string) => {
     setDescription(newValue);
-
-    const mention = detectAtMention(newValue, cursorPos);
-    if (mention && textarea) {
-      const rect = textarea.getBoundingClientRect();
-      const textareaStyle = window.getComputedStyle(textarea);
-      const lineHeight = parseFloat(textareaStyle.lineHeight) || 20;
-      const paddingTop = parseFloat(textareaStyle.paddingTop) || 8;
-      const paddingLeft = parseFloat(textareaStyle.paddingLeft) || 12;
-
-      const textBeforeCursor = newValue.slice(0, cursorPos);
-      const lines = textBeforeCursor.split('\n');
-      const currentLineIndex = lines.length - 1;
-      const currentLineLength = lines[currentLineIndex].length;
-
-      const charWidth = 8;
-      const top = paddingTop + (currentLineIndex + 1) * lineHeight + 4;
-      const left = paddingLeft + Math.min(currentLineLength * charWidth, rect.width - 300);
-
-      setAutocomplete({
-        show: true,
-        query: mention.query,
-        startPos: mention.startPos,
-        position: { top, left: Math.max(0, left) }
-      });
-    } else if (autocomplete?.show) {
-      setAutocomplete(null);
-    }
-  }, [detectAtMention, autocomplete?.show]);
-
-  /**
-   * Handle autocomplete selection
-   */
-  const handleAutocompleteSelect = useCallback((filename: string, _fullPath?: string) => {
-    if (!autocomplete) return;
-    const textarea = descriptionRef.current;
-    if (!textarea) return;
-
-    const beforeMention = description.slice(0, autocomplete.startPos);
-    const afterMention = description.slice(autocomplete.startPos + 1 + autocomplete.query.length);
-    const newDescription = beforeMention + '@' + filename + afterMention;
-
-    setDescription(newDescription);
-    setAutocomplete(null);
-
-    // Use queueMicrotask instead of setTimeout - doesn't need cleanup on unmount
-    queueMicrotask(() => {
-      const newCursorPos = autocomplete.startPos + 1 + filename.length;
-      textarea.focus();
-      textarea.setSelectionRange(newCursorPos, newCursorPos);
-    });
-  }, [autocomplete, description]);
-
-  /**
-   * Handle file reference drop from FileTreeItem drag
-   * Inserts @filename at cursor position or end of description
-   * Uses descriptionValueRef to avoid stale closure issues with rapid consecutive drops
-   */
-  const handleFileReferenceDrop = useCallback((_reference: string, data: FileReferenceData) => {
-    // Construct reference from validated data to avoid using unvalidated text/plain input
-    const reference = `@${data.name}`;
-    // Dismiss any active autocomplete when file is dropped
-    if (autocomplete?.show) {
-      setAutocomplete(null);
-    }
-
-    // Get latest description from ref to avoid stale closure
-    const currentDescription = descriptionValueRef.current;
-
-    // Insert reference at cursor position if textarea is available
-    const textarea = descriptionRef.current;
-    if (textarea) {
-      const start = textarea.selectionStart ?? currentDescription.length;
-      const end = textarea.selectionEnd ?? currentDescription.length;
-      const newDescription =
-        currentDescription.substring(0, start) +
-        reference + ' ' +
-        currentDescription.substring(end);
-      handleDescriptionChange(newDescription);
-      // Focus textarea and set cursor after inserted text
-      // Use queueMicrotask for consistency with handleAutocompleteSelect
-      queueMicrotask(() => {
-        textarea.focus();
-        const newCursorPos = start + reference.length + 1;
-        textarea.setSelectionRange(newCursorPos, newCursorPos);
-      });
-    } else {
-      // Fallback: append to end
-      const separator = currentDescription.endsWith(' ') || currentDescription === '' ? '' : ' ';
-      handleDescriptionChange(currentDescription + separator + reference + ' ');
-    }
-  }, [handleDescriptionChange, autocomplete?.show]);
-
-  /**
-   * Parse @mentions from description
-   */
-  const parseFileMentions = useCallback((text: string, existingFiles: ReferencedFile[]): ReferencedFile[] => {
-    const mentionRegex = /@([\w\-./\\]+\.\w+)/g;
-    const matches = Array.from(text.matchAll(mentionRegex));
-    if (matches.length === 0) return existingFiles;
-
-    const existingNames = new Set(existingFiles.map(f => f.name));
-    const newFiles: ReferencedFile[] = [];
-
-    matches.forEach(match => {
-      const fileName = match[1];
-      if (!existingNames.has(fileName)) {
-        newFiles.push({
-          id: crypto.randomUUID(),
-          path: fileName,
-          name: fileName,
-          isDirectory: false,
-          addedAt: new Date()
-        });
-        existingNames.add(fileName);
-      }
-    });
-
-    return [...existingFiles, ...newFiles];
-  }, []);
+  };
 
   const handleCreate = async () => {
     if (!description.trim()) {
@@ -411,8 +259,6 @@ export function TaskCreationWizard({
     setError(null);
 
     try {
-      const allReferencedFiles = parseFileMentions(description, referencedFiles);
-
       const metadata: TaskMetadata = { sourceType: 'manual' };
       if (category) metadata.category = category;
       if (priority) metadata.priority = priority;
@@ -427,7 +273,7 @@ export function TaskCreationWizard({
       }
       if (apiProfileId) metadata.apiProfileId = apiProfileId;
       if (images.length > 0) metadata.attachedImages = images;
-      if (allReferencedFiles.length > 0) metadata.referencedFiles = allReferencedFiles;
+      if (referencedFiles.length > 0) metadata.referencedFiles = referencedFiles;
       if (requireReviewBeforeCoding) metadata.requireReviewBeforeCoding = true;
       // Always include baseBranch - resolve PROJECT_DEFAULT_BRANCH to actual branch name
       // This ensures the backend always knows which branch to use for worktree creation
@@ -499,36 +345,6 @@ export function TaskCreationWizard({
     resetForm();
     setError(null);
   };
-
-  // Render @ mention highlight overlay for the description textarea
-  const descriptionOverlay = (
-    <div
-      className="absolute inset-0 pointer-events-none overflow-hidden rounded-md border border-transparent"
-      style={{
-        padding: '0.5rem 0.75rem',
-        font: 'inherit',
-        lineHeight: '1.5',
-        wordWrap: 'break-word',
-        whiteSpace: 'pre-wrap',
-        color: 'transparent'
-      }}
-    >
-      {description.split(/(@[\w\-./\\]+\.\w+)/g).map((part, i) => {
-        if (part.match(/^@[\w\-./\\]+\.\w+$/)) {
-          return (
-            <span
-              key={i}
-              className="bg-info/20 text-info-foreground rounded px-0.5"
-              style={{ color: 'hsl(var(--info))' }}
-            >
-              {part}
-            </span>
-          );
-        }
-        return <span key={i}>{part}</span>;
-      })}
-    </div>
-  );
 
   return (
     <TaskModalLayout
@@ -621,8 +437,6 @@ export function TaskCreationWizard({
           description={description}
           onDescriptionChange={handleDescriptionChange}
           descriptionPlaceholder={t('tasks:wizard.descriptionPlaceholder')}
-          descriptionOverlay={descriptionOverlay}
-          descriptionRef={descriptionRef}
           title={title}
           onTitleChange={setTitle}
           profileId={profileId}
@@ -658,20 +472,8 @@ export function TaskCreationWizard({
           disabled={isCreating}
           error={error}
           onError={setError}
-          onFileReferenceDrop={handleFileReferenceDrop}
           idPrefix="create"
-        >
-          {/* File autocomplete popup - positioned relative to TaskFormFields */}
-          {autocomplete?.show && projectPath && (
-            <FileAutocomplete
-              query={autocomplete.query}
-              projectPath={projectPath}
-              position={autocomplete.position}
-              onSelect={handleAutocompleteSelect}
-              onClose={() => setAutocomplete(null)}
-            />
-          )}
-        </TaskFormFields>
+        />
 
         {/* Git Options Toggle - unique to creation */}
         <button

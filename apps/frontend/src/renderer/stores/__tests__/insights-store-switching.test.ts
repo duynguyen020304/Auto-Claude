@@ -199,7 +199,6 @@ describe('insights-store - rapid session switching', () => {
     store.setPendingMessage('Pending A', sessionAId);
     store.appendStreamingContent('Content A', sessionAId);
     store.addToolUsage({ name: 'tool-a', input: 'input-a' }, sessionAId);
-    store.addFileMention({ id: 'file-1', filePath: '/path/to/file' }, sessionAId);
 
     // Set up session B with active state
     store.setCurrentSessionId(sessionBId);
@@ -217,7 +216,6 @@ describe('insights-store - rapid session switching', () => {
     expect(sessionAState?.pendingMessage).toBe('');
     expect(sessionAState?.streamingContent).toBe('');
     expect(sessionAState?.toolsUsed.length).toBe(0);
-    expect(sessionAState?.fileMentions.length).toBe(0);
 
     // Verify session B state is unaffected
     store.setCurrentSessionId(sessionBId);
@@ -227,52 +225,6 @@ describe('insights-store - rapid session switching', () => {
     expect(state.streamingContent).toBe('Content B');
     expect(state.toolsUsed.length).toBe(1);
     expect(state.toolsUsed[0].name).toBe('tool-b');
-  });
-
-  it('should handle file mentions isolation between sessions', () => {
-    const store = useInsightsStore.getState();
-
-    // Create two sessions
-    const sessionAId = 'session-a';
-    const sessionBId = 'session-b';
-
-    // Add file mentions to session A
-    store.setCurrentSessionId(sessionAId);
-    store.addFileMention({ id: 'file-1', filePath: '/path/to/file1.ts' }, sessionAId);
-    store.addFileMention({ id: 'file-2', filePath: '/path/to/file2.ts' }, sessionAId);
-
-    let state = useInsightsStore.getState();
-    expect(state.fileMentions.length).toBe(2);
-
-    // Verify session A file mentions in sessionStates map
-    let sessionAState = store.getSessionState(sessionAId);
-    expect(sessionAState?.fileMentions.length).toBe(2);
-    expect(sessionAState?.fileMentions[0].id).toBe('file-1');
-    expect(sessionAState?.fileMentions[1].id).toBe('file-2');
-
-    // Switch to session B and add different file mentions
-    store.setCurrentSessionId(sessionBId);
-    store.addFileMention({ id: 'file-3', filePath: '/path/to/file3.ts' }, sessionBId);
-    store.addFileMention({ id: 'file-4', filePath: '/path/to/file4.ts' }, sessionBId);
-
-    state = useInsightsStore.getState();
-    expect(state.fileMentions.length).toBe(2);
-    expect(state.fileMentions[0].id).toBe('file-3');
-
-    // Verify session B file mentions in sessionStates map
-    let sessionBState = store.getSessionState(sessionBId);
-    expect(sessionBState?.fileMentions.length).toBe(2);
-    expect(sessionBState?.fileMentions[0].id).toBe('file-3');
-    expect(sessionBState?.fileMentions[1].id).toBe('file-4');
-
-    // Verify session A file mentions are still preserved in sessionStates map
-    sessionAState = store.getSessionState(sessionAId);
-    expect(sessionAState?.fileMentions.length).toBe(2);
-    expect(sessionAState?.fileMentions[0].id).toBe('file-1');
-    expect(sessionAState?.fileMentions[1].id).toBe('file-2');
-
-    // Verify file mentions are isolated between sessions
-    expect(sessionAState?.fileMentions[0].id).not.toBe(sessionBState?.fileMentions[0].id);
   });
 
   it('should handle tool usage isolation between sessions', () => {

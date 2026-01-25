@@ -240,3 +240,142 @@ export interface TerminalProfileChangedEvent {
     sessionMigrated?: boolean;
   }>;
 }
+
+// ============================================
+// Historical Usage Data Types
+// ============================================
+
+/**
+ * Historical model usage API response
+ * From /api/monitor/usage/model-usage endpoint (z.ai only)
+ */
+export interface ModelUsageResponse {
+  code: number;
+  msg: string;
+  data: {
+    x_time: string[];        // Hourly timestamps "YYYY-MM-DD HH:mm"
+    modelCallCount: (number | null)[];
+    tokensUsage: (number | null)[];
+    totalUsage: {
+      totalModelCallCount: number;
+      totalTokensUsage: number;
+    };
+  };
+  success: boolean;
+}
+
+/**
+ * Historical tool usage API response
+ * From /api/monitor/usage/tool-usage endpoint (z.ai only)
+ */
+export interface ToolUsageResponse {
+  code: number;
+  msg: string;
+  data: {
+    x_time: string[];
+    networkSearchCount: (number | null)[];
+    webReadMcpCount: (number | null)[];
+    zreadMcpCount: (number | null)[];
+    totalUsage: {
+      totalNetworkSearchCount: number;
+      totalWebReadMcpCount: number;
+      totalZreadMcpCount: number;
+      totalSearchMcpCount: number;
+      toolDetails: Array<{ modelName: string; totalUsageCount: number }>;
+    };
+  };
+  success: boolean;
+}
+
+/**
+ * Historical usage data point for a specific time
+ */
+export interface HistoricalUsageDataPoint {
+  timestamp: string;        // ISO timestamp or "YYYY-MM-DD HH:mm"
+  modelCallCount?: number | null;
+  tokensUsage?: number | null;
+  networkSearchCount?: number | null;
+  webReadMcpCount?: number | null;
+  zreadMcpCount?: number | null;
+}
+
+/**
+ * Aggregated daily usage for chart display
+ */
+export interface DailyUsageData {
+  date: string;             // "YYYY-MM-DD"
+  dayLabel: string;         // "Jan 18" or "18 Jan" based on locale
+  tokensUsage: number;      // Sum of hourly token usage
+  modelCallCount: number;   // Sum of hourly model calls
+  toolsUsage: number;       // Sum of all tool usage counts
+  hourlyData?: HistoricalUsageDataPoint[]; // Raw hourly data for hover
+}
+
+// ============================================
+// Provider API Response Types
+// ============================================
+
+/**
+ * Anthropic OAuth Usage API response
+ * @see https://api.anthropic.com/api/oauth/usage
+ */
+export interface AnthropicUsageResponse {
+  /** 5-hour usage window (current format) */
+  five_hour?: {
+    utilization: number;  // 0-100 integer
+    resets_at: string;    // ISO 8601 timestamp
+  };
+  /** 7-day usage window (current format) */
+  seven_day?: {
+    utilization: number;  // 0-100 integer
+    resets_at: string;    // ISO 8601 timestamp
+  };
+  /** Legacy format (deprecated, for backward compatibility) */
+  five_hour_utilization?: number;  // 0-1 float
+  five_hour_reset_at?: string;
+  seven_day_utilization?: number;  // 0-1 float
+  seven_day_reset_at?: string;
+}
+
+/**
+ * z.ai / ZHIPU quota/limit API response
+ * @see https://api.z.ai/api/monitor/usage/quota/limit
+ */
+export interface ProviderQuotaLimitResponse {
+  data?: {
+    limits: Array<{
+      type: 'TOKENS_LIMIT' | 'TIME_LIMIT';
+      unit?: string;
+      number?: number;
+      usage: number;           // Total quota
+      currentValue: number;    // Used quota
+      remaining: number;
+      percentage: number;      // 0-100
+      nextResetTime?: number;  // Unix timestamp (milliseconds)
+      usageDetails?: Record<string, unknown>;
+    }>;
+  };
+  limits?: Array<{
+    type: 'TOKENS_LIMIT' | 'TIME_LIMIT';
+    unit?: string;
+    number?: number;
+    usage: number;
+    currentValue: number;
+    remaining: number;
+    percentage: number;
+    nextResetTime?: number;
+    usageDetails?: Record<string, unknown>;
+  }>;
+}
+
+/**
+ * Error response from provider APIs
+ */
+export interface ProviderAPIErrorResponse {
+  error?: {
+    type?: string;
+    message?: string;
+  };
+  message?: string;
+  type?: string;
+}

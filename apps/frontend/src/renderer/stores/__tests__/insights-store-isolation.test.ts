@@ -151,31 +151,6 @@ describe('insights-store - session state isolation', () => {
     expect(stateB?.toolsUsed[0].name).toBe('tool-b');
   });
 
-  it('should isolate file mentions between sessions', () => {
-    const store = useInsightsStore.getState();
-
-    // Setup session A with file mentions
-    const sessionAId = 'session-a';
-    store.setCurrentSessionId(sessionAId);
-    store.addFileMention({ id: 'file-1', filePath: '/path/to/file1.ts' });
-
-    // Setup session B with different file mentions
-    const sessionBId = 'session-b';
-    store.setCurrentSessionId(sessionBId);
-    store.addFileMention({ id: 'file-2', filePath: '/path/to/file2.ts' });
-
-    // Get session states
-    const stateA = store.getSessionState(sessionAId);
-    const stateB = store.getSessionState(sessionBId);
-
-    // Verify file mentions are isolated
-    expect(stateA?.fileMentions).toHaveLength(1);
-    expect(stateA?.fileMentions[0].id).toBe('file-1');
-
-    expect(stateB?.fileMentions).toHaveLength(1);
-    expect(stateB?.fileMentions[0].id).toBe('file-2');
-  });
-
   it('should handle cleanup without affecting other sessions', () => {
     const store = useInsightsStore.getState();
 

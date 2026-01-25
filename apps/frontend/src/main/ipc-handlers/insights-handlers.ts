@@ -19,7 +19,6 @@ import type {
   Task,
   TaskMetadata,
   AppSettings,
-  FileMention,
   ActiveSession,
 } from "../../shared/types";
 import { projectStore } from "../project-store";
@@ -88,8 +87,7 @@ export function registerInsightsHandlers(getMainWindow: () => BrowserWindow | nu
       sessionId: string,
       projectId: string,
       message: string,
-      modelConfig?: InsightsModelConfig,
-      fileMentions?: FileMention[]
+      modelConfig?: InsightsModelConfig
     ) => {
       const project = projectStore.getProject(projectId);
       if (!project) {
@@ -128,8 +126,7 @@ export function registerInsightsHandlers(getMainWindow: () => BrowserWindow | nu
           projectId,
           project.path,
           message,
-          configWithSettings,
-          fileMentions
+          configWithSettings
         );
       } catch (error) {
         // Errors during sendMessage (executor errors) are already emitted via

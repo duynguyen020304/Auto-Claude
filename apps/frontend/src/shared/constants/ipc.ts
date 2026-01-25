@@ -136,6 +136,7 @@ export const IPC_CHANNELS = {
   ALL_PROFILES_USAGE_REQUEST: 'claude:allProfilesUsageRequest',  // Request all profiles usage immediately
   ALL_PROFILES_USAGE_UPDATED: 'claude:allProfilesUsageUpdated',  // Event: all profiles usage data (main -> renderer)
   PROACTIVE_SWAP_NOTIFICATION: 'claude:proactiveSwapNotification',  // Event: proactive swap occurred
+  HISTORICAL_USAGE_REQUEST: 'claude:historicalUsageRequest',  // Request historical usage data (7d/30d)
 
   // Settings
   SETTINGS_GET: 'settings:get',

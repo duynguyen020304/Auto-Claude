@@ -1,13 +1,14 @@
 import { create } from 'zustand';
 import type { AppSettings } from '../../shared/types';
 import type { APIProfile, ProfileFormData, TestConnectionResult, DiscoverModelsResult, ModelInfo } from '../../shared/types/profile';
-import type { ClaudeUsageSnapshot } from '../../shared/types/agent';
+import type { ClaudeUsageSnapshot, DailyUsageData } from '../../shared/types/agent';
 import { DEFAULT_APP_SETTINGS } from '../../shared/constants';
 import { toast } from '../hooks/use-toast';
 import { markSettingsLoaded } from '../lib/sentry';
 
 // Usage cache TTL: 10 minutes in milliseconds
 const USAGE_CACHE_TTL = 10 * 60 * 1000;
+const HISTORICAL_USAGE_CACHE_TTL = 10 * 60 * 1000; // Same TTL for historical data
 
 interface SettingsState {
   settings: AppSettings;
@@ -32,6 +33,9 @@ interface SettingsState {
   // Usage cache state
   cachedUsage: Map<string, { data: ClaudeUsageSnapshot; fetchedAt: number }>; // profileId -> { data, timestamp } mapping
 
+  // Historical usage cache state (frontend tier)
+  cachedHistoricalUsage: Map<string, Map<'7d' | '30d', { data: DailyUsageData[]; fetchedAt: number }>>; // profileId -> period -> { data, timestamp }
+
   // Actions
   setSettings: (settings: AppSettings) => void;
   updateSettings: (updates: Partial<AppSettings>) => void;
@@ -53,6 +57,11 @@ interface SettingsState {
   getCachedUsage: (profileId: string) => ClaudeUsageSnapshot | null;
   setCachedUsage: (profileId: string, data: ClaudeUsageSnapshot) => void;
   invalidateUsageCache: (profileId?: string) => void;
+
+  // Historical usage cache actions
+  getCachedHistoricalUsage: (profileId: string, period: '7d' | '30d') => DailyUsageData[] | null;
+  setCachedHistoricalUsage: (profileId: string, period: '7d' | '30d', data: DailyUsageData[]) => void;
+  invalidateHistoricalUsageCache: (profileId?: string) => void;
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
@@ -77,6 +86,9 @@ export const useSettingsStore = create<SettingsState>((set) => ({
 
   // Usage cache state
   cachedUsage: new Map<string, { data: ClaudeUsageSnapshot; fetchedAt: number }>(),
+
+  // Historical usage cache state (frontend tier)
+  cachedHistoricalUsage: new Map<string, Map<'7d' | '30d', { data: DailyUsageData[]; fetchedAt: number }>>(),
 
   setSettings: (settings) => set({ settings }),
 
@@ -355,6 +367,62 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       // Invalidate entire cache
       set({ cachedUsage: new Map() });
       console.log('[settings-store] Invalidated entire usage cache');
+    }
+  },
+
+  // Historical usage cache methods
+  getCachedHistoricalUsage: (profileId: string, period: '7d' | '30d'): DailyUsageData[] | null => {
+    const state = useSettingsStore.getState();
+    const profileCache = state.cachedHistoricalUsage.get(profileId);
+    const cached = profileCache?.get(period);
+
+    // Return null if no cached entry
+    if (!cached) {
+      console.log('[settings-store] Historical usage cache miss - no entry for profile:', profileId, 'period:', period);
+      return null;
+    }
+
+    // Check if cache has expired
+    const now = Date.now();
+    const cacheAge = now - cached.fetchedAt;
+    if (cacheAge > HISTORICAL_USAGE_CACHE_TTL) {
+      console.log('[settings-store] Historical usage cache expired for profile:', profileId, 'period:', period, 'age:', cacheAge, 'ms');
+      return null;
+    }
+
+    // Return cached data if valid
+    console.log('[settings-store] Historical usage cache hit for profile:', profileId, 'period:', period, 'age:', cacheAge, 'ms');
+    return cached.data;
+  },
+
+  setCachedHistoricalUsage: (profileId: string, period: '7d' | '30d', data: DailyUsageData[]) => {
+    set((state) => {
+      const newCache = new Map(state.cachedHistoricalUsage);
+      if (!newCache.has(profileId)) {
+        newCache.set(profileId, new Map());
+      }
+      newCache.get(profileId)!.set(period, {
+        data,
+        fetchedAt: Date.now()
+      });
+      console.log('[settings-store] Cached historical usage data for profile:', profileId, 'period:', period);
+      return { cachedHistoricalUsage: newCache };
+    });
+  },
+
+  invalidateHistoricalUsageCache: (profileId?: string) => {
+    if (profileId) {
+      // Invalidate specific profile's cache
+      set((state) => {
+        const newCache = new Map(state.cachedHistoricalUsage);
+        newCache.delete(profileId);
+        console.log('[settings-store] Invalidated historical usage cache for profile:', profileId);
+        return { cachedHistoricalUsage: newCache };
+      });
+    } else {
+      // Invalidate entire cache
+      set({ cachedHistoricalUsage: new Map() });
+      console.log('[settings-store] Invalidated entire historical usage cache');
     }
   },
 }));

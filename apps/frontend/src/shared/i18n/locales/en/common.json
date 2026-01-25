@@ -553,7 +553,13 @@
         "accountStatusCard": "Account status card",
         "chartVisualization": "Usage trend chart",
         "refreshButton": "Refresh usage data"
-      }
+      },
+      "historicalDataError": "Unable to load historical usage data. Please check your connection or try again later.",
+      "historicalNotSupported": "Historical usage charts are not available for {{provider}}.",
+      "historicalOnlyZai": "This feature is currently only available for z.ai (GLM) API profiles.",
+      "retry": "Retry",
+      "hoverTokenUsage": "{{count}} tokens",
+      "hoverToolUsage": "{{count}} tools"
     },
     "otherAccounts": "Other Accounts",
     "next": "Next",

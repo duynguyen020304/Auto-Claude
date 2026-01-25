@@ -533,7 +533,13 @@
         "accountStatusCard": "Carte du statut du compte",
         "chartVisualization": "Graphique de tendance d'utilisation",
         "refreshButton": "Actualiser les données d'utilisation"
-      }
+      },
+      "historicalDataError": "Impossible de charger les données d'utilisation historiques. Veuillez vérifier votre connexion ou réessayer plus tard.",
+      "historicalNotSupported": "Les graphiques d'utilisation historique ne sont pas disponibles pour {{provider}}.",
+      "historicalOnlyZai": "Cette fonctionnalité est actuellement disponible uniquement pour les profils API z.ai (GLM).",
+      "retry": "Réessayer",
+      "hoverTokenUsage": "{{count}} jetons",
+      "hoverToolUsage": "{{count}} outils"
     },
     "otherAccounts": "Autres comptes",
     "next": "Suivant",

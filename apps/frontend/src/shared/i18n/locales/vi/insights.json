@@ -1,24 +1,4 @@
 {
-  "fileMention": {
-    "removeAriaLabel": "Xóa đề cập tệp: {{fileName}}",
-    "badgeTitle": "Tệp: {{filePath}}",
-    "inputAriaLabel": "Ô nhập tin nhắn với hỗ trợ đề cập tệp",
-    "inputAriaDescription": "Nhập @ để đề cập và tham chiếu các tệp từ dự án của bạn",
-    "autocompleteLabel": "Gợi ý tự động hoàn thành tệp",
-    "autocompleteCount": "{{count}} gợi ý tệp có sẵn",
-    "autocompleteCount_plural": "{{count}} gợi ý tệp có sẵn",
-    "noFilesFound": "Không tìm thấy tệp nào khớp với truy vấn của bạn",
-    "syntaxHelpTitle": "Mẹo: Sử dụng phạm vi dòng",
-    "syntaxHelpFile": "để đề cập toàn bộ tệp",
-    "syntaxHelpLineRange": "để chỉ định dòng (ví dụ: 10-50)"
-  },
-  "fileContext": {
-    "title": "Các Tệp Được Tham chiếu",
-    "truncated": "Đã cắt ngắn",
-    "truncatedTooltip": "Đang hiển thị {{lines}} của {{total}} dòng",
-    "lines": "{{count}} dòng",
-    "linesIncluded": "{{included}} đã bao gồm"
-  },
   "chatHistory": {
     "title": "Lịch sử Trò chuyện",
     "noConversations": "Chưa có cuộc trò chuyện nào",

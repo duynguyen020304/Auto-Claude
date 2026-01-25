@@ -132,47 +132,6 @@ describe('InsightsStore - Map Immutability', () => {
       expect(newState.sessionStates).not.toBe(initialMap);
     });
 
-    it('should create new Map instance when adding file mention', () => {
-      // Setup: create a session
-      useInsightsStore.getState().setCurrentSessionId('session-1');
-
-      const initialState = useInsightsStore.getState();
-      const initialMap = initialState.sessionStates;
-
-      useInsightsStore.getState().addFileMention({ id: 'file-1', path: '/test' });
-
-      const newState = useInsightsStore.getState();
-      expect(newState.sessionStates).not.toBe(initialMap);
-    });
-
-    it('should create new Map instance when removing file mention', () => {
-      // Setup: create a session and add file mention
-      useInsightsStore.getState().setCurrentSessionId('session-1');
-      useInsightsStore.getState().addFileMention({ id: 'file-1', path: '/test' });
-
-      const initialState = useInsightsStore.getState();
-      const initialMap = initialState.sessionStates;
-
-      useInsightsStore.getState().removeFileMention('file-1');
-
-      const newState = useInsightsStore.getState();
-      expect(newState.sessionStates).not.toBe(initialMap);
-    });
-
-    it('should create new Map instance when clearing file mentions', () => {
-      // Setup: create a session and add file mentions
-      useInsightsStore.getState().setCurrentSessionId('session-1');
-      useInsightsStore.getState().addFileMention({ id: 'file-1', path: '/test' });
-
-      const initialState = useInsightsStore.getState();
-      const initialMap = initialState.sessionStates;
-
-      useInsightsStore.getState().clearFileMentions();
-
-      const newState = useInsightsStore.getState();
-      expect(newState.sessionStates).not.toBe(initialMap);
-    });
-
     it('should create new Map instance when finalizing streaming message', () => {
       // Setup: create a session and add streaming content
       useInsightsStore.getState().setCurrentSessionId('session-1');

@@ -108,35 +108,6 @@ describe('insights-store - concurrent session state updates', () => {
     expect(stateB?.toolsUsed[1].name).toBe('tool-b-2');
   });
 
-  it('should handle concurrent file mention updates to different sessions', () => {
-    const store = useInsightsStore.getState();
-
-    // Setup two sessions
-    const sessionAId = 'session-a';
-    const sessionBId = 'session-b';
-
-    store.setCurrentSessionId(sessionAId);
-    store.addFileMention({ id: 'file-1', filePath: '/path/to/file1.ts' });
-
-    store.setCurrentSessionId(sessionBId);
-    store.addFileMention({ id: 'file-2', filePath: '/path/to/file2.ts' });
-
-    // Add more file mentions concurrently
-    store.addFileMention({ id: 'file-3', filePath: '/path/to/file3.ts' }, sessionAId);
-    store.addFileMention({ id: 'file-4', filePath: '/path/to/file4.ts' }, sessionBId);
-    store.addFileMention({ id: 'file-5', filePath: '/path/to/file5.ts' }, sessionAId);
-
-    // Verify both sessions have correct file mentions
-    const stateA = store.getSessionState(sessionAId);
-    const stateB = store.getSessionState(sessionBId);
-
-    expect(stateA?.fileMentions).toHaveLength(3);
-    expect(stateA?.fileMentions.map((f) => f.id)).toEqual(['file-1', 'file-3', 'file-5']);
-
-    expect(stateB?.fileMentions).toHaveLength(2);
-    expect(stateB?.fileMentions.map((f) => f.id)).toEqual(['file-2', 'file-4']);
-  });
-
   it('should handle rapid concurrent updates without data loss', () => {
     const store = useInsightsStore.getState();
 
@@ -192,12 +163,10 @@ describe('insights-store - concurrent session state updates', () => {
     store.appendStreamingContent('Streaming B', sessionBId);
     store.setPendingMessage('Pending A', sessionAId);
     store.setCurrentTool({ name: 'tool-b', input: 'input-b' }, sessionBId);
-    store.addFileMention({ id: 'file-1', filePath: '/file1.ts' }, sessionAId);
     store.setStatus({ phase: 'streaming', message: 'Streaming B' }, sessionBId);
     store.appendStreamingContent('Streaming A', sessionAId);
     store.setPendingMessage('Pending B', sessionBId);
     store.setCurrentTool({ name: 'tool-a', input: 'input-a' }, sessionAId);
-    store.addFileMention({ id: 'file-2', filePath: '/file2.ts' }, sessionBId);
 
     // Verify all states are correct
     const stateA = store.getSessionState(sessionAId);
@@ -208,16 +177,12 @@ describe('insights-store - concurrent session state updates', () => {
     expect(stateA?.pendingMessage).toBe('Pending A');
     expect(stateA?.streamingContent).toBe('Streaming A');
     expect(stateA?.currentTool?.name).toBe('tool-a');
-    expect(stateA?.fileMentions).toHaveLength(1);
-    expect(stateA?.fileMentions[0].id).toBe('file-1');
 
     expect(stateB?.status.phase).toBe('streaming');
     expect(stateB?.status.message).toBe('Streaming B');
     expect(stateB?.pendingMessage).toBe('Pending B');
     expect(stateB?.streamingContent).toBe('Streaming B');
     expect(stateB?.currentTool?.name).toBe('tool-b');
-    expect(stateB?.fileMentions).toHaveLength(1);
-    expect(stateB?.fileMentions[0].id).toBe('file-2');
   });
 
   it('should handle concurrent clears and resets without affecting other sessions', () => {
@@ -327,21 +292,18 @@ describe('insights-store - concurrent session state updates', () => {
     store.appendStreamingContent('Content A');
     store.setPendingMessage('Pending A');
     store.addToolUsage({ name: 'tool-a', input: 'input-a' });
-    store.addFileMention({ id: 'file-1', filePath: '/file1.ts' });
 
     store.setCurrentSessionId(sessionBId);
     store.setStatus({ phase: 'thinking', message: 'Thinking B' });
     store.appendStreamingContent('Content B');
     store.setPendingMessage('Pending B');
     store.addToolUsage({ name: 'tool-b', input: 'input-b' });
-    store.addFileMention({ id: 'file-2', filePath: '/file2.ts' });
 
     store.setCurrentSessionId(sessionCId);
     store.setStatus({ phase: 'complete', message: 'Complete C' });
     store.appendStreamingContent('Content C');
     store.setPendingMessage('Pending C');
     store.addToolUsage({ name: 'tool-c', input: 'input-c' });
-    store.addFileMention({ id: 'file-3', filePath: '/file3.ts' });
 
     // Cleanup session B
     store.cleanupSessionState(sessionBId);
@@ -355,50 +317,15 @@ describe('insights-store - concurrent session state updates', () => {
     expect(stateA?.streamingContent).toBe('Content A');
     expect(stateA?.pendingMessage).toBe('Pending A');
     expect(stateA?.toolsUsed).toHaveLength(1);
-    expect(stateA?.fileMentions).toHaveLength(1);
 
     expect(stateB?.status.phase).toBe('idle');
     expect(stateB?.streamingContent).toBe('');
     expect(stateB?.pendingMessage).toBe('');
     expect(stateB?.toolsUsed).toHaveLength(0);
-    expect(stateB?.fileMentions).toHaveLength(0);
 
     expect(stateC?.status.phase).toBe('complete');
     expect(stateC?.streamingContent).toBe('Content C');
     expect(stateC?.pendingMessage).toBe('Pending C');
     expect(stateC?.toolsUsed).toHaveLength(1);
-    expect(stateC?.fileMentions).toHaveLength(1);
-  });
-
-  it('should handle concurrent file add and remove operations', () => {
-    const store = useInsightsStore.getState();
-
-    // Setup two sessions
-    const sessionAId = 'session-a';
-    const sessionBId = 'session-b';
-
-    store.setCurrentSessionId(sessionAId);
-    store.addFileMention({ id: 'file-1', filePath: '/file1.ts' });
-    store.addFileMention({ id: 'file-2', filePath: '/file2.ts' });
-    store.addFileMention({ id: 'file-3', filePath: '/file3.ts' });
-
-    store.setCurrentSessionId(sessionBId);
-    store.addFileMention({ id: 'file-4', filePath: '/file4.ts' });
-    store.addFileMention({ id: 'file-5', filePath: '/file5.ts' });
-
-    // Perform concurrent adds and removes
-    store.addFileMention({ id: 'file-6', filePath: '/file6.ts' }, sessionAId);
-    store.removeFileMention('file-2', sessionAId);
-    store.addFileMention({ id: 'file-7', filePath: '/file7.ts' }, sessionBId);
-    store.removeFileMention('file-5', sessionBId);
-    store.addFileMention({ id: 'file-8', filePath: '/file8.ts' }, sessionAId);
-    store.removeFileMention('file-1', sessionAId);
-
-    // Verify final states
-    const stateA = store.getSessionState(sessionAId);
-    const stateB = store.getSessionState(sessionBId);
-
-    expect(stateA?.fileMentions.map((f) => f.id)).toEqual(['file-3', 'file-6', 'file-8']);
-    expect(stateB?.fileMentions.map((f) => f.id)).toEqual(['file-4', 'file-7']);
   });
 });

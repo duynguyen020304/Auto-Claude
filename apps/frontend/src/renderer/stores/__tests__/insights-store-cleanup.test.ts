@@ -83,7 +83,7 @@ describe('insights-store - session removal', () => {
     expect(state.abortControllers.get(sessionId)).toBeDefined();
 
     // Remove the session
-    store.removeSession(sessionId, projectId);
+    store.removeSession(sessionId);
 
     // Verify abort controller is removed
     state = useInsightsStore.getState();
@@ -100,7 +100,6 @@ describe('insights-store - session removal', () => {
     store.setPendingMessage('Pending message', sessionId);
     store.appendStreamingContent('Streaming content', sessionId);
     store.addToolUsage({ name: 'test-tool', input: 'test-input' }, sessionId);
-    store.addFileMention({ id: 'file-1', filePath: '/path/to/file' }, sessionId);
 
     // Verify current session is set
     let state = useInsightsStore.getState();
@@ -109,7 +108,6 @@ describe('insights-store - session removal', () => {
     expect(state.pendingMessage).toBe('Pending message');
     expect(state.streamingContent).toBe('Streaming content');
     expect(state.toolsUsed.length).toBe(1);
-    expect(state.fileMentions.length).toBe(1);
 
     // Remove the current session
     store.removeSession(sessionId);
@@ -123,7 +121,6 @@ describe('insights-store - session removal', () => {
     expect(state.streamingContent).toBe('');
     expect(state.currentTool).toBeNull();
     expect(state.toolsUsed.length).toBe(0);
-    expect(state.fileMentions.length).toBe(0);
   });
 
   it('should not affect other sessions when removing one session', () => {
@@ -193,8 +190,6 @@ describe('insights-store - session removal', () => {
     store.appendStreamingContent('Streaming content', sessionId);
     store.addToolUsage({ name: 'tool-1', input: 'input-1' }, sessionId);
     store.addToolUsage({ name: 'tool-2', input: 'input-2' }, sessionId);
-    store.addFileMention({ id: 'file-1', filePath: '/path/to/file1.ts' }, sessionId);
-    store.addFileMention({ id: 'file-2', filePath: '/path/to/file2.ts' }, sessionId);
 
     // Add abort controller
     const abortController = new AbortController();

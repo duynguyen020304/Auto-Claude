@@ -8,6 +8,7 @@ import type {
   TestConnectionResult,
   DiscoverModelsResult
 } from '@shared/types/profile';
+import type { DailyUsageData } from '@shared/types/agent';
 
 export interface ProfileAPI {
   // Get all profiles
@@ -42,6 +43,9 @@ export interface ProfileAPI {
     apiKey: string,
     signal?: AbortSignal
   ) => Promise<IPCResult<DiscoverModelsResult>>;
+
+  // Request historical usage data (7d/30d) - only available for z.ai provider
+  requestHistoricalUsage: (days: 7 | 30) => Promise<IPCResult<DailyUsageData[] | null>>;
 }
 
 let testConnectionRequestId = 0;
@@ -140,5 +144,9 @@ export const createProfileAPI = (): ProfileAPI => ({
     const promise = ipcRenderer.invoke(channel, baseUrl, apiKey, requestId);
     console.log('[preload/profile-api] IPC invoke called, promise returned');
     return promise;
-  }
+  },
+
+  // Request historical usage data (7d/30d) - only available for z.ai provider
+  requestHistoricalUsage: (days: 7 | 30): Promise<IPCResult<DailyUsageData[] | null>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.HISTORICAL_USAGE_REQUEST, days)
 });

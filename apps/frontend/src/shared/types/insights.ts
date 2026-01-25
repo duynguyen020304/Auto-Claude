@@ -168,40 +168,6 @@ export interface InsightsModelConfig {
 
 export type InsightsChatRole = 'user' | 'assistant';
 
-// ============================================
-// File Mention Types
-// ============================================
-
-// Line range for file mentions (1-indexed, inclusive)
-export interface LineRange {
-  start: number;  // Starting line number (1-indexed)
-  end: number;    // Ending line number (1-indexed, inclusive)
-}
-
-// File context providing surrounding code and metadata
-export interface FileContext {
-  filePath: string;         // Absolute or relative path to the file
-  lineRange?: LineRange;    // Optional line range to focus on
-  content?: string;         // File content or excerpt
-  language?: string;        // Programming language for syntax highlighting
-  startLine?: number;       // Line number where content starts (for partial content)
-  // Metadata from backend file reader
-  lineCount?: number;       // Total lines in file
-  fileSize?: number;        // File size in bytes
-  encoding?: string;        // Detected encoding
-  truncated?: boolean;      // Whether content was truncated
-  linesIncluded?: number;   // Number of lines included in content
-}
-
-// File mention in chat messages (using @sym syntax)
-export interface FileMention {
-  id: string;               // Unique identifier for this mention
-  filePath: string;         // Path to the mentioned file
-  lineRange?: LineRange;    // Optional line range (e.g., @sym file.ts:10-20)
-  context?: FileContext;    // Context data populated when resolved
-  displayName?: string;     // Display name (e.g., "src/App.tsx:10-20")
-}
-
 // Tool usage record for showing what tools the AI used
 export interface InsightsToolUsage {
   name: string;
@@ -214,8 +180,6 @@ export interface InsightsChatMessage {
   role: InsightsChatRole;
   content: string;
   timestamp: Date;
-  // For user messages with file mentions
-  fileMentions?: FileMention[];
   // For assistant messages that suggest task creation
   suggestedTask?: {
     title: string;

@@ -4,7 +4,6 @@ import type {
   InsightsSessionSummary,
   InsightsChatMessage,
   InsightsModelConfig,
-  FileMention
 } from '../shared/types';
 import { InsightsConfig } from './insights/config';
 import { InsightsPaths } from './insights/paths';
@@ -139,27 +138,24 @@ export class InsightsService extends EventEmitter {
    * @param projectIdOrPath - Project ID (new) or Project Path (old, for backward compatibility)
    * @param projectPathOrMessage - Project Path (new) or Message (old, for backward compatibility)
    * @param messageOrConfig - Message (new) or Model Config (old, for backward compatibility)
-   * @param modelConfigOrMentions - Model Config (new) or File Mentions (old, for backward compatibility)
-   * @param fileMentions - File Mentions (new signature only)
+   * @param modelConfig - Model Config (optional)
    */
   async sendMessage(
     sessionIdOrProjectId: string,
     projectIdOrPath?: string,
     projectPathOrMessage?: string,
     messageOrConfig?: string | InsightsModelConfig,
-    modelConfigOrMentions?: InsightsModelConfig | FileMention[],
-    fileMentions?: FileMention[]
+    modelConfig?: InsightsModelConfig
   ): Promise<void> {
     // Detect which signature is being used based on parameter types
-    // Old: (projectId: string, projectPath: string, message: string, modelConfig?, fileMentions?)
-    // New: (sessionId: string, projectId: string, projectPath: string, message: string, modelConfig?, fileMentions?)
+    // Old: (projectId: string, projectPath: string, message: string, modelConfig?)
+    // New: (sessionId: string, projectId: string, projectPath: string, message: string, modelConfig?)
 
     let session: InsightsSession | null;
     let targetProjectId: string;
     let targetProjectPath: string;
     let targetMessage: string;
     let targetModelConfig: InsightsModelConfig | undefined;
-    let targetFileMentions: FileMention[] | undefined;
 
     // Check if using new signature by looking at parameter types
     const usingNewSignature =
@@ -168,12 +164,11 @@ export class InsightsService extends EventEmitter {
       typeof messageOrConfig === 'string';
 
     if (usingNewSignature) {
-      // New signature: sendMessage(sessionId, projectId, projectPath, message, modelConfig?, fileMentions?)
+      // New signature: sendMessage(sessionId, projectId, projectPath, message, modelConfig?)
       targetProjectId = projectIdOrPath;
       targetProjectPath = projectPathOrMessage;
       targetMessage = messageOrConfig as string;
-      targetModelConfig = modelConfigOrMentions as InsightsModelConfig | undefined;
-      targetFileMentions = fileMentions;
+      targetModelConfig = modelConfig;
 
       // Load session by ID
       session = this.storage.loadSessionById(targetProjectPath, sessionIdOrProjectId);
@@ -182,13 +177,12 @@ export class InsightsService extends EventEmitter {
         return;
       }
     } else {
-      // Old signature: sendMessage(projectId, projectPath, message, modelConfig?, fileMentions?)
+      // Old signature: sendMessage(projectId, projectPath, message, modelConfig?)
       // for backward compatibility during phased migration
       targetProjectId = sessionIdOrProjectId;
       targetProjectPath = projectIdOrPath!;
       targetMessage = projectPathOrMessage as string;
       targetModelConfig = messageOrConfig as InsightsModelConfig | undefined;
-      targetFileMentions = modelConfigOrMentions as FileMention[] | undefined;
 
       // Load or create session (old behavior)
       session = this.sessionManager.loadSession(targetProjectId, targetProjectPath);
@@ -215,7 +209,6 @@ export class InsightsService extends EventEmitter {
       role: 'user',
       content: targetMessage,
       timestamp: new Date(),
-      fileMentions: targetFileMentions && targetFileMentions.length > 0 ? targetFileMentions : undefined
     };
     session.messages.push(userMessage);
     session.updatedAt = new Date();

@@ -313,6 +313,8 @@ export interface ElectronAPI {
   requestUsageUpdate: () => Promise<IPCResult<ClaudeUsageSnapshot | null>>;
   /** Request all profiles usage immediately (for startup/refresh) */
   requestAllProfilesUsage: () => Promise<IPCResult<AllProfilesUsage | null>>;
+  /** Request historical usage data (7d/30d) - only available for z.ai provider */
+  requestHistoricalUsage: (days: 7 | 30) => Promise<IPCResult<import('./agent').DailyUsageData[] | null>>;
   /** Listen for usage data updates */
   onUsageUpdated: (callback: (usage: ClaudeUsageSnapshot) => void) => () => void;
   /** Listen for proactive swap notifications */

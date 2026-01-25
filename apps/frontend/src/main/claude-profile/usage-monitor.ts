@@ -12,7 +12,18 @@
 import { EventEmitter } from 'events';
 import { homedir } from 'os';
 import { getClaudeProfileManager } from '../claude-profile-manager';
-import { ClaudeUsageSnapshot, ProfileUsageSummary, AllProfilesUsage } from '../../shared/types/agent';
+import {
+  ClaudeUsageSnapshot,
+  ProfileUsageSummary,
+  AllProfilesUsage,
+  ModelUsageResponse,
+  ToolUsageResponse,
+  DailyUsageData,
+  HistoricalUsageDataPoint,
+  AnthropicUsageResponse,
+  ProviderQuotaLimitResponse,
+  ProviderAPIErrorResponse,
+} from '../../shared/types/agent';
 import { loadProfilesFile } from '../services/profile/profile-manager';
 import type { APIProfile } from '../../shared/types/profile';
 import { detectProvider as sharedDetectProvider, type ApiProvider } from '../../shared/utils/provider-detection';
@@ -53,20 +64,34 @@ const ALLOWED_USAGE_API_DOMAINS = new Set([
 interface ProviderUsageEndpoint {
   provider: ApiProvider;
   usagePath: string;
+  usageType?: 'quota' | 'history-model' | 'history-tool';
 }
 
 const PROVIDER_USAGE_ENDPOINTS: readonly ProviderUsageEndpoint[] = [
   {
     provider: 'anthropic',
-    usagePath: '/api/oauth/usage'
+    usagePath: '/api/oauth/usage',
+    usageType: 'quota' as const
   },
   {
     provider: 'zai',
-    usagePath: '/api/monitor/usage/quota/limit'
+    usagePath: '/api/monitor/usage/quota/limit',
+    usageType: 'quota' as const
   },
   {
     provider: 'zhipu',
-    usagePath: '/api/monitor/usage/quota/limit'
+    usagePath: '/api/monitor/usage/quota/limit',
+    usageType: 'quota' as const
+  },
+  {
+    provider: 'zai',
+    usagePath: '/api/monitor/usage/model-usage',
+    usageType: 'history-model' as const
+  },
+  {
+    provider: 'zai',
+    usagePath: '/api/monitor/usage/tool-usage',
+    usageType: 'history-tool' as const
   }
 ] as const;
 
@@ -76,6 +101,7 @@ const PROVIDER_USAGE_ENDPOINTS: readonly ProviderUsageEndpoint[] = [
  *
  * @param provider - The provider type
  * @param baseUrl - The API base URL (e.g., 'https://api.z.ai/api/anthropic')
+ * @param usageType - Optional usage endpoint type ('quota', 'history-model', 'history-tool')
  * @returns Full usage endpoint URL or null if provider unknown
  *
  * @example
@@ -83,21 +109,24 @@ const PROVIDER_USAGE_ENDPOINTS: readonly ProviderUsageEndpoint[] = [
  * // returns 'https://api.anthropic.com/api/oauth/usage'
  * getUsageEndpoint('zai', 'https://api.z.ai/api/anthropic')
  * // returns 'https://api.z.ai/api/monitor/usage/quota/limit'
+ * getUsageEndpoint('zai', 'https://api.z.ai/api/anthropic', 'history-model')
+ * // returns 'https://api.z.ai/api/monitor/usage/model-usage'
  * getUsageEndpoint('unknown', 'https://example.com')
  * // returns null
  */
-export function getUsageEndpoint(provider: ApiProvider, baseUrl: string): string | null {
+export function getUsageEndpoint(provider: ApiProvider, baseUrl: string, usageType?: 'quota' | 'history-model' | 'history-tool'): string | null {
   const isDebug = process.env.DEBUG === 'true';
 
   if (isDebug) {
     console.warn('[UsageMonitor:ENDPOINT_CONSTRUCTION] Constructing usage endpoint:', {
       provider,
-      baseUrl
+      baseUrl,
+      usageType
     });
   }
 
-  const endpointConfig = PROVIDER_USAGE_ENDPOINTS.find(e => e.provider === provider);
-  if (!endpointConfig) {
+  const endpointConfigs = PROVIDER_USAGE_ENDPOINTS.filter(e => e.provider === provider);
+  if (endpointConfigs.length === 0) {
     if (isDebug) {
       console.warn('[UsageMonitor:ENDPOINT_CONSTRUCTION] Unknown provider - no endpoint configured:', {
         provider,
@@ -107,10 +136,19 @@ export function getUsageEndpoint(provider: ApiProvider, baseUrl: string): string
     return null;
   }
 
+  // Find the specific endpoint config based on usageType
+  let endpointConfig = endpointConfigs.find(e => e.usageType === usageType);
+
+  // If no specific usageType or no match found, use the first one (quota endpoint by default)
+  if (!endpointConfig) {
+    endpointConfig = endpointConfigs[0];
+  }
+
   if (isDebug) {
     console.warn('[UsageMonitor:ENDPOINT_CONSTRUCTION] Found endpoint config for provider:', {
       provider,
-      usagePath: endpointConfig.usagePath
+      usagePath: endpointConfig.usagePath,
+      usageType: endpointConfig.usageType
     });
   }
 
@@ -119,9 +157,6 @@ export function getUsageEndpoint(provider: ApiProvider, baseUrl: string): string
     const originalPath = url.pathname;
     // Replace the path with the usage endpoint path
     url.pathname = endpointConfig.usagePath;
-
-    // Note: quota/limit endpoint doesn't require query parameters
-    // The model-usage and tool-usage endpoints would need time windows, but we're using quota/limit
 
     const finalUrl = url.toString();
 
@@ -177,6 +212,34 @@ export function detectProvider(baseUrl: string): ApiProvider {
 }
 
 /**
+ * Get calendar date range for historical usage queries
+ * @param days - Number of days (7 or 30)
+ * @returns { startTime, endTime } in format "YYYY-MM-DD HH:mm:ss"
+ */
+export function getHistoricalUsageDateRange(days: 7 | 30): { startTime: string; endTime: string } {
+  const now = new Date();
+  const endTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+  const startTime = new Date(now);
+  startTime.setDate(startTime.getDate() - days + 1);
+  startTime.setHours(0, 0, 0, 0);
+
+  const formatDateTime = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  };
+
+  return {
+    startTime: formatDateTime(startTime),
+    endTime: formatDateTime(endTime)
+  };
+}
+
+/**
  * Result of determining the active profile type
  */
 interface ActiveProfileResult {
@@ -193,8 +256,37 @@ interface ActiveProfileResult {
  * @param error - The error to check
  * @returns true if the error has a statusCode property
  */
-function isHttpError(error: unknown): error is Error & { statusCode?: number } {
+function isHttpError(error: unknown): error is Error & { statusCode?: number; detectedInBody?: boolean } {
   return error instanceof Error && 'statusCode' in error;
+}
+
+/**
+ * Type guard to check if an error has a message property
+ * @param error - The error to check
+ * @returns true if the error has a message property of type string
+ */
+function hasMessage(error: unknown): error is Error & { message: string } {
+  return (
+    error !== null &&
+    error !== undefined &&
+    typeof error === 'object' &&
+    'message' in error &&
+    typeof error.message === 'string'
+  );
+}
+
+/**
+ * Type guard to check if a value is a ProviderAPIErrorResponse
+ * @param data - The data to check
+ * @returns true if the data matches ProviderAPIErrorResponse structure
+ */
+function isProviderErrorResponse(data: unknown): data is ProviderAPIErrorResponse {
+  return (
+    data !== null &&
+    data !== undefined &&
+    typeof data === 'object' &&
+    ('error' in data || 'message' in data || 'type' in data)
+  );
 }
 
 export class UsageMonitor extends EventEmitter {
@@ -216,6 +308,11 @@ export class UsageMonitor extends EventEmitter {
   // Map<profileId, { usage: ProfileUsageSummary, fetchedAt: number }>
   private allProfilesUsageCache: Map<string, { usage: ProfileUsageSummary; fetchedAt: number }> = new Map();
   private static PROFILE_USAGE_CACHE_TTL_MS = 60 * 1000; // 1 minute cache for inactive profiles
+
+  // Historical usage cache (main process tier)
+  // Map<profileId, Map<7 | 30, { dailyData: DailyUsageData[]; fetchedAt: number }>>
+  private historicalUsageCache: Map<string, Map<7 | 30, { dailyData: DailyUsageData[]; fetchedAt: number }>> = new Map();
+  private static HISTORICAL_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes for historical data
 
   // Debug flag for verbose logging
   private readonly isDebug = process.env.DEBUG === 'true';
@@ -1236,14 +1333,14 @@ export class UsageMonitor extends EventEmitter {
 
         // Check for auth failures via status code (works for all providers)
         if (response.status === 401 || response.status === 403) {
-          const error = new Error(`API Auth Failure: ${response.status} (${provider})`);
-          (error as any).statusCode = response.status;
+          const error = new Error(`API Auth Failure: ${response.status} (${provider})`) as Error & { statusCode: number; detectedInBody?: boolean };
+          error.statusCode = response.status;
           throw error;
         }
 
         // For other error statuses, try to parse response body to detect auth failures
         // This handles cases where providers might return different status codes for auth errors
-        let errorData: any;
+        let errorData: ProviderAPIErrorResponse | unknown;
         try {
           errorData = await response.json();
         } catch (parseError) {
@@ -1285,9 +1382,9 @@ export class UsageMonitor extends EventEmitter {
         const hasAuthError = authErrorPatterns.some(pattern => errorText.includes(pattern));
 
         if (hasAuthError) {
-          const error = new Error(`API Auth Failure detected in response body (${provider}): ${JSON.stringify(errorData)}`);
-          (error as any).statusCode = response.status; // Include original status code
-          (error as any).detectedInBody = true;
+          const error = new Error(`API Auth Failure detected in response body (${provider}): ${JSON.stringify(errorData)}`) as Error & { statusCode: number; detectedInBody?: boolean };
+          error.statusCode = response.status; // Include original status code
+          error.detectedInBody = true;
           throw error;
         }
 
@@ -1379,10 +1476,13 @@ export class UsageMonitor extends EventEmitter {
       }
 
       return normalizedUsage;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Re-throw auth failures to be handled by checkUsageAndSwap
       // This includes both status code auth failures (401/403) and body-detected failures
-      if (error?.message?.includes('Auth Failure') || error?.statusCode === 401 || error?.statusCode === 403) {
+      if (
+        (hasMessage(error) && error.message.includes('Auth Failure')) ||
+        (isHttpError(error) && (error.statusCode === 401 || error.statusCode === 403))
+      ) {
         throw error;
       }
 
@@ -1409,7 +1509,7 @@ export class UsageMonitor extends EventEmitter {
    * }
    */
   private normalizeAnthropicResponse(
-    data: any,
+    data: AnthropicUsageResponse,
     profileId: string,
     profileName: string,
     profileEmail?: string
@@ -1476,7 +1576,7 @@ export class UsageMonitor extends EventEmitter {
    * @returns Normalized usage snapshot or null on parse failure
    */
   private normalizeQuotaLimitResponse(
-    data: any,
+    data: ProviderQuotaLimitResponse,
     profileId: string,
     profileName: string,
     profileEmail: string | undefined,
@@ -1506,8 +1606,8 @@ export class UsageMonitor extends EventEmitter {
       }
 
       // Find TOKENS_LIMIT (5-hour usage) and TIME_LIMIT (monthly usage)
-      const tokensLimit = data.limits.find((item: any) => item.type === 'TOKENS_LIMIT');
-      const timeLimit = data.limits.find((item: any) => item.type === 'TIME_LIMIT');
+      const tokensLimit = data.limits?.find((item) => item.type === 'TOKENS_LIMIT');
+      const timeLimit = data.limits?.find((item) => item.type === 'TIME_LIMIT');
 
       if (this.isDebug) {
         console.warn(`[UsageMonitor:${logPrefix}_NORMALIZATION] Found limit types:`, {
@@ -1626,7 +1726,7 @@ export class UsageMonitor extends EventEmitter {
    * Maps TIME_LIMIT → monthly usage (displayed as weekly in UI)
    */
   private normalizeZAIResponse(
-    data: any,
+    data: ProviderQuotaLimitResponse,
     profileId: string,
     profileName: string,
     profileEmail?: string
@@ -1644,7 +1744,7 @@ export class UsageMonitor extends EventEmitter {
    * TOKENS_LIMIT and TIME_LIMIT items.
    */
   private normalizeZhipuResponse(
-    data: any,
+    data: ProviderQuotaLimitResponse,
     profileId: string,
     profileName: string,
     profileEmail?: string
@@ -1668,6 +1768,208 @@ export class UsageMonitor extends EventEmitter {
     // we would need to spawn a Claude process with /usage command and parse the output.
     console.warn('[UsageMonitor] CLI fallback not implemented, API method should be used');
     return null;
+  }
+
+  /**
+   * Get historical usage data for a profile
+   * Only available for z.ai provider (GLM API)
+   *
+   * @param profileId - Profile identifier
+   * @param baseUrl - API base URL
+   * @param credential - API credential
+   * @param days - 7 or 30 days
+   * @returns Daily usage data or null if not supported/error
+   */
+  async getHistoricalUsage(
+    profileId: string,
+    baseUrl: string,
+    credential: string,
+    days: 7 | 30
+  ): Promise<DailyUsageData[] | null> {
+    // Detect provider
+    const provider = detectProvider(baseUrl);
+    if (provider !== 'zai') {
+      console.warn('[UsageMonitor] Historical usage only supported for z.ai provider, got:', provider);
+      return null;
+    }
+
+    // Check main process cache first
+    const profileCache = this.historicalUsageCache.get(profileId);
+    const cached = profileCache?.get(days);
+
+    if (cached && (Date.now() - cached.fetchedAt) < UsageMonitor.HISTORICAL_CACHE_TTL_MS) {
+      console.log('[UsageMonitor] Main process cache hit for historical usage');
+      return cached.dailyData;
+    }
+
+    // Fetch from API
+    const result = await this.fetchHistoricalUsage(credential, baseUrl, days);
+
+    if (result) {
+      // Update main process cache
+      if (!this.historicalUsageCache.has(profileId)) {
+        this.historicalUsageCache.set(profileId, new Map());
+      }
+      this.historicalUsageCache.get(profileId)!.set(days, {
+        dailyData: result.dailyData,
+        fetchedAt: Date.now()
+      });
+      return result.dailyData;
+    }
+
+    return null;
+  }
+
+  /**
+   * Fetch historical usage data from model-usage and tool-usage endpoints
+   * Only available for z.ai provider
+   *
+   * @param credential - API key
+   * @param baseUrl - API base URL
+   * @param days - 7 or 30 days
+   * @returns Combined historical usage data with daily aggregation
+   */
+  private async fetchHistoricalUsage(
+    credential: string,
+    baseUrl: string,
+    days: 7 | 30
+  ): Promise<{ dailyData: DailyUsageData[] } | null> {
+    try {
+      const dateRange = getHistoricalUsageDateRange(days);
+
+      // Build URLs with query parameters
+      const modelUsageUrl = new URL(baseUrl);
+      modelUsageUrl.pathname = '/api/monitor/usage/model-usage';
+      modelUsageUrl.searchParams.set('startTime', dateRange.startTime);
+      modelUsageUrl.searchParams.set('endTime', dateRange.endTime);
+
+      const toolUsageUrl = new URL(baseUrl);
+      toolUsageUrl.pathname = '/api/monitor/usage/tool-usage';
+      toolUsageUrl.searchParams.set('startTime', dateRange.startTime);
+      toolUsageUrl.searchParams.set('endTime', dateRange.endTime);
+
+      if (this.isDebug) {
+        console.warn('[UsageMonitor] Fetching historical usage:', {
+          modelUsageUrl: modelUsageUrl.toString(),
+          toolUsageUrl: toolUsageUrl.toString(),
+          days
+        });
+      }
+
+      // Fetch both endpoints in parallel
+      const [modelResponse, toolResponse] = await Promise.all([
+        fetch(modelUsageUrl.toString(), {
+          headers: {
+            'Authorization': `Bearer ${credential}`,
+            'Content-Type': 'application/json'
+          }
+        }),
+        fetch(toolUsageUrl.toString(), {
+          headers: {
+            'Authorization': `Bearer ${credential}`,
+            'Content-Type': 'application/json'
+          }
+        })
+      ]);
+
+      if (!modelResponse.ok || !toolResponse.ok) {
+        console.warn('[UsageMonitor] Historical usage API error:', {
+          modelStatus: modelResponse.status,
+          toolStatus: toolResponse.status
+        });
+        return null;
+      }
+
+      const modelData: ModelUsageResponse = await modelResponse.json();
+      const toolData: ToolUsageResponse = await toolResponse.json();
+
+      if (!modelData.success || !toolData.success) {
+        console.warn('[UsageMonitor] Historical usage API returned error');
+        return null;
+      }
+
+      // Aggregate hourly data to daily
+      const dailyData = this.aggregateHourlyToDaily(modelData.data, toolData.data);
+
+      return { dailyData };
+    } catch (error) {
+      console.error('[UsageMonitor] Failed to fetch historical usage:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Aggregate hourly usage data to daily data points
+   */
+  private aggregateHourlyToDaily(
+    modelData: ModelUsageResponse['data'],
+    toolData: ToolUsageResponse['data']
+  ): DailyUsageData[] {
+    const dailyMap = new Map<string, DailyUsageData>();
+
+    // Process each hourly data point
+    for (let i = 0; i < modelData.x_time.length; i++) {
+      const timeStr = modelData.x_time[i];
+      const dateStr = timeStr.split(' ')[0]; // Extract date "YYYY-MM-DD"
+
+      if (!dailyMap.has(dateStr)) {
+        dailyMap.set(dateStr, {
+          date: dateStr,
+          dayLabel: this.formatDayLabel(dateStr),
+          tokensUsage: 0,
+          modelCallCount: 0,
+          toolsUsage: 0,
+          hourlyData: []
+        });
+      }
+
+      const day = dailyMap.get(dateStr)!;
+      const hourlyPoint: HistoricalUsageDataPoint = {
+        timestamp: timeStr,
+        modelCallCount: modelData.modelCallCount[i],
+        tokensUsage: modelData.tokensUsage[i],
+        networkSearchCount: toolData.networkSearchCount[i],
+        webReadMcpCount: toolData.webReadMcpCount[i],
+        zreadMcpCount: toolData.zreadMcpCount[i]
+      };
+
+      day.hourlyData!.push(hourlyPoint);
+
+      // Add to daily totals (skip null values)
+      if (modelData.tokensUsage[i]) day.tokensUsage += modelData.tokensUsage[i];
+      if (modelData.modelCallCount[i]) day.modelCallCount += modelData.modelCallCount[i];
+      if (toolData.networkSearchCount[i]) day.toolsUsage += toolData.networkSearchCount[i];
+      if (toolData.webReadMcpCount[i]) day.toolsUsage += toolData.webReadMcpCount[i];
+      if (toolData.zreadMcpCount[i]) day.toolsUsage += toolData.zreadMcpCount[i];
+    }
+
+    return Array.from(dailyMap.values());
+  }
+
+  /**
+   * Format date as short day label (e.g., "Jan 18" or "18 Jan")
+   * Uses app locale from settings
+   */
+  private formatDayLabel(dateStr: string): string {
+    const date = new Date(dateStr);
+    // Default to English locale for now, could be enhanced to use app settings
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  /**
+   * Clear historical usage cache for a specific profile
+   * Called when switching profiles to ensure fresh data
+   *
+   * @param profileId - Profile identifier to clear cache for
+   */
+  clearHistoricalUsageCache(profileId: string): void {
+    const deleted = this.historicalUsageCache.delete(profileId);
+    if (this.isDebug) {
+      console.warn('[UsageMonitor] Cleared historical usage cache for profile:', {
+        profileId,
+        wasInCache: deleted
+      });
+    }
   }
 
   /**

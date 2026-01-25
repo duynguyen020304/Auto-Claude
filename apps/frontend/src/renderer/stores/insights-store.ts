@@ -9,7 +9,6 @@ import type {
   InsightsModelConfig,
   TaskMetadata,
   Task,
-  FileMention
 } from '../../shared/types';
 
 interface ToolUsage {
@@ -24,7 +23,6 @@ export interface InsightsSessionState {
   streamingContent: string;
   currentTool: ToolUsage | null;
   toolsUsed: InsightsToolUsage[];
-  fileMentions: FileMention[];
 }
 
 interface InsightsState {
@@ -42,7 +40,6 @@ interface InsightsState {
   streamingContent: string;
   currentTool: ToolUsage | null;
   toolsUsed: InsightsToolUsage[];
-  fileMentions: FileMention[];
 
   // Actions
   setCurrentSessionId: (sessionId: string | null) => void;
@@ -58,9 +55,6 @@ interface InsightsState {
   setCurrentTool: (tool: ToolUsage | null, sessionId?: string) => void;
   addToolUsage: (tool: ToolUsage, sessionId?: string) => void;
   clearToolsUsed: (sessionId?: string) => void;
-  addFileMention: (mention: FileMention, sessionId?: string) => void;
-  removeFileMention: (id: string, sessionId?: string) => void;
-  clearFileMentions: (sessionId?: string) => void;
   finalizeStreamingMessage: (suggestedTask?: InsightsChatMessage['suggestedTask'], sessionId?: string) => void;
   clearSession: () => void;
   setLoadingSessions: (loading: boolean) => void;
@@ -91,7 +85,6 @@ function createInitialSessionState(): InsightsSessionState {
     streamingContent: '',
     currentTool: null,
     toolsUsed: [],
-    fileMentions: []
   };
 }
 
@@ -108,7 +101,6 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
   streamingContent: '',
   currentTool: null,
   toolsUsed: [],
-  fileMentions: [],
 
   // Actions
   setCurrentSessionId: (sessionId) =>
@@ -126,7 +118,6 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
           streamingContent: newSessionState.streamingContent,
           currentTool: newSessionState.currentTool,
           toolsUsed: newSessionState.toolsUsed,
-          fileMentions: newSessionState.fileMentions
         };
       }
       return { currentSessionId: sessionId };
@@ -150,7 +141,6 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
           streamingContent: newSessionState.streamingContent,
           currentTool: newSessionState.currentTool,
           toolsUsed: newSessionState.toolsUsed,
-          fileMentions: newSessionState.fileMentions
         };
       }
 
@@ -165,7 +155,6 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
           streamingContent: sessionState.streamingContent,
           currentTool: sessionState.currentTool,
           toolsUsed: sessionState.toolsUsed,
-          fileMentions: sessionState.fileMentions
         };
       }
 
@@ -497,101 +486,6 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       return updates;
     }),
 
-  addFileMention: (mention, sessionId) =>
-    set((state) => {
-      // Determine target session ID and whether to update top-level field
-      const targetSessionId = sessionId || state.currentSessionId;
-      const shouldUpdateTopLevel = !sessionId || sessionId === state.currentSessionId;
-
-      const updates: Partial<InsightsState> = {};
-
-      // Update sessionStates map if we have a target session
-      if (targetSessionId) {
-        const sessionState = state.sessionStates.get(targetSessionId);
-        if (sessionState) {
-          // Check if mention with same ID already exists
-          if (sessionState.fileMentions.some((m) => m.id === mention.id)) {
-            return state;
-          }
-
-          const newFileMentions = [...sessionState.fileMentions, mention];
-          const newSessionStates = new Map(state.sessionStates);
-          newSessionStates.set(targetSessionId, {
-            ...sessionState,
-            fileMentions: newFileMentions
-          });
-          updates.sessionStates = newSessionStates;
-
-          // Update top-level field if appropriate
-          if (shouldUpdateTopLevel) {
-            updates.fileMentions = newFileMentions;
-          }
-        }
-      }
-
-      return updates;
-    }),
-
-  removeFileMention: (id, sessionId) =>
-    set((state) => {
-      // Determine target session ID and whether to update top-level field
-      const targetSessionId = sessionId || state.currentSessionId;
-      const shouldUpdateTopLevel = !sessionId || sessionId === state.currentSessionId;
-
-      const updates: Partial<InsightsState> = {};
-
-      // Update sessionStates map if we have a target session
-      if (targetSessionId) {
-        const sessionState = state.sessionStates.get(targetSessionId);
-        if (sessionState) {
-          const newFileMentions = sessionState.fileMentions.filter((m) => m.id !== id);
-
-          const newSessionStates = new Map(state.sessionStates);
-          newSessionStates.set(targetSessionId, {
-            ...sessionState,
-            fileMentions: newFileMentions
-          });
-          updates.sessionStates = newSessionStates;
-
-          // Update top-level field if appropriate
-          if (shouldUpdateTopLevel) {
-            updates.fileMentions = newFileMentions;
-          }
-        }
-      }
-
-      return updates;
-    }),
-
-  clearFileMentions: (sessionId) =>
-    set((state) => {
-      // Determine target session ID and whether to update top-level field
-      const targetSessionId = sessionId || state.currentSessionId;
-      const shouldUpdateTopLevel = !sessionId || sessionId === state.currentSessionId;
-
-      const updates: Partial<InsightsState> = {};
-
-      // Update top-level field if appropriate
-      if (shouldUpdateTopLevel) {
-        updates.fileMentions = [];
-      }
-
-      // Update sessionStates map if we have a target session
-      if (targetSessionId) {
-        const sessionState = state.sessionStates.get(targetSessionId);
-        if (sessionState) {
-          const newSessionStates = new Map(state.sessionStates);
-          newSessionStates.set(targetSessionId, {
-            ...sessionState,
-            fileMentions: []
-          });
-          updates.sessionStates = newSessionStates;
-        }
-      }
-
-      return updates;
-    }),
-
   finalizeStreamingMessage: (suggestedTask, sessionId) =>
     set((state) => {
       // Determine target session ID and whether to update top-level field
@@ -692,7 +586,6 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       streamingContent: '',
       currentTool: null,
       toolsUsed: [],
-      fileMentions: []
     });
   },
 
@@ -777,7 +670,6 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
         updates.streamingContent = initialState.streamingContent;
         updates.currentTool = initialState.currentTool;
         updates.toolsUsed = initialState.toolsUsed;
-        updates.fileMentions = initialState.fileMentions;
       }
 
       return updates;
@@ -830,7 +722,6 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
         updates.streamingContent = '';
         updates.currentTool = null;
         updates.toolsUsed = [];
-        updates.fileMentions = [];
       }
 
       return updates;

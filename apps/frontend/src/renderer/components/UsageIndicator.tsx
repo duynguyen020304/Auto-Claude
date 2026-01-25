@@ -13,9 +13,16 @@ import {
   Clock,
   User,
   Key,
+  Info,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Button } from "./ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "./ui/tooltip";
 import {
   Select,
   SelectContent,
@@ -31,8 +38,12 @@ import {
   localizeUsageWindowLabel,
   hasHardcodedText,
 } from "../../shared/utils/format-time";
-import type { ClaudeUsageSnapshot } from "../../shared/types/agent";
+import type {
+  ClaudeUsageSnapshot,
+  DailyUsageData,
+} from "../../shared/types/agent";
 import type { APIProfile } from "../../shared/types/profile";
+import { detectProvider } from "../../shared/utils/provider-detection";
 import { useSettingsStore } from "../stores/settings-store";
 
 export function UsageIndicator() {
@@ -51,6 +62,26 @@ export function UsageIndicator() {
   const [isSwitchingProfile, setIsSwitchingProfile] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
 
+  // Historical usage state
+  const [historicalUsage, setHistoricalUsage] = useState<{
+    data7d: DailyUsageData[] | null;
+    data30d: DailyUsageData[] | null;
+    isLoading: boolean;
+    error: string | null;
+  }>({
+    data7d: null,
+    data30d: null,
+    isLoading: false,
+    error: null,
+  });
+
+  // Chart hover state
+  const [hoveredPoint, setHoveredPoint] = useState<{
+    index: number;
+    value: number;
+    label: string;
+  } | null>(null);
+
   const handleProfileChange = async (profileId: string) => {
     setIsSwitchingProfile(true);
     setProfileError(null);
@@ -59,6 +90,15 @@ export function UsageIndicator() {
       // Invalidate cache for previous profile when switching
       if (activeProfileId) {
         useSettingsStore.getState().invalidateUsageCache(activeProfileId);
+        useSettingsStore
+          .getState()
+          .invalidateHistoricalUsageCache(activeProfileId);
+        setHistoricalUsage({
+          data7d: null,
+          data30d: null,
+          isLoading: false,
+          error: null,
+        });
       }
 
       await setActiveProfile(profileId);
@@ -157,7 +197,9 @@ export function UsageIndicator() {
     const loadUsageData = async () => {
       // Check cache first if we have an active profile
       if (activeProfileId) {
-        const cached = useSettingsStore.getState().getCachedUsage(activeProfileId);
+        const cached = useSettingsStore
+          .getState()
+          .getCachedUsage(activeProfileId);
         if (cached) {
           console.log("[UsageIndicator] Cache hit - using cached data");
           setUsage(cached);
@@ -177,7 +219,9 @@ export function UsageIndicator() {
 
         // Only update loading state if we didn't have cached data
         if (activeProfileId) {
-          const hadCache = useSettingsStore.getState().getCachedUsage(activeProfileId) !== null;
+          const hadCache =
+            useSettingsStore.getState().getCachedUsage(activeProfileId) !==
+            null;
           if (!hadCache) {
             setIsLoading(false);
           }
@@ -191,7 +235,9 @@ export function UsageIndicator() {
 
           // Cache the fresh data
           if (activeProfileId) {
-            useSettingsStore.getState().setCachedUsage(activeProfileId, result.data);
+            useSettingsStore
+              .getState()
+              .setCachedUsage(activeProfileId, result.data);
           }
         } else {
           // No usage data available (endpoint not supported or error)
@@ -205,7 +251,9 @@ export function UsageIndicator() {
 
         // Only update loading state if we didn't have cached data
         if (activeProfileId) {
-          const hadCache = useSettingsStore.getState().getCachedUsage(activeProfileId) !== null;
+          const hadCache =
+            useSettingsStore.getState().getCachedUsage(activeProfileId) !==
+            null;
           if (!hadCache) {
             setIsLoading(false);
             setIsAvailable(false);
@@ -223,6 +271,129 @@ export function UsageIndicator() {
       unsubscribe();
     };
   }, [activeProfileId]);
+
+  // Fetch historical usage data when profile changes or component mounts
+  useEffect(() => {
+    const fetchHistoricalUsage = async () => {
+      if (!activeProfileId) return;
+
+      // Get active profile to check provider
+      const activeProfile = profiles?.find((p) => p.id === activeProfileId);
+      if (!activeProfile) return;
+
+      // Check if provider is z.ai (only z.ai supports historical usage)
+      const provider = detectProvider(activeProfile.baseUrl);
+      if (provider !== "zai") {
+        console.log(
+          "[UsageIndicator] Historical usage not supported for provider:",
+          provider,
+        );
+        setHistoricalUsage((prev) => ({
+          ...prev,
+          isLoading: false,
+          error: null, // Not an error, just not supported
+        }));
+        return;
+      }
+
+      // Check cache first
+      const cached7d = useSettingsStore
+        .getState()
+        .getCachedHistoricalUsage(activeProfileId, "7d");
+      const cached30d = useSettingsStore
+        .getState()
+        .getCachedHistoricalUsage(activeProfileId, "30d");
+
+      if (cached7d && cached30d) {
+        console.log("[UsageIndicator] Historical usage cache hit");
+        setHistoricalUsage({
+          data7d: cached7d,
+          data30d: cached30d,
+          isLoading: false,
+          error: null,
+        });
+        return;
+      }
+
+      console.log(
+        "[UsageIndicator] Historical usage cache miss - fetching from API",
+      );
+      setHistoricalUsage((prev) => ({ ...prev, isLoading: true, error: null }));
+
+      try {
+        const [result7d, result30d] = await Promise.all([
+          cached7d
+            ? { success: true, data: cached7d }
+            : window.electronAPI.requestHistoricalUsage(7),
+          cached30d
+            ? { success: true, data: cached30d }
+            : window.electronAPI.requestHistoricalUsage(30),
+        ]);
+
+        const data7d = result7d.success ? result7d.data : null;
+        const data30d = result30d.success ? result30d.data : null;
+
+        const errorMessages = [result7d, result30d]
+          .map((result) => (!result.success ? result.error : null))
+          .filter((message): message is string => Boolean(message));
+
+        if (!data7d && !data30d) {
+          if (errorMessages.length > 0) {
+            console.warn(
+              "[UsageIndicator] Historical usage request failed:",
+              errorMessages.join("; "),
+            );
+            setHistoricalUsage({
+              data7d: null,
+              data30d: null,
+              isLoading: false,
+              error: errorMessages.join("; "),
+            });
+            return;
+          }
+
+          // No data but no explicit error; treat as empty state rather than failure.
+          setHistoricalUsage({
+            data7d: null,
+            data30d: null,
+            isLoading: false,
+            error: null,
+          });
+          return;
+        }
+
+        // Cache successful results
+        if (data7d)
+          useSettingsStore
+            .getState()
+            .setCachedHistoricalUsage(activeProfileId, "7d", data7d);
+        if (data30d)
+          useSettingsStore
+            .getState()
+            .setCachedHistoricalUsage(activeProfileId, "30d", data30d);
+
+        setHistoricalUsage({
+          data7d,
+          data30d,
+          isLoading: false,
+          error: null,
+        });
+      } catch (error) {
+        console.error(
+          "[UsageIndicator] Failed to fetch historical usage:",
+          error,
+        );
+        setHistoricalUsage({
+          data7d: null,
+          data30d: null,
+          isLoading: false,
+          error: t("common:usage.dashboard.historicalDataError"),
+        });
+      }
+    };
+
+    fetchHistoricalUsage();
+  }, [activeProfileId, profiles, t]);
 
   // Show loading state
   if (isLoading) {
@@ -645,59 +816,30 @@ export function UsageIndicator() {
   };
 
   /**
-   * Transform usage snapshot to chart data points
-   * Converts ClaudeUsageSnapshot into day-by-day usage data for visualization
+   * Transform historical usage data to chart data points
+   * Uses real historical data from API (for z.ai provider)
    *
-   * @param snapshot - Current usage snapshot
    * @param timePeriod - '7d' or '30d' for number of days
    * @param metric - 'tokens' or 'tools' for usage metric
-   * @returns Array of daily usage values (0-100 scale)
-   *
-   * NOTE: Currently generates realistic mock data based on current usage values.
-   * When backend provides historical usage data, replace with actual history.
+   * @returns Object with values, labels, and hourly data for tooltips
    */
   const transformUsageToChartData = (
-    snapshot: ClaudeUsageSnapshot | null,
     timePeriod: "7d" | "30d",
     metric: "tokens" | "tools",
-  ): number[] => {
-    if (!snapshot) {
-      // Return empty data if no snapshot available
-      return [];
+  ): { values: number[]; labels: string[] } => {
+    const history =
+      timePeriod === "7d" ? historicalUsage.data7d : historicalUsage.data30d;
+
+    if (!history || history.length === 0) {
+      return { values: [], labels: [] };
     }
 
-    const daysCount = timePeriod === "7d" ? 7 : 30;
-    const currentUsage =
-      metric === "tokens" ? snapshot.sessionPercent : snapshot.weeklyPercent;
-    const currentLimit =
-      metric === "tokens"
-        ? (snapshot.sessionUsageLimit ?? 100)
-        : (snapshot.weeklyUsageLimit ?? 100);
-
-    // Generate realistic trending data ending at current usage
-    // This creates plausible historical data that leads to current state
-    const dataPoints: number[] = [];
-    const baseValue = currentUsage;
-
-    // Create a realistic usage pattern with some randomness
-    for (let i = 0; i < daysCount; i++) {
-      // Weight recent days more heavily (trend toward current value)
-      const recencyFactor = i / daysCount; // 0 to 1, increasing for later days
-      const randomVariation = (Math.random() - 0.5) * 30; // ±15% variation
-      const trend = baseValue * (0.6 + recencyFactor * 0.4); // 60% to 100% of current value
-
-      let value = trend + randomVariation;
-
-      // Clamp to valid range (0-100)
-      value = Math.max(0, Math.min(100, value));
-
-      dataPoints.push(value);
-    }
-
-    // Ensure last day matches current usage (for continuity)
-    dataPoints[daysCount - 1] = baseValue;
-
-    return dataPoints;
+    return {
+      values: history.map((day) =>
+        metric === "tokens" ? day.tokensUsage : day.toolsUsage,
+      ),
+      labels: history.map((day) => day.dayLabel),
+    };
   };
 
   /**
@@ -705,11 +847,73 @@ export function UsageIndicator() {
    * Displays usage trends with configurable chart type (area/line/bar)
    */
   const renderChart = () => {
-    // Transform usage snapshot to chart data points
-    const dataPoints = transformUsageToChartData(usage, timePeriod, metric);
+    // Transform historical usage data to chart data points
+    const chartData = transformUsageToChartData(timePeriod, metric);
+    const dataPoints = chartData.values;
+    const labels = chartData.labels;
 
     // Show empty state if no data available
     if (!dataPoints || dataPoints.length === 0) {
+      const activeProfile = profiles?.find((p) => p.id === activeProfileId);
+      const provider = activeProfile
+        ? detectProvider(activeProfile.baseUrl)
+        : null;
+
+      // Show friendly message for non-z.ai providers
+      if (provider && provider !== "zai") {
+        return (
+          <div
+            className="text-center py-8 space-y-3"
+            role="status"
+            aria-live="polite"
+          >
+            <Info
+              className="h-8 w-8 text-gray-500 mx-auto"
+              aria-hidden="true"
+            />
+            <p className="text-sm text-gray-300">
+              {t("common:usage.dashboard.historicalNotSupported", {
+                provider: t(`common:providers.${provider}`),
+              })}
+            </p>
+            <p className="text-xs text-gray-400">
+              {t("common:usage.dashboard.historicalOnlyZai")}
+            </p>
+          </div>
+        );
+      }
+
+      // Show error state if there's an error
+      if (historicalUsage.error) {
+        return (
+          <div
+            className="text-center py-8 space-y-3"
+            role="alert"
+            aria-live="assertive"
+          >
+            <AlertCircle
+              className="h-8 w-8 text-yellow-500 mx-auto"
+              aria-hidden="true"
+            />
+            <p className="text-sm text-gray-300">{historicalUsage.error}</p>
+            <button
+              onClick={() => {
+                // Refetch historical usage by resetting state
+                setHistoricalUsage((prev) => ({
+                  ...prev,
+                  error: null,
+                  isLoading: true,
+                }));
+              }}
+              className="text-xs text-violet-400 hover:text-violet-300 underline"
+            >
+              {t("common:usage.dashboard.retry")}
+            </button>
+          </div>
+        );
+      }
+
+      // Default empty state
       return (
         <div
           className="w-full h-full flex items-center justify-center p-4 bg-[#161618]"
@@ -732,7 +936,6 @@ export function UsageIndicator() {
       );
     }
 
-    const chartData = dataPoints;
     const chartWidth = 600;
     const chartHeight = 200;
     const padding = { top: 20, right: 20, bottom: 30, left: 40 };
@@ -740,6 +943,14 @@ export function UsageIndicator() {
     // Calculate scaling
     const innerWidth = chartWidth - padding.left - padding.right;
     const innerHeight = chartHeight - padding.top - padding.bottom;
+
+    const maxValue = Math.max(...dataPoints, 0);
+    const normalizedMax = maxValue > 0 ? maxValue : 1;
+
+    const formatChartValue = (value: number): string => {
+      const formatted = formatUsageValue(value);
+      return formatted ?? value.toString();
+    };
 
     // Generate path data for area/line charts
     const generatePathData = (data: number[]) => {
@@ -751,14 +962,15 @@ export function UsageIndicator() {
       // Draw line through each data point
       data.forEach((value, index) => {
         const x = padding.left + index * stepX;
-        const y = padding.top + innerHeight - (value / 100) * innerHeight;
+        const y =
+          padding.top + innerHeight - (value / normalizedMax) * innerHeight;
         pathD += ` L ${x} ${y}`;
       });
 
       return pathD;
     };
 
-    const pathData = generatePathData(chartData);
+    const pathData = generatePathData(dataPoints);
 
     return (
       <div
@@ -790,10 +1002,12 @@ export function UsageIndicator() {
           )}
 
           {/* Grid Lines (horizontal) */}
-          {[0, 25, 50, 75, 100].map((percent) => {
-            const y = padding.top + innerHeight - (percent / 100) * innerHeight;
+          {Array.from({ length: 5 }, (_, index) => {
+            const ratio = index / 4;
+            const value = Math.round(normalizedMax * ratio * 100) / 100;
+            const y = padding.top + innerHeight - ratio * innerHeight;
             return (
-              <g key={`grid-${percent}`}>
+              <g key={`grid-${ratio}`}>
                 <line
                   x1={padding.left}
                   y1={y}
@@ -810,7 +1024,7 @@ export function UsageIndicator() {
                   textAnchor="end"
                   className="text-[10px] fill-gray-400 font-mono transition-all duration-300"
                 >
-                  {percent}%
+                  {formatChartValue(value)}
                 </text>
               </g>
             );
@@ -858,18 +1072,19 @@ export function UsageIndicator() {
           {/* Bar Chart: Vertical Bars */}
           {chartType === "bar" &&
             (() => {
-              const barWidth = (innerWidth / chartData.length) * 0.6; // 60% of available space
-              const barGap = (innerWidth / chartData.length) * 0.4; // 40% gap
+              const barWidth = (innerWidth / dataPoints.length) * 0.6; // 60% of available space
+              const barGap = (innerWidth / dataPoints.length) * 0.4; // 40% gap
 
               return (
                 <g className="transition-all duration-300 ease-out">
-                  {chartData.map((value, index) => {
+                  {dataPoints.map((value, index) => {
                     const x =
                       padding.left +
-                      index * (innerWidth / chartData.length) +
+                      index * (innerWidth / dataPoints.length) +
                       barGap / 2;
-                    const barHeight = (value / 100) * innerHeight;
+                    const barHeight = (value / normalizedMax) * innerHeight;
                     const y = padding.top + innerHeight - barHeight;
+                    const label = labels[index] || `Day ${index + 1}`;
 
                     return (
                       <rect
@@ -879,7 +1094,11 @@ export function UsageIndicator() {
                         width={barWidth}
                         height={barHeight}
                         fill="#6366F1"
-                        className="hover:fill-indigo-400 transition-all duration-200 ease-out"
+                        className="hover:fill-indigo-400 cursor-pointer transition-all duration-200 ease-out"
+                        onMouseEnter={() =>
+                          setHoveredPoint({ index, value, label })
+                        }
+                        onMouseLeave={() => setHoveredPoint(null)}
                       />
                     );
                   })}
@@ -889,10 +1108,14 @@ export function UsageIndicator() {
 
           {/* Data Points (only for area and line charts) */}
           {chartType !== "bar" &&
-            chartData.map((value, index) => {
-              const stepX = innerWidth / (chartData.length - 1);
+            dataPoints.map((value, index) => {
+              const stepX = innerWidth / (dataPoints.length - 1);
               const x = padding.left + index * stepX;
-              const y = padding.top + innerHeight - (value / 100) * innerHeight;
+              const y =
+                padding.top +
+                innerHeight -
+                (value / normalizedMax) * innerHeight;
+              const label = labels[index] || `Day ${index + 1}`;
 
               return (
                 <circle
@@ -903,17 +1126,19 @@ export function UsageIndicator() {
                   fill="#6366F1"
                   stroke="#8B5CF6"
                   strokeWidth="2"
-                  className="hover:r-6 transition-all duration-200 ease-out"
+                  className="hover:r-6 cursor-pointer transition-all duration-200 ease-out"
+                  onMouseEnter={() => setHoveredPoint({ index, value, label })}
+                  onMouseLeave={() => setHoveredPoint(null)}
                 />
               );
             })}
 
-          {/* X-Axis Labels (Days) */}
-          {chartData.map((_, index) => {
+          {/* X-Axis Labels (Calendar Dates) */}
+          {labels.map((label, index) => {
             const stepX =
               chartType === "bar"
-                ? innerWidth / chartData.length
-                : innerWidth / (chartData.length - 1);
+                ? innerWidth / dataPoints.length
+                : innerWidth / (dataPoints.length - 1);
             const x =
               padding.left +
               index * stepX +
@@ -927,10 +1152,49 @@ export function UsageIndicator() {
                 textAnchor="middle"
                 className="text-[10px] fill-gray-400 font-mono transition-all duration-300"
               >
-                {t("common:usage.dashboard.chartAxisDay")} {index + 1}
+                {label}
               </text>
             );
           })}
+
+          {/* Hover Tooltip */}
+          {hoveredPoint && (
+            <g>
+              <rect
+                x={padding.left + innerWidth / 2 - 60}
+                y={padding.top + 10}
+                width="120"
+                height="40"
+                rx="4"
+                fill="#1a1a1c"
+                stroke="#6366F1"
+                strokeWidth="1"
+                opacity="0.95"
+              />
+              <text
+                x={padding.left + innerWidth / 2}
+                y={padding.top + 26}
+                textAnchor="middle"
+                className="text-[10px] fill-gray-300 font-medium"
+              >
+                {hoveredPoint.label}
+              </text>
+              <text
+                x={padding.left + innerWidth / 2}
+                y={padding.top + 42}
+                textAnchor="middle"
+                className="text-[10px] fill-violet-400 font-mono"
+              >
+                {metric === "tokens"
+                  ? t("common:usage.dashboard.hoverTokenUsage", {
+                      count: formatChartValue(hoveredPoint.value),
+                    })
+                  : t("common:usage.dashboard.hoverToolUsage", {
+                      count: formatChartValue(hoveredPoint.value),
+                    })}
+              </text>
+            </g>
+          )}
         </svg>
       </div>
     );
@@ -959,7 +1223,10 @@ export function UsageIndicator() {
           {/* Header with overall status */}
           <div className="flex items-center justify-between pb-2 border-b border-white/10">
             <div className="flex items-center gap-2">
-              <Icon className="h-3.5 w-3.5 text-indigo-400" aria-hidden="true" />
+              <Icon
+                className="h-3.5 w-3.5 text-indigo-400"
+                aria-hidden="true"
+              />
               <span className="font-semibold text-xs text-gray-200">
                 {t("common:usage.usageBreakdown")}
               </span>
@@ -969,7 +1236,8 @@ export function UsageIndicator() {
               <div className="text-[10px] text-gray-400">
                 {t("common:usage.dashboard.lastUpdated")}:{" "}
                 <span className="font-medium text-gray-300">
-                  {formatTimeAgo(usage.fetchedAt, t) || t("common:usage.notAvailable")}
+                  {formatTimeAgo(usage.fetchedAt, t) ||
+                    t("common:usage.notAvailable")}
                 </span>
               </div>
             )}

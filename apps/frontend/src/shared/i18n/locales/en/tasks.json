@@ -171,7 +171,7 @@
   "wizard": {
     "createTitle": "Create New Task",
     "createDescription": "Describe what you want to build. The AI will analyze your request and create a detailed specification.",
-    "descriptionPlaceholder": "Describe the feature, bug fix, or improvement you want to implement. Be as specific as possible about requirements, constraints, and expected behavior. Type @ to reference files.",
+    "descriptionPlaceholder": "Describe the feature, bug fix, or improvement you want to implement. Be as specific as possible about requirements, constraints, and expected behavior.",
     "draftRestored": "Draft restored",
     "startFresh": "Start Fresh",
     "hideFiles": "Hide Files",
