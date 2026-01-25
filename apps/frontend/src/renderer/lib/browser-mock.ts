@@ -192,6 +192,36 @@ const browserMockAPI: ElectronAPI = {
     success: true
   }),
 
+  getIdeationHistories: async () => ({
+    success: true,
+    data: {
+      items: [],
+      total: 0,
+      page: 1,
+      limit: 20,
+      hasMore: false
+    }
+  }) as any,
+
+  getIdeationHistory: async (_ideationId: number) => ({
+    success: true,
+    data: null as any
+  }),
+
+  createIdeationHistory: async (_data: any) => ({
+    success: true,
+    data: null as any
+  }),
+
+  updateIdeationHistory: async (_ideationId: number, _updates: any) => ({
+    success: true,
+    data: null as any
+  }),
+
+  deleteIdeationHistory: async (_ideationId: number) => ({
+    success: true
+  }),
+
   // GitHub API
   github: {
     getGitHubRepositories: async () => ({ success: true, data: [] }),

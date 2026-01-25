@@ -326,6 +326,23 @@ export interface ElectronAPI {
   updateChatHistory: (chatId: number, updates: import('./auth').ChatHistoryUpdate) => Promise<IPCResult<import('./auth').ChatHistory>>;
   /** Delete a chat history */
   deleteChatHistory: (chatId: number) => Promise<IPCResult>;
+  /** Get all ideation histories for authenticated user with optional filtering/pagination */
+  getIdeationHistories: (queryParams?: {
+    search?: string;
+    date_start?: string;
+    date_end?: string;
+    sort?: 'newest' | 'oldest';
+    page?: number;
+    limit?: number;
+  }) => Promise<IPCResult<import('./auth').IdeationHistoryListResponse>>;
+  /** Get a single ideation history by ID */
+  getIdeationHistory: (ideationId: number) => Promise<IPCResult<import('./auth').IdeationHistory>>;
+  /** Create a new ideation history */
+  createIdeationHistory: (data: import('./auth').IdeationHistoryCreate) => Promise<IPCResult<import('./auth').IdeationHistory>>;
+  /** Update an existing ideation history */
+  updateIdeationHistory: (ideationId: number, updates: import('./auth').IdeationHistoryUpdate) => Promise<IPCResult<import('./auth').IdeationHistory>>;
+  /** Delete an ideation history */
+  deleteIdeationHistory: (ideationId: number) => Promise<IPCResult>;
 
   // Usage Monitoring (Proactive Account Switching)
   /** Request current usage snapshot */
