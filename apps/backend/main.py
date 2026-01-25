@@ -706,6 +706,72 @@ async def link_github_account_endpoint(
         )
 
 
+@app.get("/github/accounts", response_model=list[GitHubAccountResponse], tags=["GitHub"])
+async def get_user_github_accounts_endpoint(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+) -> list[GitHubAccountResponse]:
+    """
+    Get all GitHub accounts linked to the authenticated user.
+
+    This endpoint returns a list of all GitHub accounts that have been linked
+    to the authenticated user. Users can link multiple GitHub accounts for
+    different purposes (e.g., personal, work, open source contributions).
+
+    Args:
+        current_user: Current authenticated user (injected by dependency)
+        db: Database session (injected by FastAPI)
+
+    Returns:
+        list[GitHubAccountResponse]: List of linked GitHub account information
+
+    Raises:
+        HTTPException 401: If no valid token is provided
+        HTTPException 500: If retrieval fails
+
+    Example:
+        GET /github/accounts
+        Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+        Response:
+        [
+            {
+                "id": 2,
+                "github_id": 98765432,
+                "username": "workuser",
+                "avatar_url": "https://github.com/images/error/workuser_happy.gif",
+                "linked_at": "2025-01-25T11:00:00Z"
+            },
+            {
+                "id": 1,
+                "github_id": 12345678,
+                "username": "octocat",
+                "avatar_url": "https://github.com/images/error/octocat_happy.gif",
+                "linked_at": "2025-01-25T10:00:00Z"
+            }
+        ]
+
+    Note:
+        - This is a protected route that requires a valid JWT token
+        - Only returns GitHub accounts linked to the authenticated user
+        - Returns empty list if no accounts are linked
+        - Ordered by linked_at timestamp (newest first)
+        - Does NOT include access tokens in response (security measure)
+    """
+    try:
+        # Get all GitHub accounts linked to the authenticated user
+        github_accounts = get_user_github_accounts(db, current_user)
+
+        # Return list of accounts (FastAPI automatically converts to response model)
+        return github_accounts
+
+    except Exception as e:
+        # Handle any errors during retrieval
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve GitHub accounts: {str(e)}"
+        )
+
 
 # ============================================================================
 # History Endpoints
