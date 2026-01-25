@@ -25,6 +25,7 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from authlib.integrations.starlette_client import OAuth
 
 # Import database, models, schemas, services, and auth utilities
 from database import engine, get_db, init_db
@@ -39,6 +40,10 @@ from typing import Dict, Any
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 API_TITLE = "Auto Claude Authentication API"
 API_VERSION = "1.0.0"
+
+# GitHub OAuth configuration
+GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID")
+GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET")
 
 
 @asynccontextmanager
@@ -79,6 +84,22 @@ app.add_middleware(
     allow_credentials=True,  # Allow cookies and authorization headers
     allow_methods=["*"],  # Allow all HTTP methods
     allow_headers=["*"],  # Allow all headers
+)
+
+
+# Initialize Authlib OAuth client for GitHub integration
+oauth = OAuth()
+
+# Register GitHub OAuth application
+# This will be used in subtask-3-2 and subtask-3-3 for OAuth endpoints
+oauth.register(
+    name='github',
+    client_id=GITHUB_CLIENT_ID,
+    client_secret=GITHUB_CLIENT_SECRET,
+    server_metadata_url='https://api.github.com/.well-known/oauth-authorization-server',
+    client_kwargs={
+        'scope': 'user:email'
+    }
 )
 
 
