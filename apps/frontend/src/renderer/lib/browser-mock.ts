@@ -222,6 +222,36 @@ const browserMockAPI: ElectronAPI = {
     success: true
   }),
 
+  getRoadmapHistories: async () => ({
+    success: true,
+    data: {
+      items: [],
+      total: 0,
+      page: 1,
+      limit: 20,
+      hasMore: false
+    }
+  }) as any,
+
+  getRoadmapHistory: async (_roadmapId: number) => ({
+    success: true,
+    data: null as any
+  }),
+
+  createRoadmapHistory: async (_data: any) => ({
+    success: true,
+    data: null as any
+  }),
+
+  updateRoadmapHistory: async (_roadmapId: number, _updates: any) => ({
+    success: true,
+    data: null as any
+  }),
+
+  deleteRoadmapHistory: async (_roadmapId: number) => ({
+    success: true
+  }),
+
   // GitHub API
   github: {
     getGitHubRepositories: async () => ({ success: true, data: [] }),

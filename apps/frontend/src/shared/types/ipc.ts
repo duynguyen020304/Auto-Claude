@@ -344,6 +344,24 @@ export interface ElectronAPI {
   /** Delete an ideation history */
   deleteIdeationHistory: (ideationId: number) => Promise<IPCResult>;
 
+  /** Get all roadmap histories for authenticated user with optional filtering/pagination */
+  getRoadmapHistories: (queryParams?: {
+    search?: string;
+    date_start?: string;
+    date_end?: string;
+    sort?: 'newest' | 'oldest';
+    page?: number;
+    limit?: number;
+  }) => Promise<IPCResult<import('./auth').RoadmapHistoryListResponse>>;
+  /** Get a single roadmap history by ID */
+  getRoadmapHistory: (roadmapId: number) => Promise<IPCResult<import('./auth').RoadmapHistory>>;
+  /** Create a new roadmap history */
+  createRoadmapHistory: (data: import('./auth').RoadmapHistoryCreate) => Promise<IPCResult<import('./auth').RoadmapHistory>>;
+  /** Update an existing roadmap history */
+  updateRoadmapHistory: (roadmapId: number, updates: import('./auth').RoadmapHistoryUpdate) => Promise<IPCResult<import('./auth').RoadmapHistory>>;
+  /** Delete a roadmap history */
+  deleteRoadmapHistory: (roadmapId: number) => Promise<IPCResult>;
+
   // Usage Monitoring (Proactive Account Switching)
   /** Request current usage snapshot */
   requestUsageUpdate: () => Promise<IPCResult<ClaudeUsageSnapshot | null>>;
