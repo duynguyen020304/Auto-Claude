@@ -11,10 +11,59 @@ import bcrypt
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
 # Load configuration from environment
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+# HTTP Bearer security scheme for extracting JWT tokens from Authorization header
+security = HTTPBearer()
+
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> Dict[str, Any]:
+    """
+    FastAPI dependency to validate JWT token and extract current user payload.
+
+    Args:
+        credentials: HTTP Bearer credentials extracted from Authorization header
+
+    Returns:
+        Token payload dict containing user information
+
+    Raises:
+        HTTPException: 401 if token is invalid, expired, or malformed
+
+    Usage:
+        ```python
+        from fastapi import Depends
+        from auth import get_current_user
+
+        @app.get("/auth/me")
+        async def get_current_user_info(current_user: Dict[str, Any] = Depends(get_current_user)):
+            return current_user
+        ```
+
+    Note:
+        This dependency extracts the token from the Authorization header
+        in the format: "Bearer <token>". Returns the decoded payload
+        which typically contains user identification like {"sub": user_id}.
+    """
+    token = credentials.credentials
+    payload = verify_token(token)
+
+    if payload is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return payload
 
 
 def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
