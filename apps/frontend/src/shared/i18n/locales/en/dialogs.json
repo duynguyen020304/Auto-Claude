@@ -206,5 +206,21 @@
   "workspace": {
     "addWorkspace": "Add Workspace",
     "addWorkspaceDescription": "Add a new workspace to your project"
+  },
+  "auth": {
+    "loginSuccess": {
+      "title": "Login Successful",
+      "message": "You have been logged in successfully."
+    },
+    "registerSuccess": {
+      "title": "Registration Successful",
+      "message": "Your account has been created. You can now log in."
+    },
+    "logout": {
+      "title": "Logout",
+      "message": "Are you sure you want to logout?",
+      "confirm": "Logout",
+      "cancel": "Cancel"
+    }
   }
 }

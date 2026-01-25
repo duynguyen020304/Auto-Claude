@@ -206,5 +206,21 @@
   "workspace": {
     "addWorkspace": "Ajouter un espace de travail",
     "addWorkspaceDescription": "Ajouter un nouvel espace de travail à votre projet"
+  },
+  "auth": {
+    "loginSuccess": {
+      "title": "Connexion réussie",
+      "message": "Vous avez été connecté avec succès."
+    },
+    "registerSuccess": {
+      "title": "Inscription réussie",
+      "message": "Votre compte a été créé. Vous pouvez maintenant vous connecter."
+    },
+    "logout": {
+      "title": "Déconnexion",
+      "message": "Êtes-vous sûr de vouloir vous déconnecter ?",
+      "confirm": "Se déconnecter",
+      "cancel": "Annuler"
+    }
   }
 }

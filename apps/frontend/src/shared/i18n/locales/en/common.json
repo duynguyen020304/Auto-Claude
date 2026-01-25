@@ -671,6 +671,39 @@
     "footer": "The account will be available once you complete authentication."
   },
   "auth": {
+    "login": {
+      "title": "Sign In",
+      "email": "Email",
+      "emailPlaceholder": "Enter your email",
+      "password": "Password",
+      "passwordPlaceholder": "Enter your password",
+      "loginButton": "Sign In",
+      "loginWithGitHub": "Sign In with GitHub",
+      "noAccount": "Don't have an account?",
+      "registerLink": "Sign Up",
+      "emailRequired": "Email is required",
+      "passwordRequired": "Password is required",
+      "invalidCredentials": "Invalid email or password"
+    },
+    "register": {
+      "title": "Sign Up",
+      "email": "Email",
+      "emailPlaceholder": "Enter your email",
+      "password": "Password",
+      "passwordPlaceholder": "Enter your password (min. 8 characters)",
+      "confirmPassword": "Confirm Password",
+      "confirmPasswordPlaceholder": "Confirm your password",
+      "registerButton": "Sign Up",
+      "registerWithGitHub": "Sign Up with GitHub",
+      "hasAccount": "Already have an account?",
+      "loginLink": "Sign In",
+      "emailRequired": "Email is required",
+      "passwordRequired": "Password is required",
+      "passwordTooShort": "Password must be at least 8 characters",
+      "confirmPasswordRequired": "Please confirm your password",
+      "passwordsDoNotMatch": "Passwords do not match",
+      "invalidEmail": "Please enter a valid email address"
+    },
     "failure": {
       "title": "Authentication Required",
       "profileLabel": "Profile",
