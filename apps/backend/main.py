@@ -35,6 +35,7 @@ from database import engine, get_db, init_db
 from models import User, Base
 from schemas import (
     UserCreate, UserResponse, Token,
+    GitHubLinkRequest, GitHubAccountResponse,
     ChatHistoryCreate, ChatHistoryResponse, ChatHistoryUpdate,
     IdeationHistoryCreate, IdeationHistoryResponse, IdeationHistoryUpdate,
     RoadmapHistoryCreate, RoadmapHistoryResponse, RoadmapHistoryUpdate,
@@ -51,6 +52,7 @@ from services.history_service import (
     create_repo_history, get_user_repo_histories,
     get_repo_history, update_repo_history, delete_repo_history
 )
+from services.github_service import link_github_account, unlink_github_account, get_user_github_accounts
 from auth import create_access_token, get_current_user
 from typing import Dict, Any, Optional
 
@@ -562,6 +564,145 @@ async def github_callback(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"GitHub OAuth callback failed: {str(e)}"
+        )
+
+
+# ============================================================================
+# GitHub Account Linking Endpoints
+# ============================================================================
+
+@app.post("/github/link", response_model=GitHubAccountResponse, tags=["GitHub"])
+async def link_github_account_endpoint(
+    link_data: GitHubLinkRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+) -> GitHubAccountResponse:
+    """
+    Link a GitHub account to the authenticated user.
+
+    This endpoint exchanges a GitHub OAuth authorization code for an access token,
+    fetches the user's GitHub profile, and links the GitHub account to the
+    authenticated user. Users can link multiple GitHub accounts.
+
+    Args:
+        link_data: GitHub OAuth authorization code
+        current_user: Current authenticated user (injected by dependency)
+        db: Database session (injected by FastAPI)
+
+    Returns:
+        GitHubAccountResponse: Linked GitHub account information
+
+    Raises:
+        HTTPException 401: If no valid token is provided or OAuth code is invalid
+        HTTPException 409: If GitHub account is already linked (idempotent - returns existing account)
+        HTTPException 500: If linking fails or GitHub API error occurs
+
+    Example:
+        POST /github/link
+        Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        Content-Type: application/json
+
+        {
+            "code": "c59f9b3d8b0f4e9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4"
+        }
+
+        Response:
+        {
+            "id": 1,
+            "github_id": 12345678,
+            "username": "octocat",
+            "avatar_url": "https://github.com/images/error/octocat_happy.gif",
+            "linked_at": "2025-01-25T10:00:00Z"
+        }
+
+    Note:
+        - This is a protected route that requires a valid JWT token
+        - The OAuth code should be obtained from the GitHub OAuth flow
+        - Users can link multiple GitHub accounts
+        - Attempting to link the same GitHub account twice is idempotent (returns existing account)
+        - The access token is stored for future GitHub API calls
+    """
+    try:
+        # Exchange the authorization code for an access token
+        # We need to create a mock token dict with the code
+        # Note: This is different from the callback flow where we receive the code in the query params
+        # For manual linking, we need to use the code to fetch the access token
+
+        # Create a token dict from the authorization code
+        # In a real OAuth flow, we would exchange the code for a token
+        # For this implementation, we'll use authlib to fetch the user info directly
+
+        # Fetch user info from GitHub using the authorization code
+        # We need to manually exchange the code for an access token first
+        import httpx
+
+        # Exchange code for access token
+        async with httpx.AsyncClient() as client:
+            token_response = await client.post(
+                'https://github.com/login/oauth/access_token',
+                data={
+                    'client_id': GITHUB_CLIENT_ID,
+                    'client_secret': GITHUB_CLIENT_SECRET,
+                    'code': link_data.code
+                },
+                headers={'Accept': 'application/json'}
+            )
+            token_data = token_response.json()
+
+            if 'error' in token_data:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail=f"GitHub OAuth error: {token_data.get('error_description', 'Invalid code')}"
+                )
+
+            github_access_token = token_data.get('access_token')
+
+            if not github_access_token:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Failed to obtain GitHub access token"
+                )
+
+            # Fetch user profile from GitHub API
+            user_response = await client.get(
+                'https://api.github.com/user',
+                headers={'Authorization': f'Bearer {github_access_token}'}
+            )
+            github_user = user_response.json()
+
+        # Extract relevant GitHub user information
+        github_id = github_user.get('id')
+        github_username = github_user.get('login')
+        github_avatar = github_user.get('avatar_url')
+
+        # Validate that we received required data
+        if not github_id or not github_username:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid GitHub user data received"
+            )
+
+        # Link the GitHub account to the authenticated user
+        linked_account = link_github_account(
+            db=db,
+            user=current_user,
+            github_id=github_id,
+            username=github_username,
+            avatar_url=github_avatar,
+            access_token=github_access_token
+        )
+
+        # Return the linked account information
+        return linked_account
+
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        # Handle any other errors (GitHub API errors, database errors, etc.)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to link GitHub account: {str(e)}"
         )
 
 

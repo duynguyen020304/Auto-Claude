@@ -116,6 +116,26 @@ class TokenData(BaseModel):
 # GitHub Account Schemas
 # ============================================================================
 
+class GitHubLinkRequest(BaseModel):
+    """
+    Schema for GitHub account link request.
+
+    Attributes:
+        code: OAuth authorization code from GitHub
+
+    Validation:
+        - Code must be a non-empty string
+    """
+    code: str = Field(..., min_length=1, description="OAuth authorization code from GitHub")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "code": "c59f9b3d8b0f4e9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4"
+            }
+        }
+
+
 class GitHubAccountResponse(BaseModel):
     """
     Schema for GitHub account response.
