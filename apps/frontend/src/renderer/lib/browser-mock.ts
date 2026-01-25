@@ -161,6 +161,37 @@ const browserMockAPI: ElectronAPI = {
     }
   }),
 
+  // User History API (Chat, Ideation, Roadmap, Repo)
+  getChatHistories: async () => ({
+    success: true,
+    data: {
+      items: [],
+      total: 0,
+      page: 1,
+      limit: 20,
+      hasMore: false
+    }
+  }) as any,
+
+  getChatHistory: async (_chatId: number) => ({
+    success: true,
+    data: null as any
+  }),
+
+  createChatHistory: async (_data: any) => ({
+    success: true,
+    data: null as any
+  }),
+
+  updateChatHistory: async (_chatId: number, _updates: any) => ({
+    success: true,
+    data: null as any
+  }),
+
+  deleteChatHistory: async (_chatId: number) => ({
+    success: true
+  }),
+
   // GitHub API
   github: {
     getGitHubRepositories: async () => ({ success: true, data: [] }),
