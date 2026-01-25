@@ -7,6 +7,7 @@ Uses HS256 algorithm with SECRET_KEY from environment.
 
 import os
 import jwt
+import bcrypt
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 
@@ -63,3 +64,47 @@ def verify_token(token: str) -> Optional[Dict[str, Any]]:
         return payload
     except jwt.PyJWTError:
         return None
+
+
+def hash_password(password: str) -> str:
+    """
+    Hash a password using bcrypt.
+
+    Args:
+        password: Plain text password to hash
+
+    Returns:
+        Salted bcrypt hash as string
+
+    Note:
+        Uses bcrypt with automatic salt generation. The resulting hash
+        includes the salt, so no separate salt storage is needed.
+        Hash length is typically 60 characters.
+    """
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+    return hashed.decode('utf-8')
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """
+    Verify a plain text password against a bcrypt hash.
+
+    Args:
+        plain_password: Plain text password to verify
+        hashed_password: Stored bcrypt hash to compare against
+
+    Returns:
+        True if password matches, False otherwise
+
+    Note:
+        Uses bcrypt's constant-time comparison to prevent timing attacks.
+        Returns False for any error (invalid hash format, encoding issues, etc.).
+    """
+    try:
+        return bcrypt.checkpw(
+            plain_password.encode('utf-8'),
+            hashed_password.encode('utf-8')
+        )
+    except Exception:
+        return False
