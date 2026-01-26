@@ -9,6 +9,8 @@ import json
 import logging
 from pathlib import Path
 
+from core.sentry import capture_exception
+
 from .schema import (
     EPISODE_TYPE_CREDENTIAL_USAGE,
     EPISODE_TYPE_GOTCHA,
@@ -121,6 +123,12 @@ class GraphitiSearch:
 
         except Exception as e:
             logger.warning(f"Failed to search context: {e}")
+            capture_exception(
+                e,
+                query_summary=query[:100] if query else "",
+                group_id=self.group_id,
+                operation="get_relevant_context",
+            )
             return []
 
     async def get_session_history(
@@ -175,6 +183,11 @@ class GraphitiSearch:
 
         except Exception as e:
             logger.warning(f"Failed to get session history: {e}")
+            capture_exception(
+                e,
+                group_id=self.group_id,
+                operation="get_session_history",
+            )
             return []
 
     async def get_similar_task_outcomes(
@@ -228,6 +241,12 @@ class GraphitiSearch:
 
         except Exception as e:
             logger.warning(f"Failed to get similar task outcomes: {e}")
+            capture_exception(
+                e,
+                query_summary=task_description[:100] if task_description else "",
+                group_id=self.group_id,
+                operation="get_similar_task_outcomes",
+            )
             return []
 
     async def get_patterns_and_gotchas(
@@ -338,6 +357,12 @@ class GraphitiSearch:
 
         except Exception as e:
             logger.warning(f"Failed to get patterns/gotchas: {e}")
+            capture_exception(
+                e,
+                query_summary=query[:100] if query else "",
+                group_id=self.group_id,
+                operation="get_patterns_and_gotchas",
+            )
             return [], []
 
     async def get_credential_usage(self, credential_id: str) -> dict:

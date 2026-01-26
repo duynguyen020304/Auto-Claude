@@ -415,8 +415,11 @@ export function UsageIndicator() {
     );
   }
 
-  // Show unavailable state
+  // Show unavailable state - with better messaging based on cause
   if (!isAvailable || !usage) {
+    // Check if it's a re-auth issue (better UX than generic "not supported")
+    const needsReauth = activeProfileNeedsReauth;
+
     return (
       <Popover>
         <PopoverTrigger asChild>
