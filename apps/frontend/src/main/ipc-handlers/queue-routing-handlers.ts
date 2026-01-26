@@ -42,9 +42,14 @@ export function registerQueueRoutingHandlers(
     async (
       _event,
       options?: {
+        /** Profile ID to exclude (e.g., one that just hit rate limit) */
         excludeProfileId?: string;
+        /** Maximum tasks per profile before load balancing (default: 2) */
         perProfileMaxTasks?: number;
+        /** Usage threshold (0-1) before considering profile "busy" (default: 0.85) */
         profileThreshold?: number;
+        /** API profile ID from task metadata ('auto' for rotation strategy, or specific profile ID) */
+        apiProfileId?: string;
       }
     ): Promise<{ success: boolean; data?: ClaudeProfile | null; error?: string }> => {
       try {
@@ -54,7 +59,23 @@ export function registerQueueRoutingHandlers(
           return { success: true, data: null };
         }
 
-        // Get auto-switch settings to check if enabled
+        // Handle explicit profile selection vs 'auto' rotation strategy
+        if (options?.apiProfileId && options.apiProfileId !== 'auto') {
+          // Specific profile requested - find and return it
+          const profile = profileManager.getProfile(options.apiProfileId);
+          if (profile) {
+            console.log('[QueueRouting] Using specific profile from task metadata:', {
+              profileId: profile.id,
+              profileName: profile.name
+            });
+            return { success: true, data: profile };
+          } else {
+            console.warn('[QueueRouting] Requested profile not found:', options.apiProfileId);
+            return { success: true, data: null };
+          }
+        }
+
+        // 'auto' profile selection or no profile specified - use rotation strategy
         const settings = profileManager.getAutoSwitchSettings();
 
         // If auto-switching is disabled, return null (no preference)
@@ -64,7 +85,7 @@ export function registerQueueRoutingHandlers(
         }
 
         // Use getBestAvailableProfile which internally handles:
-        // - User's configured priority order
+        // - Rotation strategy from settings (priority, round-robin, least-used, random, weighted, time-based)
         // - Profile authentication status
         // - Rate limit status
         // - Usage thresholds (session and weekly)
@@ -73,10 +94,13 @@ export function registerQueueRoutingHandlers(
         );
 
         if (bestProfile) {
-          console.log('[QueueRouting] Best profile selected:', {
+          const strategy = settings.rotationStrategy || 'priority';
+          console.log('[QueueRouting] Best profile selected using rotation strategy:', {
             profileId: bestProfile.id,
             profileName: bestProfile.name,
-            excludedId: options?.excludeProfileId
+            strategy,
+            excludedId: options?.excludeProfileId,
+            apiProfileId: options?.apiProfileId || 'not specified'
           });
         } else {
           console.log('[QueueRouting] No suitable profile found for task routing');

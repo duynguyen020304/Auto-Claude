@@ -35,6 +35,8 @@ export interface GetBestProfileOptions {
   perProfileMaxTasks?: number;
   /** Usage threshold (0-1) before considering profile "busy" (default: 0.85) */
   profileThreshold?: number;
+  /** API profile ID from task metadata ('auto' for rotation strategy, or specific profile ID) */
+  apiProfileId?: string;
 }
 
 /**
