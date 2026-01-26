@@ -440,6 +440,74 @@ export function leastUsedStrategy(
 }
 
 /**
+ * Random strategy - select a random available profile
+ *
+ * Selection Logic:
+ * 1. Filter to candidates (excluding the current profile)
+ * 2. Filter to available profiles only
+ * 3. Randomly select one profile from available profiles
+ * 4. Return the randomly selected profile
+ *
+ * This strategy provides unpredictability which can help:
+ * - Distribute load evenly across accounts
+ * - Avoid detection patterns from predictable switching
+ * - Ensure all accounts get similar usage over time
+ *
+ * @param profiles - All Claude profiles
+ * @param settings - Auto-switch settings (contains thresholds)
+ * @param excludeProfileId - Profile ID to exclude (usually the current/failing one)
+ * @returns Randomly selected profile, or null if no available profiles
+ */
+export function randomStrategy(
+  profiles: ClaudeProfile[],
+  settings: ClaudeAutoSwitchSettings,
+  excludeProfileId?: string
+): ClaudeProfile | null {
+  // Get all profiles except the excluded one
+  const candidates = profiles.filter(p => p.id !== excludeProfileId);
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  if (isDebug) {
+    console.warn('[ProfileScorer] Random strategy: evaluating', candidates.length, 'candidate profiles');
+  }
+
+  // Filter to available profiles only
+  const availableProfiles: ClaudeProfile[] = [];
+  const availabilityChecks: Array<{ profile: ClaudeProfile; available: boolean; reason?: string }> = [];
+
+  for (const profile of candidates) {
+    const availability = checkProfileAvailability(profile, settings);
+    availabilityChecks.push({ profile, available: availability.available, reason: availability.reason });
+
+    if (availability.available) {
+      availableProfiles.push(profile);
+    }
+
+    if (isDebug) {
+      console.warn('[ProfileScorer] Random: profile', profile.name, 'available:', availability.available, availability.reason ? `(${availability.reason})` : '');
+    }
+  }
+
+  if (availableProfiles.length === 0) {
+    console.warn('[ProfileScorer] Random: no available profiles');
+    return null;
+  }
+
+  // Randomly select one profile
+  const randomIndex = Math.floor(Math.random() * availableProfiles.length);
+  const selectedProfile = availableProfiles[randomIndex];
+
+  if (isDebug) {
+    console.warn('[ProfileScorer] Random: selected profile', selectedProfile.name, 'at random index', randomIndex, 'of', availableProfiles.length, 'available profiles');
+  }
+
+  return selectedProfile;
+}
+
+/**
  * Get profiles sorted by availability (best first)
  * This is a simpler sort that doesn't consider priority order - used for display purposes
  */
