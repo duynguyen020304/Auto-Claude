@@ -30,6 +30,19 @@ export const DEFAULT_AUTO_SWITCH_SETTINGS: ClaudeAutoSwitchSettings = {
 };
 
 /**
+ * Cumulative usage metrics for rotation strategies (e.g., least-used)
+ * Tracks total usage across all API calls for intelligent profile selection
+ */
+export interface ProfileUsageMetrics {
+  /** Total tokens consumed across all API calls */
+  totalTokens: number;
+  /** Total number of API requests made */
+  totalRequests: number;
+  /** Timestamp of most recent usage */
+  lastUsedAt: Date;
+}
+
+/**
  * Internal storage format for Claude profiles
  */
 export interface ProfileStoreData {
@@ -45,6 +58,12 @@ export interface ProfileStoreData {
    * Cleared after successful re-authentication.
    */
   migratedProfileIds?: string[];
+  /**
+   * Per-profile cumulative usage metrics for rotation strategies (e.g., least-used).
+   * Maps profile ID to usage statistics (tokens, requests, last used).
+   * Persists across app restarts for intelligent profile selection.
+   */
+  profileUsageMetrics?: Record<string, ProfileUsageMetrics>;
 }
 
 /**
