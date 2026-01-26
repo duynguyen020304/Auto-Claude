@@ -269,6 +269,78 @@ export function shouldProactivelySwitch(
 }
 
 /**
+ * Round-robin strategy - cycle through profiles sequentially
+ *
+ * Selection Logic:
+ * 1. Filter to candidates (excluding the current profile)
+ * 2. Filter to available profiles only
+ * 3. Get last used index from settings (default: 0)
+ * 4. Move to next index in circular fashion
+ * 5. Return profile at next index and the new index for state tracking
+ *
+ * @param profiles - All Claude profiles
+ * @param settings - Auto-switch settings (contains roundRobinLastIndex)
+ * @param excludeProfileId - Profile ID to exclude (usually the current/failing one)
+ * @returns Object with selected profile and new index, or null if no available profiles
+ */
+export function roundRobinStrategy(
+  profiles: ClaudeProfile[],
+  settings: ClaudeAutoSwitchSettings,
+  excludeProfileId?: string
+): { profile: ClaudeProfile | null; newIndex: number } {
+  // Get all profiles except the excluded one
+  const candidates = profiles.filter(p => p.id !== excludeProfileId);
+
+  if (candidates.length === 0) {
+    return { profile: null, newIndex: 0 };
+  }
+
+  if (isDebug) {
+    console.warn('[ProfileScorer] Round-robin strategy: evaluating', candidates.length, 'candidate profiles');
+  }
+
+  // Filter to available profiles only
+  const availableProfiles: ClaudeProfile[] = [];
+  const availabilityChecks: Array<{ profile: ClaudeProfile; available: boolean; reason?: string }> = [];
+
+  for (const profile of candidates) {
+    const availability = checkProfileAvailability(profile, settings);
+    availabilityChecks.push({ profile, available: availability.available, reason: availability.reason });
+
+    if (availability.available) {
+      availableProfiles.push(profile);
+    }
+
+    if (isDebug) {
+      console.warn('[ProfileScorer] Round-robin: profile', profile.name, 'available:', availability.available, availability.reason ? `(${availability.reason})` : '');
+    }
+  }
+
+  if (availableProfiles.length === 0) {
+    console.warn('[ProfileScorer] Round-robin: no available profiles');
+    return { profile: null, newIndex: 0 };
+  }
+
+  // Get last used index from settings (default to 0)
+  const lastIndex = settings.roundRobinLastIndex ?? 0;
+
+  // Calculate next index (circular)
+  const nextIndex = (lastIndex + 1) % availableProfiles.length;
+
+  if (isDebug) {
+    console.warn('[ProfileScorer] Round-robin: last index =', lastIndex, ', next index =', nextIndex, 'of', availableProfiles.length, 'available profiles');
+  }
+
+  const selectedProfile = availableProfiles[nextIndex];
+
+  if (isDebug) {
+    console.warn('[ProfileScorer] Round-robin: selected profile', selectedProfile.name, 'at index', nextIndex);
+  }
+
+  return { profile: selectedProfile, newIndex: nextIndex };
+}
+
+/**
  * Get profiles sorted by availability (best first)
  * This is a simpler sort that doesn't consider priority order - used for display purposes
  */
