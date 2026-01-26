@@ -26,7 +26,13 @@ export const DEFAULT_AUTO_SWITCH_SETTINGS: ClaudeAutoSwitchSettings = {
   sessionThreshold: 95,  // Consider switching at 95% session usage
   weeklyThreshold: 99,   // Consider switching at 99% weekly usage
   autoSwitchOnRateLimit: false,  // Prompt user by default
-  usageCheckInterval: 30000  // Check every 30s when enabled (0 = disabled)
+  usageCheckInterval: 30000,  // Check every 30s when enabled (0 = disabled)
+
+  // Rotation strategy settings
+  rotationStrategy: 'priority',  // Default to priority-based rotation
+  rotationInterval: 300,         // Time-based rotation interval in seconds (5 minutes)
+  profileWeights: {},            // Weighted distribution weights per profile ID
+  roundRobinLastIndex: 0         // Round-robin state tracking - start at first profile
 };
 
 /**
