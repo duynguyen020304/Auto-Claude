@@ -585,7 +585,16 @@
       "weeklyThreshold": "Weekly usage threshold",
       "weeklyThresholdDescription": "Switch when weekly usage reaches this level (recommended: 99%)",
       "reactiveRecovery": "Reactive Recovery",
-      "reactiveDescription": "Auto-swap when unexpected rate limit is hit"
+      "reactiveDescription": "Auto-swap when unexpected rate limit is hit",
+      "timeBasedInterval": "Rotation Interval",
+      "timeBasedIntervalDescription": "Configure how often to rotate to the next account",
+      "intervalLabel": "Interval",
+      "intervalDescription": "Time interval between automatic rotations (1-60 minutes)",
+      "weightedDistribution": "Account Weights",
+      "weightedDistributionDescription": "Set higher weights for accounts that should be selected more often",
+      "usageStats": "Usage Statistics",
+      "usageStatsDescription": "Accounts are ranked by usage (session + weekly). The least-used account is selected automatically.",
+      "usageStatsNote": "Usage bars are shown in the account list above. The system automatically selects the account with the lowest combined usage."
     },
     "priority": {
       "title": "Account Priority Order",

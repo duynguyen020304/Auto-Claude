@@ -138,6 +138,12 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
   // ============================================
   const [profileUsageData, setProfileUsageData] = useState<Map<string, ProfileUsageSummary>>(new Map());
 
+  // ============================================
+  // Strategy-specific configuration state
+  // ============================================
+  const [editingWeights, setEditingWeights] = useState<Record<string, number>>({});
+  const [isSavingWeights, setIsSavingWeights] = useState(false);
+
   // Fetch all profiles usage data
   // Force refresh to get fresh data when Settings opens (bypasses 1-minute cache)
   const loadProfileUsageData = useCallback(async (forceRefresh: boolean = false) => {
@@ -1358,6 +1364,148 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
                           </SelectItem>
                         </SelectContent>
                       </Select>
+
+                      {/* Strategy-specific configuration */}
+                      {autoSwitchSettings?.rotationStrategy === 'time-based' && (
+                        <div className="space-y-3 pt-3 border-t border-border/50">
+                          <div>
+                            <Label htmlFor="rotation-interval" className="text-sm flex items-center gap-2">
+                              <Clock className="h-3.5 w-3.5" />
+                              {t('accounts.autoSwitching.timeBasedInterval')}
+                            </Label>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {t('accounts.autoSwitching.timeBasedIntervalDescription')}
+                            </p>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <Label htmlFor="rotation-interval" className="text-sm">
+                                {t('accounts.autoSwitching.intervalLabel')}
+                              </Label>
+                              <span className="text-sm font-mono">
+                                {autoSwitchSettings?.rotationInterval
+                                  ? `${Math.floor(autoSwitchSettings.rotationInterval / 60)}m`
+                                  : '5m'}
+                              </span>
+                            </div>
+                            <input
+                              id="rotation-interval"
+                              type="range"
+                              min="60"
+                              max="3600"
+                              step="60"
+                              value={autoSwitchSettings?.rotationInterval ?? 300}
+                              onChange={(e) => handleUpdateAutoSwitch({ rotationInterval: parseInt(e.target.value) })}
+                              disabled={isLoadingAutoSwitch}
+                              className="w-full"
+                              aria-describedby="rotation-interval-description"
+                            />
+                            <p id="rotation-interval-description" className="text-xs text-muted-foreground">
+                              {t('accounts.autoSwitching.intervalDescription')}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {autoSwitchSettings?.rotationStrategy === 'weighted' && (
+                        <div className="space-y-3 pt-3 border-t border-border/50">
+                          <div>
+                            <Label className="text-sm flex items-center gap-2">
+                              <TrendingUp className="h-3.5 w-3.5" />
+                              {t('accounts.autoSwitching.weightedDistribution')}
+                            </Label>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {t('accounts.autoSwitching.weightedDistributionDescription')}
+                            </p>
+                          </div>
+                          <div className="space-y-2">
+                            {unifiedAccounts.map((account) => {
+                              const currentWeight = autoSwitchSettings?.profileWeights?.[account.id] ?? 1;
+                              const editingWeight = editingWeights[account.id] ?? currentWeight;
+
+                              return (
+                                <div key={account.id} className="flex items-center gap-3 p-2 rounded-md bg-background/50">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-sm font-medium truncate">{account.displayName}</div>
+                                    <div className="text-xs text-muted-foreground truncate">{account.identifier}</div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Input
+                                      type="number"
+                                      min="1"
+                                      max="100"
+                                      step="1"
+                                      value={editingWeight}
+                                      onChange={(e) => {
+                                        const value = parseInt(e.target.value) || 1;
+                                        setEditingWeights(prev => ({ ...prev, [account.id]: value }));
+                                      }}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          handleUpdateAutoSwitch({
+                                            profileWeights: {
+                                              ...autoSwitchSettings?.profileWeights,
+                                              [account.id]: editingWeight
+                                            }
+                                          });
+                                        }
+                                      }}
+                                      disabled={isLoadingAutoSwitch || isSavingWeights}
+                                      className="w-16 h-8 text-sm text-center"
+                                    />
+                                    {editingWeight !== currentWeight && (
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => {
+                                          setIsSavingWeights(true);
+                                          handleUpdateAutoSwitch({
+                                            profileWeights: {
+                                              ...autoSwitchSettings?.profileWeights,
+                                              [account.id]: editingWeight
+                                            }
+                                          });
+                                          setEditingWeights(prev => {
+                                            const newWeights = { ...prev };
+                                            delete newWeights[account.id];
+                                            return newWeights;
+                                          });
+                                          setIsSavingWeights(false);
+                                        }}
+                                        disabled={isLoadingAutoSwitch || isSavingWeights}
+                                        className="h-7 w-7 p-0"
+                                      >
+                                        {isSavingWeights ? (
+                                          <Loader2 className="h-3 w-3 animate-spin" />
+                                        ) : (
+                                          <Check className="h-3 w-3" />
+                                        )}
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {autoSwitchSettings?.rotationStrategy === 'least-used' && (
+                        <div className="space-y-3 pt-3 border-t border-border/50">
+                          <div>
+                            <Label className="text-sm flex items-center gap-2">
+                              <Activity className="h-3.5 w-3.5" />
+                              {t('accounts.autoSwitching.usageStats')}
+                            </Label>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {t('accounts.autoSwitching.usageStatsDescription')}
+                            </p>
+                          </div>
+                          <div className="text-xs text-muted-foreground bg-muted/30 rounded-md p-3">
+                            {t('accounts.autoSwitching.usageStatsNote')}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 

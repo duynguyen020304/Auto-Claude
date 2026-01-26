@@ -585,7 +585,16 @@
       "weeklyThreshold": "Seuil d'utilisation hebdomadaire",
       "weeklyThresholdDescription": "Basculer lorsque l'utilisation hebdomadaire atteint ce niveau (recommandé: 99%)",
       "reactiveRecovery": "Récupération réactive",
-      "reactiveDescription": "Auto-basculement en cas de limite de taux inattendue"
+      "reactiveDescription": "Auto-basculement en cas de limite de taux inattendue",
+      "timeBasedInterval": "Intervalle de rotation",
+      "timeBasedIntervalDescription": "Configurer la fréquence de rotation vers le compte suivant",
+      "intervalLabel": "Intervalle",
+      "intervalDescription": "Délai entre les rotations automatiques (1-60 minutes)",
+      "weightedDistribution": "Poids des comptes",
+      "weightedDistributionDescription": "Définissez des poids plus élevés pour les comptes qui doivent être sélectionnés plus souvent",
+      "usageStats": "Statistiques d'utilisation",
+      "usageStatsDescription": "Les comptes sont classés par utilisation (session + hebdomadaire). Le compte le moins utilisé est sélectionné automatiquement.",
+      "usageStatsNote": "Les barres d'utilisation sont affichées dans la liste des comptes ci-dessus. Le système sélectionne automatiquement le compte avec l'utilisation combinée la plus faible."
     },
     "priority": {
       "title": "Ordre de priorité des comptes",
