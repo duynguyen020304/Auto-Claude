@@ -508,6 +508,114 @@ export function randomStrategy(
 }
 
 /**
+ * Weighted distribution strategy - select profile based on configured weights
+ *
+ * Selection Logic:
+ * 1. Filter to candidates (excluding the current profile)
+ * 2. Filter to available profiles only
+ * 3. Get configured weights from settings (profileWeights: Record<string, number>)
+ * 4. For each available profile, get its weight (default: 1 if not specified)
+ * 5. Perform weighted random selection based on weights
+ * 6. Return selected profile based on weight distribution
+ *
+ * Weight Distribution:
+ * - Higher weight = more frequent selection
+ * - Weights are relative (e.g., Profile A: 7, Profile B: 3 means A is selected 70% of time)
+ * - Missing weights default to 1 (uniform distribution)
+ * - Zero or negative weights treated as 1
+ *
+ * @param profiles - All Claude profiles
+ * @param settings - Auto-switch settings (contains profileWeights)
+ * @param excludeProfileId - Profile ID to exclude (usually the current/failing one)
+ * @returns Profile selected based on weighted distribution, or null if no available profiles
+ */
+export function weightedStrategy(
+  profiles: ClaudeProfile[],
+  settings: ClaudeAutoSwitchSettings,
+  excludeProfileId?: string
+): ClaudeProfile | null {
+  // Get all profiles except the excluded one
+  const candidates = profiles.filter(p => p.id !== excludeProfileId);
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  if (isDebug) {
+    console.warn('[ProfileScorer] Weighted strategy: evaluating', candidates.length, 'candidate profiles');
+  }
+
+  // Filter to available profiles only
+  const availableProfiles: ClaudeProfile[] = [];
+  const availabilityChecks: Array<{ profile: ClaudeProfile; available: boolean; reason?: string }> = [];
+
+  for (const profile of candidates) {
+    const availability = checkProfileAvailability(profile, settings);
+    availabilityChecks.push({ profile, available: availability.available, reason: availability.reason });
+
+    if (availability.available) {
+      availableProfiles.push(profile);
+    }
+
+    if (isDebug) {
+      console.warn('[ProfileScorer] Weighted: profile', profile.name, 'available:', availability.available, availability.reason ? `(${availability.reason})` : '');
+    }
+  }
+
+  if (availableProfiles.length === 0) {
+    console.warn('[ProfileScorer] Weighted: no available profiles');
+    return null;
+  }
+
+  // Get weights from settings
+  const configuredWeights = settings.profileWeights ?? {};
+
+  // Build weighted list
+  interface WeightedProfile {
+    profile: ClaudeProfile;
+    weight: number;
+    cumulativeWeight: number;
+  }
+
+  const weightedProfiles: WeightedProfile[] = [];
+  let totalWeight = 0;
+
+  for (const profile of availableProfiles) {
+    // Get weight for this profile (default: 1, treat zero/negative as 1)
+    const rawWeight = configuredWeights[profile.id];
+    const weight = (rawWeight != null && rawWeight > 0) ? rawWeight : 1;
+
+    totalWeight += weight;
+
+    weightedProfiles.push({
+      profile,
+      weight,
+      cumulativeWeight: totalWeight
+    });
+
+    if (isDebug) {
+      console.warn('[ProfileScorer] Weighted: profile', profile.name, 'weight:', weight, '(cumulative:', totalWeight, ')');
+    }
+  }
+
+  // Weighted random selection
+  const randomValue = Math.random() * totalWeight;
+
+  if (isDebug) {
+    console.warn('[ProfileScorer] Weighted: random value =', randomValue, 'of total weight', totalWeight);
+  }
+
+  // Find the profile where cumulativeWeight >= randomValue
+  const selectedProfile = weightedProfiles.find(wp => wp.cumulativeWeight >= randomValue)?.profile ?? null;
+
+  if (selectedProfile && isDebug) {
+    console.warn('[ProfileScorer] Weighted: selected profile', selectedProfile.name);
+  }
+
+  return selectedProfile;
+}
+
+/**
  * Get profiles sorted by availability (best first)
  * This is a simpler sort that doesn't consider priority order - used for display purposes
  */
