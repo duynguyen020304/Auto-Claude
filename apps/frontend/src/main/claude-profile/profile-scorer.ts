@@ -341,6 +341,105 @@ export function roundRobinStrategy(
 }
 
 /**
+ * Least-used strategy - select profile with lowest combined usage
+ *
+ * Selection Logic:
+ * 1. Filter to candidates (excluding the current profile)
+ * 2. Filter to available profiles only
+ * 3. Calculate combined usage score (tokens + requests)
+ * 4. Sort by usage score (ascending - lowest usage first)
+ * 5. Return profile with minimum usage
+ *
+ * Usage Metrics:
+ * - Weekly usage is weighted more heavily (longer reset time)
+ * - Session usage is secondary factor
+ * - Missing usage data treated as 0 (prefer unused profiles)
+ *
+ * @param profiles - All Claude profiles
+ * @param settings - Auto-switch settings (contains thresholds)
+ * @param excludeProfileId - Profile ID to exclude (usually the current/failing one)
+ * @returns Profile with lowest usage, or null if no available profiles
+ */
+export function leastUsedStrategy(
+  profiles: ClaudeProfile[],
+  settings: ClaudeAutoSwitchSettings,
+  excludeProfileId?: string
+): ClaudeProfile | null {
+  // Get all profiles except the excluded one
+  const candidates = profiles.filter(p => p.id !== excludeProfileId);
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  if (isDebug) {
+    console.warn('[ProfileScorer] Least-used strategy: evaluating', candidates.length, 'candidate profiles');
+  }
+
+  // Filter to available profiles only
+  const availableProfiles: ClaudeProfile[] = [];
+  const availabilityChecks: Array<{ profile: ClaudeProfile; available: boolean; reason?: string }> = [];
+
+  for (const profile of candidates) {
+    const availability = checkProfileAvailability(profile, settings);
+    availabilityChecks.push({ profile, available: availability.available, reason: availability.reason });
+
+    if (availability.available) {
+      availableProfiles.push(profile);
+    }
+
+    if (isDebug) {
+      console.warn('[ProfileScorer] Least-used: profile', profile.name, 'available:', availability.available, availability.reason ? `(${availability.reason})` : '');
+    }
+  }
+
+  if (availableProfiles.length === 0) {
+    console.warn('[ProfileScorer] Least-used: no available profiles');
+    return null;
+  }
+
+  // Calculate usage score for each profile
+  interface ProfileUsageScore {
+    profile: ClaudeProfile;
+    score: number;
+    weeklyUsage: number;
+    sessionUsage: number;
+  }
+
+  const scoredProfiles: ProfileUsageScore[] = availableProfiles.map(profile => {
+    // Missing usage data treated as 0 (prefer unused profiles)
+    const weeklyUsage = profile.usage?.weeklyUsagePercent ?? 0;
+    const sessionUsage = profile.usage?.sessionUsagePercent ?? 0;
+
+    // Weekly usage weighted more heavily (2x) since it has longer reset time
+    const score = (weeklyUsage * 2) + sessionUsage;
+
+    if (isDebug) {
+      console.warn('[ProfileScorer] Least-used: profile', profile.name, 'score:', score, '(weekly:', weeklyUsage, '%, session:', sessionUsage, '%)');
+    }
+
+    return {
+      profile,
+      score,
+      weeklyUsage,
+      sessionUsage
+    };
+  });
+
+  // Sort by score ascending (lowest usage first)
+  scoredProfiles.sort((a, b) => a.score - b.score);
+
+  const selectedProfile = scoredProfiles[0].profile;
+
+  if (isDebug) {
+    console.warn('[ProfileScorer] Least-used: selected profile', selectedProfile.name,
+      '(score:', scoredProfiles[0].score, ', weekly:', scoredProfiles[0].weeklyUsage, '%, session:', scoredProfiles[0].sessionUsage, '%)');
+  }
+
+  return selectedProfile;
+}
+
+/**
  * Get profiles sorted by availability (best first)
  * This is a simpler sort that doesn't consider priority order - used for display purposes
  */
