@@ -122,6 +122,73 @@ function calculateFallbackScore(
 }
 
 /**
+ * Get the best profile to switch to based on configured rotation strategy
+ *
+ * Selection Logic:
+ * 1. Check the rotationStrategy from settings (default: 'priority')
+ * 2. Apply the appropriate strategy:
+ *    - 'priority': Use user's priority order (existing behavior)
+ *    - 'round-robin': Cycle through profiles sequentially
+ *    - 'least-used': Select profile with lowest usage
+ *    - 'random': Random selection
+ *    - 'weighted': Weighted distribution
+ *    - 'time-based': Rotate at configured intervals
+ * 3. Return the selected profile or null if no available profiles
+ *
+ * @param profiles - All Claude profiles
+ * @param settings - Auto-switch settings (contains thresholds and rotationStrategy)
+ * @param excludeProfileId - Profile ID to exclude (usually the current/failing one)
+ * @param priorityOrder - User's configured priority order (array of unified IDs like 'oauth-{id}')
+ * @returns Selected profile based on rotation strategy, or null if no available profiles
+ */
+export function getBestAvailableProfile(
+  profiles: ClaudeProfile[],
+  settings: ClaudeAutoSwitchSettings,
+  excludeProfileId?: string,
+  priorityOrder: string[] = []
+): ClaudeProfile | null {
+  // Get the rotation strategy from settings (default to 'priority')
+  const strategy = settings.rotationStrategy ?? 'priority';
+
+  if (isDebug) {
+    console.warn('[ProfileScorer] Using rotation strategy:', strategy);
+  }
+
+  // Apply the appropriate strategy based on settings
+  switch (strategy) {
+    case 'round-robin': {
+      const result = roundRobinStrategy(profiles, settings, excludeProfileId);
+      // Note: Caller should update settings.roundRobinLastIndex with result.newIndex
+      return result.profile;
+    }
+
+    case 'least-used': {
+      return leastUsedStrategy(profiles, settings, excludeProfileId);
+    }
+
+    case 'random': {
+      return randomStrategy(profiles, settings, excludeProfileId);
+    }
+
+    case 'weighted': {
+      return weightedStrategy(profiles, settings, excludeProfileId);
+    }
+
+    case 'time-based': {
+      const result = timeBasedStrategy(profiles, settings, excludeProfileId);
+      // Note: Caller should update settings with result state tracking fields
+      return result.profile;
+    }
+
+    case 'priority':
+    default: {
+      // Use existing priority-based logic (default, backward compatible)
+      return getBestAvailableProfileByPriority(profiles, settings, excludeProfileId, priorityOrder);
+    }
+  }
+}
+
+/**
  * Get the best profile to switch to based on priority order and availability
  *
  * Selection Logic:
@@ -136,7 +203,7 @@ function calculateFallbackScore(
  * @param excludeProfileId - Profile ID to exclude (usually the current/failing one)
  * @param priorityOrder - User's configured priority order (array of unified IDs like 'oauth-{id}')
  */
-export function getBestAvailableProfile(
+function getBestAvailableProfileByPriority(
   profiles: ClaudeProfile[],
   settings: ClaudeAutoSwitchSettings,
   excludeProfileId?: string,
