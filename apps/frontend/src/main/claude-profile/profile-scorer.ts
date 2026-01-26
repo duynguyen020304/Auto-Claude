@@ -616,6 +616,168 @@ export function weightedStrategy(
 }
 
 /**
+ * Time-based strategy - rotate profiles at configured time intervals
+ *
+ * Selection Logic:
+ * 1. Filter to candidates (excluding the current profile)
+ * 2. Filter to available profiles only
+ * 3. Get current profile and last rotation time from settings
+ * 4. Check if rotation interval has elapsed (settings.rotationInterval in seconds)
+ * 5. If interval elapsed: rotate to next profile in circular fashion, update state
+ * 6. If interval not elapsed: continue using current profile
+ * 7. Return the selected profile and updated state tracking
+ *
+ * State Tracking (stored in settings):
+ * - timeBasedCurrentProfile: ID of profile currently being used
+ * - timeBasedLastRotationTime: ISO timestamp of last rotation
+ * - timeBasedProfileIndex: Index of current profile in available profiles list
+ *
+ * Rotation Behavior:
+ * - Uses rotationInterval from settings (default: 300 seconds = 5 minutes)
+ * - Rotates sequentially through available profiles (similar to round-robin)
+ * - Resets to first profile if current profile becomes unavailable
+ * - Updates state tracking on each rotation
+ *
+ * @param profiles - All Claude profiles
+ * @param settings - Auto-switch settings (contains rotationInterval and state tracking fields)
+ * @param excludeProfileId - Profile ID to exclude (usually the current/failing one)
+ * @returns Object with selected profile and updated state tracking, or null if no available profiles
+ */
+export function timeBasedStrategy(
+  profiles: ClaudeProfile[],
+  settings: ClaudeAutoSwitchSettings,
+  excludeProfileId?: string
+): {
+  profile: ClaudeProfile | null;
+  currentProfileId?: string;
+  lastRotationTime?: string;
+  profileIndex?: number;
+} {
+  // Get all profiles except the excluded one
+  const candidates = profiles.filter(p => p.id !== excludeProfileId);
+
+  if (candidates.length === 0) {
+    return { profile: null, currentProfileId: undefined, lastRotationTime: undefined, profileIndex: 0 };
+  }
+
+  if (isDebug) {
+    console.warn('[ProfileScorer] Time-based strategy: evaluating', candidates.length, 'candidate profiles');
+  }
+
+  // Filter to available profiles only
+  const availableProfiles: ClaudeProfile[] = [];
+  const availabilityChecks: Array<{ profile: ClaudeProfile; available: boolean; reason?: string }> = [];
+
+  for (const profile of candidates) {
+    const availability = checkProfileAvailability(profile, settings);
+    availabilityChecks.push({ profile, available: availability.available, reason: availability.reason });
+
+    if (availability.available) {
+      availableProfiles.push(profile);
+    }
+
+    if (isDebug) {
+      console.warn('[ProfileScorer] Time-based: profile', profile.name, 'available:', availability.available, availability.reason ? `(${availability.reason})` : '');
+    }
+  }
+
+  if (availableProfiles.length === 0) {
+    console.warn('[ProfileScorer] Time-based: no available profiles');
+    return { profile: null, currentProfileId: undefined, lastRotationTime: undefined, profileIndex: 0 };
+  }
+
+  const now = new Date();
+  const rotationIntervalSeconds = settings.rotationInterval ?? 300; // Default: 5 minutes
+  const rotationIntervalMs = rotationIntervalSeconds * 1000;
+
+  // Get state tracking from settings
+  const currentProfileId = settings.timeBasedCurrentProfile;
+  const lastRotationTimeStr = settings.timeBasedLastRotationTime;
+  let currentIndex = settings.timeBasedProfileIndex ?? 0;
+
+  // Initialize with first available profile as default
+  let selectedProfile: ClaudeProfile = availableProfiles[0];
+  let shouldRotate = false;
+  let newProfileIndex = currentIndex;
+  let newCurrentProfileId = currentProfileId;
+  let newLastRotationTime = lastRotationTimeStr;
+
+  if (isDebug) {
+    console.warn('[ProfileScorer] Time-based: rotation interval =', rotationIntervalSeconds, 'seconds (', rotationIntervalMs, 'ms)');
+    console.warn('[ProfileScorer] Time-based: current profile ID =', currentProfileId, ', index =', currentIndex);
+    console.warn('[ProfileScorer] Time-based: last rotation time =', lastRotationTimeStr);
+  }
+
+  // Check if we have a current profile and it's still available
+  if (currentProfileId && lastRotationTimeStr) {
+    const lastRotationTime = new Date(lastRotationTimeStr);
+    const elapsedMs = now.getTime() - lastRotationTime.getTime();
+
+    // Find the current profile in available profiles
+    const currentProfile = availableProfiles.find(p => p.id === currentProfileId);
+
+    if (currentProfile && elapsedMs < rotationIntervalMs) {
+      // Interval not elapsed, continue using current profile
+      selectedProfile = currentProfile;
+      shouldRotate = false;
+
+      if (isDebug) {
+        console.warn('[ProfileScorer] Time-based: interval not elapsed (', elapsedMs, 'ms < ', rotationIntervalMs, 'ms), continuing with current profile:', currentProfile.name);
+      }
+    } else if (currentProfile && elapsedMs >= rotationIntervalMs) {
+      // Interval elapsed, rotate to next profile
+      shouldRotate = true;
+
+      if (isDebug) {
+        console.warn('[ProfileScorer] Time-based: interval elapsed (', elapsedMs, 'ms >= ', rotationIntervalMs, 'ms), rotating to next profile');
+      }
+    } else {
+      // Current profile no longer available, reset to first profile
+      shouldRotate = true;
+      currentIndex = 0; // Reset index
+      newProfileIndex = 0;
+
+      if (isDebug) {
+        console.warn('[ProfileScorer] Time-based: current profile no longer available, resetting to first available profile');
+      }
+    }
+  } else {
+    // No state tracking, start with first profile
+    shouldRotate = true;
+    currentIndex = 0;
+    newProfileIndex = 0;
+
+    if (isDebug) {
+      console.warn('[ProfileScorer] Time-based: no state tracking, starting with first available profile');
+    }
+  }
+
+  if (shouldRotate) {
+    // Calculate next index (circular)
+    newProfileIndex = (currentIndex + 1) % availableProfiles.length;
+    selectedProfile = availableProfiles[newProfileIndex];
+    newCurrentProfileId = selectedProfile.id;
+    newLastRotationTime = now.toISOString();
+
+    if (isDebug) {
+      console.warn('[ProfileScorer] Time-based: rotated to profile', selectedProfile.name, 'at index', newProfileIndex, 'of', availableProfiles.length);
+    }
+  }
+
+  if (isDebug) {
+    console.warn('[ProfileScorer] Time-based: selected profile', selectedProfile.name,
+      '(state: profileId =', newCurrentProfileId, ', index =', newProfileIndex, ', lastRotation =', newLastRotationTime, ')');
+  }
+
+  return {
+    profile: selectedProfile,
+    currentProfileId: newCurrentProfileId,
+    lastRotationTime: newLastRotationTime,
+    profileIndex: newProfileIndex
+  };
+}
+
+/**
  * Get profiles sorted by availability (best first)
  * This is a simpler sort that doesn't consider priority order - used for display purposes
  */

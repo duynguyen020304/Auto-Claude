@@ -243,6 +243,12 @@ export interface ClaudeAutoSwitchSettings {
   profileWeights?: Record<string, number>;
   /** Round-robin state tracking - last used profile index */
   roundRobinLastIndex?: number;
+  /** Time-based state tracking - current profile ID */
+  timeBasedCurrentProfile?: string;
+  /** Time-based state tracking - ISO timestamp of last rotation */
+  timeBasedLastRotationTime?: string;
+  /** Time-based state tracking - index of current profile in available profiles list */
+  timeBasedProfileIndex?: number;
 }
 
 export interface ClaudeAuthResult {
