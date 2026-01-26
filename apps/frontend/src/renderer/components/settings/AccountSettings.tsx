@@ -37,6 +37,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { cn } from '../../lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { SettingsSection } from './SettingsSection';
@@ -1298,6 +1299,68 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
 
               {autoSwitchSettings?.enabled && (
                 <>
+                  {/* Rotation Strategy Section */}
+                  <div className="pl-6 space-y-4 pt-2 border-l-2 border-blue-500/20">
+                    <div className="space-y-3">
+                      <div>
+                        <Label htmlFor="rotation-strategy" className="text-sm font-medium flex items-center gap-2">
+                          <TrendingUp className="h-3.5 w-3.5" />
+                          {t('accounts.autoSwitching.rotationStrategy')}
+                        </Label>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {t('accounts.autoSwitching.rotationStrategyDescription')}
+                        </p>
+                      </div>
+                      <Select
+                        value={autoSwitchSettings?.rotationStrategy || 'priority'}
+                        onValueChange={(value) => handleUpdateAutoSwitch({ rotationStrategy: value as any })}
+                        disabled={isLoadingAutoSwitch}
+                      >
+                        <SelectTrigger id="rotation-strategy" className="w-full">
+                          <SelectValue placeholder={t('accounts.autoSwitching.rotationStrategy')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="priority">
+                            <div className="flex flex-col gap-0.5">
+                              <span className="font-medium">{t('accounts.autoSwitching.strategies.priority')}</span>
+                              <span className="text-xs text-muted-foreground">{t('accounts.autoSwitching.strategies.priorityDescription')}</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="round-robin">
+                            <div className="flex flex-col gap-0.5">
+                              <span className="font-medium">{t('accounts.autoSwitching.strategies.roundRobin')}</span>
+                              <span className="text-xs text-muted-foreground">{t('accounts.autoSwitching.strategies.roundRobinDescription')}</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="least-used">
+                            <div className="flex flex-col gap-0.5">
+                              <span className="font-medium">{t('accounts.autoSwitching.strategies.leastUsed')}</span>
+                              <span className="text-xs text-muted-foreground">{t('accounts.autoSwitching.strategies.leastUsedDescription')}</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="random">
+                            <div className="flex flex-col gap-0.5">
+                              <span className="font-medium">{t('accounts.autoSwitching.strategies.random')}</span>
+                              <span className="text-xs text-muted-foreground">{t('accounts.autoSwitching.strategies.randomDescription')}</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="weighted">
+                            <div className="flex flex-col gap-0.5">
+                              <span className="font-medium">{t('accounts.autoSwitching.strategies.weighted')}</span>
+                              <span className="text-xs text-muted-foreground">{t('accounts.autoSwitching.strategies.weightedDescription')}</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="time-based">
+                            <div className="flex flex-col gap-0.5">
+                              <span className="font-medium">{t('accounts.autoSwitching.strategies.timeBased')}</span>
+                              <span className="text-xs text-muted-foreground">{t('accounts.autoSwitching.strategies.timeBasedDescription')}</span>
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
                   {/* Proactive Monitoring Section */}
                   <div className="pl-6 space-y-4 pt-2 border-l-2 border-primary/20">
                     <div className="flex items-center justify-between">
