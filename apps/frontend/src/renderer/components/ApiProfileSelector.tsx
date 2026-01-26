@@ -6,7 +6,7 @@
  *
  * Used in TaskCreationWizard and TaskEditDialog.
  */
-import { Key } from 'lucide-react';
+import { Key, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Label } from './ui/label';
 import {
@@ -58,19 +58,27 @@ export function ApiProfileSelector({
         </SelectTrigger>
         <SelectContent>
           {hasProfiles ? (
-            profiles.map((profile) => (
-              <SelectItem key={profile.id} value={profile.id}>
+            <>
+              <SelectItem value="auto">
                 <div className="flex items-center gap-2">
-                  <Key className="h-4 w-4 shrink-0" />
-                  <div>
-                    <span className="font-medium">{profile.name}</span>
-                    <span className="ml-2 text-xs text-muted-foreground">
-                      ({profile.baseUrl})
-                    </span>
-                  </div>
+                  <RefreshCw className="h-4 w-4 shrink-0" />
+                  <span className="font-medium">{t('tasks:apiProfile.auto')}</span>
                 </div>
               </SelectItem>
-            ))
+              {profiles.map((profile) => (
+                <SelectItem key={profile.id} value={profile.id}>
+                  <div className="flex items-center gap-2">
+                    <Key className="h-4 w-4 shrink-0" />
+                    <div>
+                      <span className="font-medium">{profile.name}</span>
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        ({profile.baseUrl})
+                      </span>
+                    </div>
+                  </div>
+                </SelectItem>
+              ))}
+            </>
           ) : (
             <SelectItem value="empty" disabled>
               {t('tasks:apiProfile.empty')}

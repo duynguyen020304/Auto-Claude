@@ -302,6 +302,7 @@
     "label": "API Profile",
     "placeholder": "Select API profile",
     "empty": "No API profiles available",
+    "auto": "Auto (rotate all profiles)",
     "errors": {
       "profileNotFound": "Profile not found"
     }
