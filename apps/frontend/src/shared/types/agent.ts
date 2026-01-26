@@ -200,6 +200,18 @@ export interface ClaudeProfileSettings {
 }
 
 /**
+ * Rotation strategy for automatic profile selection
+ * Determines how profiles are selected when 'auto' mode is active
+ */
+export type RotationStrategy =
+  | 'priority'      // Use priority order (default, existing behavior)
+  | 'round-robin'   // Cycle through profiles sequentially
+  | 'least-used'    // Select profile with lowest usage (tokens + requests)
+  | 'random'        // Random selection with uniform distribution
+  | 'weighted'      // Weighted distribution based on profileWeights
+  | 'time-based';   // Rotate at configured time intervals
+
+/**
  * Settings for automatic profile switching
  */
 export interface ClaudeAutoSwitchSettings {
@@ -221,6 +233,16 @@ export interface ClaudeAutoSwitchSettings {
   // Reactive recovery
   /** Whether to automatically switch on unexpected rate limit (vs. prompting user) */
   autoSwitchOnRateLimit: boolean;
+
+  // Rotation strategy settings
+  /** Strategy to use for automatic profile selection (default: 'priority') */
+  rotationStrategy: RotationStrategy;
+  /** Time-based rotation interval in seconds (default: 300 = 5 minutes) */
+  rotationInterval?: number;
+  /** Weighted distribution weights per profile ID (format: { "profileId": weight }) */
+  profileWeights?: Record<string, number>;
+  /** Round-robin state tracking - last used profile index */
+  roundRobinLastIndex?: number;
 }
 
 export interface ClaudeAuthResult {
