@@ -10,6 +10,7 @@ import { fileWatcher } from '../../file-watcher';
 import { findTaskAndProject } from './shared';
 import { checkGitStatus } from '../../project-initializer';
 import { initializeClaudeProfileManager, type ClaudeProfileManager } from '../../claude-profile-manager';
+import { hasActiveAPIProfile } from '../../services/profile';
 import {
   getPlanPath,
   persistPlanStatus,
@@ -100,6 +101,38 @@ async function ensureProfileManagerInitialized(): Promise<
 }
 
 /**
+ * Check if valid authentication exists for starting tasks.
+ *
+ * This function checks BOTH OAuth profiles and API profiles:
+ * - OAuth: Checks if the active Claude profile has valid authentication
+ * - API: Checks if there's an active API profile with valid API key
+ *
+ * Tasks can start if EITHER authentication method is valid, allowing
+ * users to use custom API endpoints without OAuth authentication.
+ *
+ * @param profileManager - The Claude profile manager instance
+ * @returns true if valid auth exists (OAuth OR API), false otherwise
+ */
+async function hasValidAuthForTask(profileManager: ClaudeProfileManager): Promise<boolean> {
+  // Check 1: OAuth profile authentication (existing behavior)
+  if (profileManager.hasValidAuth()) {
+    console.warn('[Auth Check] Valid OAuth profile authentication found');
+    return true;
+  }
+
+  // Check 2: Active API profile with valid credentials
+  // This allows tasks to start with custom API endpoints (e.g., GLM, OpenAI-compatible)
+  const hasActiveAPI = await hasActiveAPIProfile();
+  if (hasActiveAPI) {
+    console.warn('[Auth Check] Valid active API profile found');
+    return true;
+  }
+
+  console.warn('[Auth Check] No valid authentication found (neither OAuth nor API profile)');
+  return false;
+}
+
+/**
  * Register task execution handlers (start, stop, review, status management, recovery)
  */
 export function registerTaskExecutionHandlers(
@@ -167,7 +200,8 @@ export function registerTaskExecutionHandlers(
       }
 
       // Check authentication - Claude requires valid auth to run tasks
-      if (!profileManager.hasValidAuth()) {
+      // Check both OAuth profiles and active API profiles (custom endpoints like GLM)
+      if (!(await hasValidAuthForTask(profileManager))) {
         console.warn('[TASK_START] No valid authentication for active profile');
         mainWindow.webContents.send(
           IPC_CHANNELS.TASK_ERROR,
@@ -751,7 +785,8 @@ export function registerTaskExecutionHandlers(
             return { success: false, error: initResult.error };
           }
           const profileManager = initResult.profileManager;
-          if (!profileManager.hasValidAuth()) {
+          // Check both OAuth profiles and active API profiles (custom endpoints like GLM)
+          if (!(await hasValidAuthForTask(profileManager))) {
             console.warn('[TASK_UPDATE_STATUS] No valid authentication for active profile');
             if (mainWindow) {
               mainWindow.webContents.send(
@@ -1105,7 +1140,8 @@ export function registerTaskExecutionHandlers(
             };
           }
           const profileManager = initResult.profileManager;
-          if (!profileManager.hasValidAuth()) {
+          // Check both OAuth profiles and active API profiles (custom endpoints like GLM)
+          if (!(await hasValidAuthForTask(profileManager))) {
             console.warn('[Recovery] Auth check failed, cannot auto-restart task');
             // Recovery succeeded but we can't restart without auth
             return {

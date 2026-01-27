@@ -296,6 +296,40 @@ export async function getAPIProfileEnv(): Promise<Record<string, string>> {
 }
 
 /**
+ * Check if there's an active API profile with valid credentials
+ *
+ * Returns true if an API profile is currently active (has valid API key).
+ * This is used to determine if tasks can start without OAuth authentication.
+ *
+ * @returns Promise<boolean> true if active API profile exists with valid credentials
+ */
+export async function hasActiveAPIProfile(): Promise<boolean> {
+  try {
+    // Load profiles.json
+    const file = await loadProfilesFile();
+
+    // If no active profile (null/empty), return false (OAuth mode required)
+    if (!file.activeProfileId || file.activeProfileId === '') {
+      return false;
+    }
+
+    // Find active profile by activeProfileId
+    const profile = file.profiles.find((p) => p.id === file.activeProfileId);
+
+    // If profile not found, return false (shouldn't happen with valid data)
+    if (!profile) {
+      return false;
+    }
+
+    // Check if profile has a valid API key
+    return validateApiKey(profile.apiKey);
+  } catch {
+    // If we can't load the profiles file, assume no active API profile
+    return false;
+  }
+}
+
+/**
  * Test API profile connection
  *
  * Validates credentials by making a minimal API request to the /v1/models endpoint.

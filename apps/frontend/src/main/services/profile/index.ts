@@ -25,6 +25,7 @@ export {
   updateProfile,
   deleteProfile,
   getAPIProfileEnv,
+  hasActiveAPIProfile,
   testConnection,
   discoverModels
 } from './profile-service';

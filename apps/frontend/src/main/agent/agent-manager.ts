@@ -5,7 +5,8 @@ import { AgentState } from './agent-state';
 import { AgentEvents } from './agent-events';
 import { AgentProcessManager } from './agent-process';
 import { AgentQueueManager } from './agent-queue';
-import { getClaudeProfileManager, initializeClaudeProfileManager } from '../claude-profile-manager';
+import { getClaudeProfileManager, initializeClaudeProfileManager, type ClaudeProfileManager } from '../claude-profile-manager';
+import { hasActiveAPIProfile } from '../services/profile';
 import {
   SpecCreationMetadata,
   TaskExecutionOptions,
@@ -78,6 +79,38 @@ export class AgentManager extends EventEmitter {
   }
 
   /**
+   * Check if valid authentication exists for starting tasks.
+   *
+   * This function checks BOTH OAuth profiles and API profiles:
+   * - OAuth: Checks if the active Claude profile has valid authentication
+   * - API: Checks if there's an active API profile with valid API key
+   *
+   * Tasks can start if EITHER authentication method is valid, allowing
+   * users to use custom API endpoints without OAuth authentication.
+   *
+   * @param profileManager - The Claude profile manager instance
+   * @returns true if valid auth exists (OAuth OR API), false otherwise
+   */
+  private async hasValidAuthForTask(profileManager: ClaudeProfileManager): Promise<boolean> {
+    // Check 1: OAuth profile authentication (existing behavior)
+    if (profileManager.hasValidAuth()) {
+      console.warn('[AgentManager Auth Check] Valid OAuth profile authentication found');
+      return true;
+    }
+
+    // Check 2: Active API profile with valid credentials
+    // This allows tasks to start with custom API endpoints (e.g., GLM, OpenAI-compatible)
+    const hasActiveAPI = await hasActiveAPIProfile();
+    if (hasActiveAPI) {
+      console.warn('[AgentManager Auth Check] Valid active API profile found');
+      return true;
+    }
+
+    console.warn('[AgentManager Auth Check] No valid authentication found (neither OAuth nor API profile)');
+    return false;
+  }
+
+  /**
    * Configure paths for Python and auto-claude source
    */
   configure(pythonPath?: string, autoBuildSourcePath?: string): void {
@@ -105,7 +138,8 @@ export class AgentManager extends EventEmitter {
       this.emit('error', taskId, 'Failed to initialize profile manager. Please check file permissions and disk space.');
       return;
     }
-    if (!profileManager.hasValidAuth()) {
+    // Check both OAuth profiles and active API profiles (custom endpoints like GLM)
+    if (!(await this.hasValidAuthForTask(profileManager))) {
       this.emit('error', taskId, 'Claude authentication required. Please authenticate in Settings > Claude Profiles before starting tasks.');
       return;
     }
@@ -198,7 +232,8 @@ export class AgentManager extends EventEmitter {
       this.emit('error', taskId, 'Failed to initialize profile manager. Please check file permissions and disk space.');
       return;
     }
-    if (!profileManager.hasValidAuth()) {
+    // Check both OAuth profiles and active API profiles (custom endpoints like GLM)
+    if (!(await this.hasValidAuthForTask(profileManager))) {
       this.emit('error', taskId, 'Claude authentication required. Please authenticate in Settings > Claude Profiles before starting tasks.');
       return;
     }
