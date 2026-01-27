@@ -18,6 +18,8 @@ import {
   Globe,
   Code,
   Bug,
+  Server,
+  Terminal,
   Users,
 } from "lucide-react";
 
@@ -56,6 +58,8 @@ import { GeneralSettings } from "./GeneralSettings";
 import { AdvancedSettings } from "./AdvancedSettings";
 import { DevToolsSettings } from "./DevToolsSettings";
 import { DebugSettings } from "./DebugSettings";
+import { TerminalFontSettings } from "./terminal-font-settings/TerminalFontSettings";
+import { ProfileList } from "./ProfileList";
 import { AccountSettings } from "./AccountSettings";
 import { ProjectSelector } from "./ProjectSelector";
 import {
@@ -79,9 +83,12 @@ export type AppSection =
   | "display"
   | "language"
   | "devtools"
+  | "terminal-fonts"
   | "agent"
   | "paths"
+  | "integrations"
   | "accounts"
+  | "api-profiles"
   | "updates"
   | "notifications"
   | "debug";
@@ -96,6 +103,7 @@ const appNavItemsConfig: NavItemConfig<AppSection>[] = [
   { id: "display", icon: Monitor },
   { id: "language", icon: Globe },
   { id: "devtools", icon: Code },
+  { id: "terminal-fonts", icon: Terminal },
   { id: "agent", icon: Bot },
   { id: "paths", icon: FolderOpen },
   { id: "accounts", icon: Users },
@@ -247,6 +255,8 @@ export function AppSettingsDialog({
             onSettingsChange={setSettings}
           />
         );
+      case "terminal-fonts":
+        return <TerminalFontSettings />;
       case "agent":
         return (
           <GeneralSettings
@@ -474,7 +484,13 @@ export function AppSettingsDialog({
             {/* Main content */}
             <div className="flex-1 overflow-hidden">
               <ScrollArea className="h-full">
-                <div className="p-8 max-w-2xl">{renderContent()}</div>
+                <div
+                  className={
+                    appSection === "terminal-fonts" ? "p-8" : "p-8 max-w-2xl"
+                  }
+                >
+                  {renderContent()}
+                </div>
               </ScrollArea>
             </div>
           </div>
