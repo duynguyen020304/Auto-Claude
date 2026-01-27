@@ -418,7 +418,8 @@ export function registerTaskExecutionHandlers(
         try {
           writeFileSync(
             qaReportPath,
-            `# QA Review\n\nStatus: APPROVED\n\nReviewed at: ${new Date().toISOString()}\n`
+            `# QA Review\n\nStatus: APPROVED\n\nReviewed at: ${new Date().toISOString()}\n`,
+            'utf-8'
           );
         } catch (error) {
           console.error('[TASK_REVIEW] Failed to write QA report:', error);
@@ -555,7 +556,8 @@ export function registerTaskExecutionHandlers(
         try {
           writeFileSync(
             fixRequestPath,
-            `# QA Fix Request\n\nStatus: REJECTED\n\n## Feedback\n\n${feedback || 'No feedback provided'}${imageReferences}\n\nCreated at: ${new Date().toISOString()}\n`
+            `# QA Fix Request\n\nStatus: REJECTED\n\n## Feedback\n\n${feedback || 'No feedback provided'}${imageReferences}\n\nCreated at: ${new Date().toISOString()}\n`,
+            'utf-8'
           );
         } catch (error) {
           console.error('[TASK_REVIEW] Failed to write QA fix request:', error);

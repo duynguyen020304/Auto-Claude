@@ -446,10 +446,10 @@ export interface WorktreeListItem {
   path: string;
   branch: string;
   baseBranch: string;
-  commitCount: number;
-  filesChanged: number;
-  additions: number;
-  deletions: number;
+  commitCount?: number;
+  filesChanged?: number;
+  additions?: number;
+  deletions?: number;
 }
 
 /**
