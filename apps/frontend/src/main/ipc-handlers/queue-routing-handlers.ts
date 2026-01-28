@@ -89,9 +89,17 @@ export function registerQueueRoutingHandlers(
         // - Profile authentication status
         // - Rate limit status
         // - Usage thresholds (session and weekly)
-        const bestProfile = profileManager.getBestAvailableProfile(
+        const selectionResult = profileManager.getBestAvailableProfile(
           options?.excludeProfileId
         );
+
+        // Persist rotation state if provided (for round-robin, time-based strategies)
+        if (selectionResult.stateUpdates) {
+          profileManager.updateAutoSwitchSettings(selectionResult.stateUpdates);
+          console.log('[QueueRouting] Persisted rotation state:', selectionResult.stateUpdates);
+        }
+
+        const bestProfile = selectionResult.profile;
 
         if (bestProfile) {
           const strategy = settings.rotationStrategy || 'priority';

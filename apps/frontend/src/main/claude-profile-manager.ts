@@ -39,9 +39,10 @@ import {
   DEFAULT_AUTO_SWITCH_SETTINGS
 } from './claude-profile/profile-storage';
 import {
-  getBestAvailableProfile,
+  getBestAvailableProfile as getBestAvailableProfileImpl,
   shouldProactivelySwitch as shouldProactivelySwitchImpl,
-  getProfilesSortedByAvailability as getProfilesSortedByAvailabilityImpl
+  getProfilesSortedByAvailability as getProfilesSortedByAvailabilityImpl,
+  type ProfileSelectionResult
 } from './claude-profile/profile-scorer';
 import { getCredentialsFromKeychain } from './claude-profile/credential-utils';
 import {
@@ -619,24 +620,34 @@ export class ClaudeProfileManager {
 
   /**
    * Get the best profile to switch to based on priority order and availability
-   * Returns null if no good alternative is available
+   * Returns profile selection result with optional state updates for rotation strategies
    *
    * Selection logic:
    * 1. Respects user's configured account priority order
    * 2. Filters by availability (authenticated, not rate-limited, below thresholds)
    * 3. Returns first available profile in priority order
    * 4. Falls back to "least bad" option if no profile meets all criteria
+   * 5. For rotation strategies (round-robin, time-based), includes state updates
+   *
+   * @returns Profile selection result with profile and optional state updates
    */
-  getBestAvailableProfile(excludeProfileId?: string): ClaudeProfile | null {
+  getBestAvailableProfile(excludeProfileId?: string): ProfileSelectionResult {
     const settings = this.getAutoSwitchSettings();
     const priorityOrder = this.getAccountPriorityOrder();
-    return getBestAvailableProfile(this.data.profiles, settings, excludeProfileId, priorityOrder);
+    return getBestAvailableProfileImpl(this.data.profiles, settings, excludeProfileId, priorityOrder);
   }
 
   /**
    * Determine if we should proactively switch profiles based on current usage
+   *
+   * @returns Object with shouldSwitch flag, optional reason, suggested profile, and state updates
    */
-  shouldProactivelySwitch(profileId: string): { shouldSwitch: boolean; reason?: string; suggestedProfile?: ClaudeProfile } {
+  shouldProactivelySwitch(profileId: string): {
+    shouldSwitch: boolean;
+    reason?: string;
+    suggestedProfile?: ClaudeProfile;
+    stateUpdates?: Partial<ClaudeAutoSwitchSettings>;
+  } {
     const profile = this.getProfile(profileId);
     if (!profile) {
       return { shouldSwitch: false };
