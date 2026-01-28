@@ -182,10 +182,9 @@ describe('registerQueueRoutingHandlers', () => {
       const mockProfile: ClaudeProfile = {
         id: 'profile-2',
         name: 'Profile 2',
-        accountEmail: 'profile2@example.com',
-        accountType: 'claude-code',
-        isAuthenticated: true,
-        isAvailable: true
+        isDefault: false,
+        createdAt: new Date(),
+        isAuthenticated: true
       };
 
       const stateUpdates = {
@@ -222,10 +221,8 @@ describe('registerQueueRoutingHandlers', () => {
       const mockProfile: ClaudeProfile = {
         id: 'profile-2',
         name: 'Profile 2',
-        accountEmail: 'profile2@example.com',
-        accountType: 'claude-code',
-        isAuthenticated: true,
-        isAvailable: true
+        isDefault: false,
+        createdAt: new Date()
       };
 
       mockProfileManager.getBestAvailableProfile = vi.fn(() => ({
@@ -251,10 +248,9 @@ describe('registerQueueRoutingHandlers', () => {
       const mockProfile: ClaudeProfile = {
         id: 'specific-profile',
         name: 'Specific Profile',
-        accountEmail: 'specific@example.com',
-        accountType: 'claude-code',
-        isAuthenticated: true,
-        isAvailable: true
+        isDefault: false,
+        createdAt: new Date(),
+        isAuthenticated: true
       };
 
       mockProfileManager.getProfile = vi.fn(() => mockProfile);
@@ -326,10 +322,8 @@ describe('registerQueueRoutingHandlers', () => {
       const mockProfile: ClaudeProfile = {
         id: 'profile-3',
         name: 'Profile 3',
-        accountEmail: 'profile3@example.com',
-        accountType: 'claude-code',
-        isAuthenticated: true,
-        isAvailable: true
+        isDefault: false,
+        createdAt: new Date()
       };
 
       mockProfileManager.getBestAvailableProfile = vi.fn(() => ({
