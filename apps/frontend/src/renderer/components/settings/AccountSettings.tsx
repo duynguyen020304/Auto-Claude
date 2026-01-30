@@ -49,7 +49,7 @@ import { loadClaudeProfiles as loadGlobalClaudeProfiles } from '../../stores/cla
 import { useSettingsStore } from '../../stores/settings-store';
 import { useToast } from '../../hooks/use-toast';
 import type { AppSettings, ClaudeProfile, ClaudeAutoSwitchSettings, ProfileUsageSummary } from '../../../shared/types';
-import type { APIProfile } from '@shared/types/profile';
+import type { APIProfile, APIProfileRotationStrategy } from '@shared/types/profile';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -120,6 +120,14 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
   const [deleteConfirmProfile, setDeleteConfirmProfile] = useState<APIProfile | null>(null);
   const [isDeletingApiProfile, setIsDeletingApiProfile] = useState(false);
   const [isSettingActiveApiProfile, setIsSettingActiveApiProfile] = useState(false);
+
+  // ============================================
+  // API Profile Rotation Settings state
+  // ============================================
+  const [apiRotationSettings, setApiRotationSettings] = useState<APIProfileRotationStrategy | null>(null);
+  const [isLoadingApiRotation, setIsLoadingApiRotation] = useState(false);
+  const [apiPriorityOrder, setApiPriorityOrder] = useState<string[]>([]);
+  const [isSavingApiPriority, setIsSavingApiPriority] = useState(false);
 
   // ============================================
   // Auto-switch settings state (shared)
@@ -258,6 +266,7 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
       loadClaudeProfiles();
       loadAutoSwitchSettings();
       loadPriorityOrder();
+      loadApiRotationSettings();
       // Force refresh usage data when Settings opens to get fresh data
       // This bypasses the 1-minute cache to ensure accurate duplicate detection
       loadProfileUsageData(true);
@@ -619,6 +628,62 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
       return new URL(url).host;
     } catch {
       return url;
+    }
+  };
+
+  // ============================================
+  // API Profile Rotation Settings handlers
+  // ============================================
+  const loadApiRotationSettings = async () => {
+    setIsLoadingApiRotation(true);
+    try {
+      const result = await window.electronAPI.getAPIProfileRotationStrategy();
+      if (result?.success && result.data) {
+        setApiRotationSettings(result.data);
+        setApiPriorityOrder(result.data.priorityOrder || []);
+      }
+    } catch (err) {
+      console.warn('[AccountSettings] Failed to load API rotation settings:', err);
+    } finally {
+      setIsLoadingApiRotation(false);
+    }
+  };
+
+  const handleUpdateApiRotation = async (updates: Partial<APIProfileRotationStrategy>) => {
+    if (!apiRotationSettings) return;
+    setIsLoadingApiRotation(true);
+    try {
+      const newSettings = { ...apiRotationSettings, ...updates };
+      const result = await window.electronAPI.updateAPIProfileRotationStrategy(newSettings);
+      if (result?.success) {
+        setApiRotationSettings(result.data);
+      } else {
+        toast({
+          variant: 'destructive',
+          title: t('accounts.toast.settingsUpdateFailed'),
+          description: result?.error || t('accounts.toast.tryAgain'),
+        });
+      }
+    } catch (err) {
+      toast({
+        variant: 'destructive',
+        title: t('accounts.toast.settingsUpdateFailed'),
+        description: t('accounts.toast.tryAgain'),
+      });
+    } finally {
+      setIsLoadingApiRotation(false);
+    }
+  };
+
+  const handleApiPriorityReorder = async (newOrder: string[]) => {
+    setApiPriorityOrder(newOrder);
+    setIsSavingApiPriority(true);
+    try {
+      await handleUpdateApiRotation({ priorityOrder: newOrder });
+    } catch (err) {
+      console.warn('[AccountSettings] Failed to save API priority order:', err);
+    } finally {
+      setIsSavingApiPriority(false);
     }
   };
 
@@ -1111,6 +1176,120 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
 
               {/* Profile list */}
               {apiProfiles.length > 0 && (
+                <>
+                {/* API Rotation Settings Section */}
+                {apiProfiles.length > 1 && (
+                  <div className="rounded-lg bg-muted/30 border border-border p-4 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <RefreshCw className="h-4 w-4 text-muted-foreground" />
+                      <h4 className="text-sm font-semibold text-foreground">{t('accounts.apiRotation.title')}</h4>
+                    </div>
+
+                    <p className="text-sm text-muted-foreground">
+                      {t('accounts.apiRotation.description')}
+                    </p>
+
+                    {/* Master toggle */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label className="text-sm font-medium">{t('accounts.apiRotation.enableRotation')}</Label>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {t('accounts.apiRotation.enableRotationDescription')}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={apiRotationSettings?.enabled ?? false}
+                        onCheckedChange={(enabled) => handleUpdateApiRotation({ enabled })}
+                        disabled={isLoadingApiRotation}
+                      />
+                    </div>
+
+                    {apiRotationSettings?.enabled && (
+                      <>
+                        {/* Fallback to OAuth toggle */}
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label className="text-sm font-medium">{t('accounts.apiRotation.fallbackToOAuth')}</Label>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {t('accounts.apiRotation.fallbackToOAuthDescription')}
+                            </p>
+                          </div>
+                          <Switch
+                            checked={apiRotationSettings?.fallbackToOAuth ?? false}
+                            onCheckedChange={(fallbackToOAuth) => handleUpdateApiRotation({ fallbackToOAuth })}
+                            disabled={isLoadingApiRotation}
+                          />
+                        </div>
+
+                        {/* Usage threshold slider */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor="api-usage-threshold" className="text-sm">{t('accounts.apiRotation.usageThreshold')}</Label>
+                            <span className="text-sm font-mono">{apiRotationSettings?.thresholds.maxUsagePercent ?? 95}%</span>
+                          </div>
+                          <input
+                            id="api-usage-threshold"
+                            type="range"
+                            min="70"
+                            max="99"
+                            step="1"
+                            value={apiRotationSettings?.thresholds.maxUsagePercent ?? 95}
+                            onChange={(e) => handleUpdateApiRotation({
+                              thresholds: {
+                                ...apiRotationSettings?.thresholds,
+                                maxUsagePercent: parseInt(e.target.value)
+                              }
+                            })}
+                            disabled={isLoadingApiRotation}
+                            className="w-full"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            {t('accounts.apiRotation.usageThresholdDescription')}
+                          </p>
+                        </div>
+
+                        {/* Priority order section */}
+                        <div className="pt-4 border-t border-border/50">
+                          <div className="flex items-center justify-between mb-3">
+                            <Label className="text-sm font-medium">{t('accounts.apiRotation.priorityOrder')}</Label>
+                            <span className="text-xs text-muted-foreground">{t('accounts.apiRotation.dragToReorder')}</span>
+                          </div>
+                          <div className="space-y-2">
+                            {apiProfiles
+                              .sort((a, b) => {
+                                const aIndex = apiPriorityOrder.indexOf(a.id);
+                                const bIndex = apiPriorityOrder.indexOf(b.id);
+                                const aPos = aIndex === -1 ? 999 : aIndex;
+                                const bPos = bIndex === -1 ? 999 : bIndex;
+                                return aPos - bPos;
+                              })
+                              .map((profile, index) => (
+                                <div
+                                  key={profile.id}
+                                  className="flex items-center gap-3 p-2 rounded-md bg-background/50 border border-border"
+                                >
+                                  <div className="flex items-center justify-center w-6 h-6 rounded bg-muted text-xs font-medium text-muted-foreground">
+                                    {index + 1}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-sm font-medium truncate">{profile.name}</div>
+                                    <div className="text-xs text-muted-foreground truncate">{getHostFromUrl(profile.baseUrl)}</div>
+                                  </div>
+                                  {activeApiProfileId === profile.id && (
+                                    <span className="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded flex items-center gap-1">
+                                      <Check className="h-3 w-3" />
+                                      {t('accounts.customEndpoints.activeBadge')}
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   {activeApiProfileId && (
                     <div className="flex items-center justify-end pb-2">
@@ -1223,6 +1402,7 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
                     );
                   })}
                 </div>
+                </>
               )}
 
               {/* Add/Edit Dialog */}

@@ -166,6 +166,24 @@ const browserMockAPI: ElectronAPI = {
     }
   }),
 
+  getAPIProfileRotationStrategy: async () => ({
+    success: true,
+    data: {
+      enabled: false,
+      priorityOrder: [],
+      fallbackToOAuth: false,
+      thresholds: {
+        maxUsagePercent: 95,
+        rateLimitBackoff: 60
+      }
+    }
+  }),
+
+  updateAPIProfileRotationStrategy: async (_strategy: any) => ({
+    success: true,
+    data: _strategy
+  }),
+
   // User History API (Chat, Ideation, Roadmap, Repo)
   getChatHistories: async () => ({
     success: true,

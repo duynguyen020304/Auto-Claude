@@ -563,6 +563,18 @@
         "deleting": "Deleting..."
       }
     },
+    "apiRotation": {
+      "title": "API Profile Rotation",
+      "description": "Configure automatic rotation between API profiles to avoid rate limits and optimize usage",
+      "enableRotation": "Enable rotation",
+      "enableRotationDescription": "Automatically switch between API profiles based on priority and usage",
+      "fallbackToOAuth": "Fallback to Claude Code",
+      "fallbackToOAuthDescription": "Switch to Claude Code accounts when all API profiles are unavailable",
+      "usageThreshold": "Usage threshold",
+      "usageThresholdDescription": "Switch to next profile when usage reaches this level (recommended: 95%)",
+      "priorityOrder": "Profile priority order",
+      "dragToReorder": "Drag profiles to reorder priority"
+    },
     "autoSwitching": {
       "title": "Automatic Account Switching",
       "description": "Automatically switch between accounts to avoid interruptions. Configure proactive monitoring to switch before hitting limits.",

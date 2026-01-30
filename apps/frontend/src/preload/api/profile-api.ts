@@ -6,7 +6,8 @@ import type {
   ProfileFormData,
   ProfilesFile,
   TestConnectionResult,
-  DiscoverModelsResult
+  DiscoverModelsResult,
+  APIProfileRotationStrategy
 } from '@shared/types/profile';
 import type { DailyUsageData } from '@shared/types/agent';
 
@@ -46,6 +47,12 @@ export interface ProfileAPI {
 
   // Request historical usage data (7d/30d) - only available for z.ai provider
   requestHistoricalUsage: (days: 7 | 30) => Promise<IPCResult<DailyUsageData[] | null>>;
+
+  // Get API profile rotation strategy
+  getAPIProfileRotationStrategy: () => Promise<IPCResult<APIProfileRotationStrategy>>;
+
+  // Update API profile rotation strategy
+  updateAPIProfileRotationStrategy: (strategy: APIProfileRotationStrategy) => Promise<IPCResult<APIProfileRotationStrategy>>;
 }
 
 let testConnectionRequestId = 0;
@@ -148,5 +155,13 @@ export const createProfileAPI = (): ProfileAPI => ({
 
   // Request historical usage data (7d/30d) - only available for z.ai provider
   requestHistoricalUsage: (days: 7 | 30): Promise<IPCResult<DailyUsageData[] | null>> =>
-    ipcRenderer.invoke(IPC_CHANNELS.HISTORICAL_USAGE_REQUEST, days)
+    ipcRenderer.invoke(IPC_CHANNELS.HISTORICAL_USAGE_REQUEST, days),
+
+  // Get API profile rotation strategy
+  getAPIProfileRotationStrategy: (): Promise<IPCResult<APIProfileRotationStrategy>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PROFILES_GET_ROTATION_STRATEGY),
+
+  // Update API profile rotation strategy
+  updateAPIProfileRotationStrategy: (strategy: APIProfileRotationStrategy): Promise<IPCResult<APIProfileRotationStrategy>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PROFILES_UPDATE_ROTATION_STRATEGY, strategy)
 });
