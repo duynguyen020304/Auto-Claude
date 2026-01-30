@@ -25,8 +25,15 @@ export {
   updateProfile,
   deleteProfile,
   getAPIProfileEnv,
-  getRotatedAPIProfileEnv
+  getRotatedAPIProfileEnv,
+  trackAPIProfileUsage,
+  getAPIProfileUsage,
+  isAPIProfileAvailable,
+  parseRateLimitHeaders,
+  updateAPIProfileRateLimit
 } from '../profile-service';
+
+export type { RateLimitInfo } from '../profile-service';
 
 // Profile Service - import from local profile-service for other functions
 export {
