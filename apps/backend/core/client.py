@@ -139,12 +139,11 @@ from agents.tools_pkg import (
 from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
 from claude_agent_sdk.types import HookMatcher
 from core.auth import (
-    get_credential,
+    configure_sdk_authentication,
+    get_credential,  # Keep - needed for task metadata API profile feature
     get_sdk_env_vars,
-    require_auth_token,
-    validate_token_not_encrypted,
 )
-from phase_config import load_task_metadata
+from phase_config import load_task_metadata  # Keep - needed for apiProfileId check
 from linear_updater import is_linear_enabled
 from prompts_pkg.project_context import detect_project_capabilities, load_project_index
 from security import bash_security_hook
@@ -590,33 +589,34 @@ def create_client(
        (see security.py for ALLOWED_COMMANDS)
     4. Tool filtering - Each agent type only sees relevant tools (prevents misuse)
     """
-    # Get OAuth token - Claude CLI handles token lifecycle internally
-    oauth_token = require_auth_token()
-
-    # Validate token is not encrypted before passing to SDK
-    # Encrypted tokens (enc:...) should have been decrypted by require_auth_token()
-    # If we still have an encrypted token here, it means decryption failed or was skipped
-    validate_token_not_encrypted(oauth_token)
-
     # Check if task metadata specifies an API profile to use
-    # This takes precedence over default token
+    # This takes precedence over default authentication
     task_metadata = load_task_metadata(spec_dir)
     if task_metadata and task_metadata.get("apiProfileId"):
         api_profile_id = task_metadata["apiProfileId"]
         try:
             # Load the credential profile from platform storage
             credential = get_credential(api_profile_id)
-            if credential and credential.get("value"):
-                # Use the task-specific API profile credential
-                oauth_token = credential["value"]
-                logger.info(
-                    f"Using API profile {api_profile_id} ({credential.get('name', 'Unknown')}) "
-                    f"from task metadata"
-                )
+            if credential:
+                credential_value = credential.get("value")
+                if credential_value:
+                    # Set API profile mode environment variables
+                    # configure_sdk_authentication() will detect ANTHROPIC_AUTH_TOKEN
+                    # and use API profile mode (no OAuth required)
+                    os.environ["ANTHROPIC_AUTH_TOKEN"] = credential_value
+                    logger.info(
+                        f"Using API profile {api_profile_id} ({credential.get('name', 'Unknown')}) "
+                        f"from task metadata"
+                    )
+                else:
+                    logger.warning(
+                        f"API profile '{api_profile_id}' found but has no value, "
+                        f"falling back to default authentication"
+                    )
             else:
                 logger.warning(
                     f"API profile '{api_profile_id}' specified in task metadata "
-                    f"but not found in credential storage, falling back to default token"
+                    f"but not found in credential storage, falling back to default authentication"
                 )
         except Exception as e:
             logger.error(
@@ -625,11 +625,22 @@ def create_client(
                 exc_info=True
             )
 
-    # Ensure SDK can access it via its expected env var
-    os.environ["CLAUDE_CODE_OAUTH_TOKEN"] = oauth_token
-
-    # Collect env vars to pass to SDK (ANTHROPIC_BASE_URL, etc.)
+    # Collect env vars to pass to SDK (ANTHROPIC_BASE_URL, CLAUDE_CONFIG_DIR, etc.)
     sdk_env = get_sdk_env_vars()
+
+    # Get the config dir for profile-specific credential lookup
+    # CLAUDE_CONFIG_DIR enables per-profile Keychain entries with SHA256-hashed service names
+    config_dir = sdk_env.get("CLAUDE_CONFIG_DIR")
+
+    # Configure SDK authentication (OAuth or API profile mode)
+    # This function:
+    # 1. Detects API profile mode via ANTHROPIC_BASE_URL or ANTHROPIC_AUTH_TOKEN
+    # 2. If API profile mode: uses ANTHROPIC_AUTH_TOKEN, removes CLAUDE_CODE_OAUTH_TOKEN
+    # 3. If OAuth mode: gets CLAUDE_CODE_OAUTH_TOKEN from keychain (with profile lookup)
+    configure_sdk_authentication(config_dir)
+
+    if config_dir:
+        logger.info(f"Using CLAUDE_CONFIG_DIR for profile: {config_dir}")
 
     # Debug: Log git-bash path detection on Windows
     if "CLAUDE_CODE_GIT_BASH_PATH" in sdk_env:

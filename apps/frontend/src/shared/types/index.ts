@@ -9,6 +9,7 @@ export * from './common';
 export * from './auth';
 export * from './project';
 export * from './task';
+export * from './kanban';
 export * from './terminal';
 export * from './agent';
 export * from './settings';
