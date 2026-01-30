@@ -198,6 +198,7 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
 
     // Add API profiles
     apiProfiles.forEach((profile) => {
+      const usageData = profileUsageData.get(profile.id);
       unifiedList.push({
         id: `api-${profile.id}`,
         name: profile.name,
@@ -207,9 +208,12 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
         isActive: profile.id === activeApiProfileId,
         isNext: false, // Will be computed by AccountPriorityList
         isAvailable: true, // API profiles are always considered available
-        hasUnlimitedUsage: true, // API profiles have no rate limits
-        sessionPercent: undefined,
-        weeklyPercent: undefined,
+        hasUnlimitedUsage: false, // API profiles also have usage tracking
+        // Use real usage data from the usage monitor
+        sessionPercent: usageData?.sessionPercent,
+        weeklyPercent: usageData?.weeklyPercent,
+        isRateLimited: usageData?.isRateLimited,
+        rateLimitType: usageData?.rateLimitType,
       });
     });
 
