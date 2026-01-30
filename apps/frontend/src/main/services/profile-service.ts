@@ -3,10 +3,12 @@
  *
  * Provides validation functions for URL, API key, and profile name uniqueness.
  * Handles creating new profiles with validation.
+ * Tracks API profile usage for rotation strategies.
  */
 
 import { loadProfilesFile, saveProfilesFile, generateProfileId } from '../utils/profile-manager';
-import type { APIProfile, TestConnectionResult } from '../../shared/types/profile';
+import { updateProfileUsage, getProfileUsage } from '../utils/api-usage-storage';
+import type { APIProfile, TestConnectionResult, APIProfileUsage } from '../../shared/types/profile';
 
 /**
  * Validate base URL format
@@ -507,4 +509,39 @@ export async function testConnection(
       message: 'Connection test failed. Please try again.'
     };
   }
+}
+
+/**
+ * Track API profile usage after a request
+ *
+ * Updates request count, token usage, and last request time for rotation strategies.
+ * Persists data to disk for recovery across app restarts.
+ *
+ * @param profileId - UUID of the API profile that was used
+ * @param requestCount - Number of requests made (default: 1)
+ * @param tokenUsage - Number of tokens consumed (default: 0)
+ */
+export function trackAPIProfileUsage(
+  profileId: string,
+  requestCount: number = 1,
+  tokenUsage: number = 0
+): void {
+  // Get current usage data
+  const currentUsage = getProfileUsage(profileId);
+
+  // Calculate new totals
+  const newRequestCount = (currentUsage?.requestCount || 0) + requestCount;
+  const newTokenUsage = (currentUsage?.tokenUsage || 0) + tokenUsage;
+
+  // Update usage data
+  updateProfileUsage(profileId, {
+    profileId,
+    requestCount: newRequestCount,
+    tokenUsage: newTokenUsage,
+    lastRequestTime: Date.now(),
+    isRateLimited: currentUsage?.isRateLimited || false,
+    rateLimitResetTime: currentUsage?.rateLimitResetTime,
+    quotaLimit: currentUsage?.quotaLimit,
+    quotaWindow: currentUsage?.quotaWindow
+  });
 }
