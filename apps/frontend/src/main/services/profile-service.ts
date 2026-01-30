@@ -545,3 +545,75 @@ export function trackAPIProfileUsage(
     quotaWindow: currentUsage?.quotaWindow
   });
 }
+
+/**
+ * Get API profile usage data
+ *
+ * Returns usage statistics for a specific API profile including request count,
+ * token usage, last request time, and rate limit status. Returns null if the
+ * profile has no usage data yet.
+ *
+ * @param profileId - UUID of the API profile
+ * @returns Usage data or null if not found
+ */
+export function getAPIProfileUsage(profileId: string): APIProfileUsage | null {
+  return getProfileUsage(profileId);
+}
+
+/**
+ * Check if an API profile is available for use
+ *
+ * Determines availability based on rate limit status and quota constraints.
+ * A profile is unavailable if:
+ * - It is currently rate limited (and rate limit reset time has not passed)
+ * - It has exceeded its quota limit (if configured)
+ *
+ * This function also clears expired rate limits automatically. If the rate limit
+ * reset time has passed, the profile is marked as available again.
+ *
+ * @param profileId - UUID of the API profile
+ * @returns true if profile is available, false otherwise
+ */
+export function isAPIProfileAvailable(profileId: string): boolean {
+  const usage = getProfileUsage(profileId);
+
+  // No usage data means profile has never been used - available
+  if (!usage) {
+    return true;
+  }
+
+  // Check if currently rate limited
+  if (usage.isRateLimited) {
+    // If rate limit reset time is set, check if it has expired
+    if (usage.rateLimitResetTime) {
+      const now = Date.now();
+      if (now >= usage.rateLimitResetTime) {
+        // Rate limit has expired - clear the flag and mark as available
+        updateProfileUsage(profileId, {
+          isRateLimited: false,
+          rateLimitResetTime: undefined
+        });
+        return true;
+      }
+      // Still within rate limit backoff period
+      return false;
+    }
+    // Rate limited but no reset time - should be cleared manually
+    // Conservatively return false to avoid hitting rate limits
+    return false;
+  }
+
+  // Check quota limits (if configured)
+  if (usage.quotaLimit && usage.quotaWindow) {
+    // Quota is configured - check if usage exceeds limit
+    // Note: This is a simple check. A more sophisticated implementation would
+    // check usage within the quota window (sliding window or token bucket).
+    // For now, we just check total request count against quota.
+    if (usage.requestCount >= usage.quotaLimit) {
+      return false;
+    }
+  }
+
+  // Profile is available
+  return true;
+}
