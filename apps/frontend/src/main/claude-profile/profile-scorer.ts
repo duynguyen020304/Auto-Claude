@@ -1476,3 +1476,130 @@ function apiTimeBasedStrategy(
     profileIndex: newProfileIndex
   };
 }
+
+// ============================================================================
+// API Profile to OAuth Fallback Logic
+// ============================================================================
+
+/**
+ * Result type for profile selection that can be either API or OAuth
+ */
+export interface ProfileSelectionResult {
+  profile: APIProfile | ClaudeProfile | null;
+  profileType: 'api' | 'oauth' | null;
+  reason?: string;
+}
+
+/**
+ * Get the best available profile with fallback from API to OAuth
+ *
+ * Selection Logic:
+ * 1. First, try to get an available API profile using the configured strategy
+ * 2. If no API profile is available and fallbackToOAuth is enabled:
+ *    - Fall back to OAuth profiles using the OAuth auto-switch settings
+ *    - Return the best available OAuth profile
+ * 3. If fallback is disabled or no OAuth profiles available, return null
+ *
+ * Use Cases:
+ * - API profiles are rate-limited or over quota
+ * - All API profiles are unavailable
+ * - User wants OAuth as a safety net
+ *
+ * @param apiProfiles - All configured API profiles
+ * @param oauthProfiles - All configured OAuth profiles
+ * @param apiStrategy - API profile rotation strategy configuration
+ * @param oauthSettings - OAuth auto-switch settings
+ * @param oauthPriorityOrder - User's configured priority order for OAuth profiles (array of unified IDs like 'oauth-{id}')
+ * @param excludeProfileId - Profile ID to exclude (usually the current/failing one)
+ * @returns ProfileSelectionResult with selected profile, type, and reason
+ */
+export function getBestAvailableProfileWithFallback(
+  apiProfiles: APIProfile[],
+  oauthProfiles: ClaudeProfile[],
+  apiStrategy: APIProfileRotationStrategy,
+  oauthSettings: ClaudeAutoSwitchSettings,
+  oauthPriorityOrder: string[] = [],
+  excludeProfileId?: string
+): ProfileSelectionResult {
+  if (isDebug) {
+    console.warn('[ProfileScorer] Profile selection with fallback:');
+    console.warn('[ProfileScorer]   API profiles:', apiProfiles.length);
+    console.warn('[ProfileScorer]   OAuth profiles:', oauthProfiles.length);
+    console.warn('[ProfileScorer]   Fallback to OAuth:', apiStrategy.fallbackToOAuth);
+  }
+
+  // Step 1: Try to get an available API profile
+  const apiProfile = getBestAvailableAPIProfile(apiProfiles, apiStrategy, excludeProfileId);
+
+  if (apiProfile) {
+    if (isDebug) {
+      console.warn('[ProfileScorer] Selected API profile:', apiProfile.name);
+    }
+
+    return {
+      profile: apiProfile,
+      profileType: 'api',
+      reason: 'API profile available'
+    };
+  }
+
+  // Step 2: No API profile available - check if we should fall back to OAuth
+  if (!apiStrategy.fallbackToOAuth) {
+    if (isDebug) {
+      console.warn('[ProfileScorer] No API profile available and OAuth fallback disabled');
+    }
+
+    return {
+      profile: null,
+      profileType: null,
+      reason: 'No API profile available and OAuth fallback disabled'
+    };
+  }
+
+  // Step 3: Fall back to OAuth profiles
+  if (oauthProfiles.length === 0) {
+    if (isDebug) {
+      console.warn('[ProfileScorer] Fallback enabled but no OAuth profiles configured');
+    }
+
+    return {
+      profile: null,
+      profileType: null,
+      reason: 'Fallback enabled but no OAuth profiles configured'
+    };
+  }
+
+  if (isDebug) {
+    console.warn('[ProfileScorer] Falling back to OAuth profiles');
+  }
+
+  const oauthProfile = getBestAvailableProfile(
+    oauthProfiles,
+    oauthSettings,
+    excludeProfileId,
+    oauthPriorityOrder
+  );
+
+  if (oauthProfile) {
+    if (isDebug) {
+      console.warn('[ProfileScorer] Selected OAuth profile as fallback:', oauthProfile.name);
+    }
+
+    return {
+      profile: oauthProfile,
+      profileType: 'oauth',
+      reason: 'Fallback to OAuth profile (no API profiles available)'
+    };
+  }
+
+  // Step 4: No profiles available at all
+  if (isDebug) {
+    console.warn('[ProfileScorer] No API or OAuth profiles available');
+  }
+
+  return {
+    profile: null,
+    profileType: null,
+    reason: 'No API or OAuth profiles available'
+  };
+}
