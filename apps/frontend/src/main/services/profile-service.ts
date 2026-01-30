@@ -617,3 +617,158 @@ export function isAPIProfileAvailable(profileId: string): boolean {
   // Profile is available
   return true;
 }
+
+/**
+ * Result of parsing rate limit information from API response headers
+ */
+export interface RateLimitInfo {
+  /** Whether the response indicates rate limiting */
+  isRateLimited: boolean;
+  /** Remaining requests before rate limit */
+  remainingRequests?: number;
+  /** Total request limit */
+  requestLimit?: number;
+  /** Unix timestamp (ms) when the rate limit resets */
+  resetTime?: number;
+  /** Whether a 429 status was received */
+  is429: boolean;
+}
+
+/**
+ * Parse rate limit headers from an API response
+ *
+ * Handles multiple header formats:
+ * - Anthropic-specific: anthropic-ratelimit-requests-*
+ * - Standard: RateLimit-* (used by some proxies)
+ * - Retry-After: HTTP-date or seconds (for 429 responses)
+ *
+ * @param response - Fetch Response object from API call
+ * @returns Parsed rate limit information
+ */
+export function parseRateLimitHeaders(response: Response): RateLimitInfo {
+  const headers = response.headers;
+  const result: RateLimitInfo = {
+    isRateLimited: false,
+    is429: response.status === 429
+  };
+
+  // Check Anthropic-specific rate limit headers
+  const requestsRemaining = headers.get('anthropic-ratelimit-requests-remaining');
+  const requestsLimit = headers.get('anthropic-ratelimit-requests-limit');
+  const requestsReset = headers.get('anthropic-ratelimit-requests-reset');
+
+  // Parse remaining requests
+  if (requestsRemaining !== null) {
+    const parsed = parseInt(requestsRemaining, 10);
+    if (!isNaN(parsed)) {
+      result.remainingRequests = parsed;
+    }
+  }
+
+  // Parse request limit
+  if (requestsLimit !== null) {
+    const parsed = parseInt(requestsLimit, 10);
+    if (!isNaN(parsed)) {
+      result.requestLimit = parsed;
+    }
+  }
+
+  // Parse reset time (Anthropic returns Unix timestamp in seconds)
+  if (requestsReset !== null) {
+    const parsed = parseInt(requestsReset, 10);
+    if (!isNaN(parsed)) {
+      // Convert to milliseconds
+      result.resetTime = parsed * 1000;
+    }
+  }
+
+  // Check standard RateLimit headers (used by some proxies/compatible APIs)
+  if (result.remainingRequests === undefined) {
+    const rateLimitRemaining = headers.get('ratelimit-remaining') || headers.get('x-ratelimit-remaining');
+    if (rateLimitRemaining !== null) {
+      const parsed = parseInt(rateLimitRemaining, 10);
+      if (!isNaN(parsed)) {
+        result.remainingRequests = parsed;
+      }
+    }
+  }
+
+  if (result.requestLimit === undefined) {
+    const rateLimitLimit = headers.get('ratelimit-limit') || headers.get('x-ratelimit-limit');
+    if (rateLimitLimit !== null) {
+      const parsed = parseInt(rateLimitLimit, 10);
+      if (!isNaN(parsed)) {
+        result.requestLimit = parsed;
+      }
+    }
+  }
+
+  if (result.resetTime === undefined) {
+    const rateLimitReset = headers.get('ratelimit-reset') || headers.get('x-ratelimit-reset');
+    if (rateLimitReset !== null) {
+      const parsed = parseInt(rateLimitReset, 10);
+      if (!isNaN(parsed)) {
+        // Some APIs return seconds, some return milliseconds
+        // If less than 10000000000 (year 2286), assume seconds
+        result.resetTime = parsed < 10000000000 ? parsed * 1000 : parsed;
+      }
+    }
+  }
+
+  // Handle 429 Too Many Requests with Retry-After header
+  if (result.is429) {
+    const retryAfter = headers.get('retry-after');
+    if (retryAfter !== null && result.resetTime === undefined) {
+      // Retry-After can be HTTP-date or seconds
+      // Try parsing as seconds first
+      const seconds = parseInt(retryAfter, 10);
+      if (!isNaN(seconds)) {
+        result.resetTime = Date.now() + (seconds * 1000);
+      } else {
+        // Try parsing as HTTP-date (e.g., "Fri, 31 Dec 2024 23:59:59 GMT")
+        const date = new Date(retryAfter);
+        if (!isNaN(date.getTime())) {
+          result.resetTime = date.getTime();
+        }
+      }
+    }
+  }
+
+  // Determine if rate limited
+  // Either: 429 status, or remaining requests is 0, or we're near the limit
+  if (result.is429) {
+    result.isRateLimited = true;
+  } else if (result.remainingRequests !== undefined && result.remainingRequests <= 0) {
+    result.isRateLimited = true;
+  }
+
+  return result;
+}
+
+/**
+ * Update API profile rate limit status from API response
+ *
+ * Parses rate limit headers from the response and updates the profile's
+ * usage data with the latest rate limit information. Marks the profile
+ * as rate limited if necessary.
+ *
+ * This should be called after every API request to track rate limit status.
+ *
+ * @param profileId - UUID of the API profile that was used
+ * @param response - Fetch Response object from the API call
+ * @returns Rate limit information parsed from headers
+ */
+export function updateAPIProfileRateLimit(
+  profileId: string,
+  response: Response
+): RateLimitInfo {
+  const rateLimitInfo = parseRateLimitHeaders(response);
+
+  // Update profile usage with rate limit information
+  updateProfileUsage(profileId, {
+    isRateLimited: rateLimitInfo.isRateLimited,
+    rateLimitResetTime: rateLimitInfo.resetTime
+  });
+
+  return rateLimitInfo;
+}
