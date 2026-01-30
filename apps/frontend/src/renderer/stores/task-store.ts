@@ -904,7 +904,19 @@ export async function submitReview(
   try {
     const result = await window.electronAPI.submitReview(taskId, approved, feedback, images);
     if (result.success) {
-      store.updateTaskStatus(taskId, approved ? 'done' : 'in_progress');
+      if (approved) {
+        store.updateTaskStatus(taskId, 'done');
+      } else {
+        // FIX (021): Reset execution phase when QA review is rejected with feedback
+        // This ensures the UI shows ongoing validation instead of stuck 'completed' status
+        store.updateExecutionProgress(taskId, {
+          phase: 'qa_fixing',
+          phaseProgress: 0,
+          overallProgress: 0.8,
+          completedPhases: []  // Clear to allow re-entry into QA phases
+        });
+        store.updateTaskStatus(taskId, 'in_progress');
+      }
       return true;
     }
     return false;
