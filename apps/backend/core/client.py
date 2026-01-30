@@ -687,6 +687,9 @@ def create_client(
         mcp_config,
     )
 
+    # Debug logging for required_servers list
+    logger.info(f"MCP servers for {agent_type}: {required_servers}")
+
     # Debug logging for context7 inclusion in required_servers
     context7_included = "context7" in required_servers
     logger.info(f"context7 included in required_servers: {context7_included}")
