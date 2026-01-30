@@ -13,7 +13,7 @@ import { AgentEvents } from './agent-events';
 import { ProcessType, ExecutionProgressData } from './types';
 import type { CompletablePhase } from '../../shared/constants/phase-protocol';
 import { detectRateLimit, createSDKRateLimitInfo, getBestAvailableProfileEnv, detectAuthFailure } from '../rate-limit-detector';
-import { getAPIProfileEnv } from '../services/profile';
+import { getRotatedAPIProfileEnv } from '../services/profile';
 import { projectStore } from '../project-store';
 import { getClaudeProfileManager } from '../claude-profile-manager';
 import { parsePythonCommand, validatePythonPath } from '../python-detector';
@@ -529,10 +529,10 @@ export class AgentProcessManager {
     // Get Python environment (PYTHONPATH for bundled packages, etc.)
     const pythonEnv = pythonEnvManager.getPythonEnv();
 
-    // Get active API profile environment variables
+    // Get active API profile environment variables (with rotation strategy support)
     let apiProfileEnv: Record<string, string> = {};
     try {
-      apiProfileEnv = await getAPIProfileEnv();
+      apiProfileEnv = await getRotatedAPIProfileEnv();
     } catch (error) {
       console.error('[Agent Process] Failed to get API profile env:', error);
       // Continue with empty profile env (falls back to OAuth mode)

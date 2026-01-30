@@ -16,7 +16,7 @@ export {
   atomicModifyProfiles
 } from './profile-manager';
 
-// Profile Service
+// Profile Service - import from parent directory for rotation-enabled functions
 export {
   validateBaseUrl,
   validateApiKey,
@@ -25,6 +25,11 @@ export {
   updateProfile,
   deleteProfile,
   getAPIProfileEnv,
+  getRotatedAPIProfileEnv
+} from '../profile-service';
+
+// Profile Service - import from local profile-service for other functions
+export {
   hasActiveAPIProfile,
   testConnection,
   discoverModels
