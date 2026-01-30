@@ -663,6 +663,10 @@ def create_client(
     # Load per-project MCP configuration from .auto-claude/.env
     mcp_config = load_project_mcp_config(project_dir)
 
+    # Debug logging for CONTEXT7_ENABLED
+    context7_enabled = mcp_config.get("CONTEXT7_ENABLED", "true")
+    logger.info(f"CONTEXT7_ENABLED: {context7_enabled}")
+
     # Get allowed tools using phase-aware configuration
     # This respects AGENT_CONFIGS and only includes tools the agent needs
     # Also respects per-project MCP configuration
@@ -682,6 +686,10 @@ def create_client(
         linear_enabled,
         mcp_config,
     )
+
+    # Debug logging for context7 inclusion in required_servers
+    context7_included = "context7" in required_servers
+    logger.info(f"context7 included in required_servers: {context7_included}")
 
     # Check if Graphiti MCP is enabled (already filtered by get_required_mcp_servers)
     graphiti_mcp_enabled = "graphiti" in required_servers
