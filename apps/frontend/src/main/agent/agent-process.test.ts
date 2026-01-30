@@ -80,7 +80,9 @@ vi.mock('../claude-profile-manager', () => ({
 
 // Mock dependencies
 vi.mock('../services/profile', () => ({
-  getAPIProfileEnv: vi.fn()
+  getAPIProfileEnv: vi.fn(),
+  getRotatedAPIProfileEnv: vi.fn(),
+  trackAPIProfileUsage: vi.fn()
 }));
 
 vi.mock('../rate-limit-detector', () => ({
@@ -205,7 +207,7 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
         ANTHROPIC_AUTH_TOKEN: 'sk-test-key'
       };
 
-      vi.mocked(profileService.getAPIProfileEnv).mockResolvedValue(mockApiProfileEnv);
+      vi.mocked(profileService.getRotatedAPIProfileEnv).mockResolvedValue(mockApiProfileEnv);
 
       await processManager.spawnProcess('task-1', '/fake/cwd', ['run.py'], {}, 'task-execution');
 
@@ -223,7 +225,7 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
         ANTHROPIC_AUTH_TOKEN: 'sk-custom-key-12345678'
       };
 
-      vi.mocked(profileService.getAPIProfileEnv).mockResolvedValue(mockApiProfileEnv);
+      vi.mocked(profileService.getRotatedAPIProfileEnv).mockResolvedValue(mockApiProfileEnv);
 
       await processManager.spawnProcess('task-1', '/fake/cwd', ['run.py'], {}, 'task-execution');
 
@@ -239,7 +241,7 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
         ANTHROPIC_DEFAULT_OPUS_MODEL: 'claude-opus-4-5-20251101'
       };
 
-      vi.mocked(profileService.getAPIProfileEnv).mockResolvedValue(mockApiProfileEnv);
+      vi.mocked(profileService.getRotatedAPIProfileEnv).mockResolvedValue(mockApiProfileEnv);
 
       await processManager.spawnProcess('task-1', '/fake/cwd', ['run.py'], {}, 'task-execution');
 
@@ -263,7 +265,7 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
         ANTHROPIC_BASE_URL: 'https://profile.com'
       };
 
-      vi.mocked(profileService.getAPIProfileEnv).mockResolvedValue(mockApiProfileEnv);
+      vi.mocked(profileService.getRotatedAPIProfileEnv).mockResolvedValue(mockApiProfileEnv);
 
       await processManager.spawnProcess('task-1', '/fake/cwd', ['run.py'], extraEnv, 'task-execution');
 
@@ -289,7 +291,7 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
 
     it('should NOT set ANTHROPIC_AUTH_TOKEN when no active profile (OAuth mode)', async () => {
       // Return empty object = OAuth mode
-      vi.mocked(profileService.getAPIProfileEnv).mockResolvedValue({});
+      vi.mocked(profileService.getRotatedAPIProfileEnv).mockResolvedValue({});
 
       // Set OAuth token via getProfileEnv (existing flow)
       vi.mocked(rateLimitDetector.getBestAvailableProfileEnv).mockReturnValue({
@@ -308,10 +310,10 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
       expect(envArg.ANTHROPIC_AUTH_TOKEN).toBe('');
     });
 
-    it('should return empty object from getAPIProfileEnv when activeProfileId is null', async () => {
-      vi.mocked(profileService.getAPIProfileEnv).mockResolvedValue({});
+    it('should return empty object from getRotatedAPIProfileEnv when no profiles configured', async () => {
+      vi.mocked(profileService.getRotatedAPIProfileEnv).mockResolvedValue({});
 
-      const result = await profileService.getAPIProfileEnv();
+      const result = await profileService.getRotatedAPIProfileEnv();
       expect(result).toEqual({});
     });
 
@@ -324,7 +326,7 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
       };
 
       // OAuth mode - no active API profile
-      vi.mocked(profileService.getAPIProfileEnv).mockResolvedValue({});
+      vi.mocked(profileService.getRotatedAPIProfileEnv).mockResolvedValue({});
 
       // Set OAuth token
       vi.mocked(rateLimitDetector.getBestAvailableProfileEnv).mockReturnValue({
@@ -353,7 +355,7 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
       };
 
       // OAuth mode
-      vi.mocked(profileService.getAPIProfileEnv).mockResolvedValue({});
+      vi.mocked(profileService.getRotatedAPIProfileEnv).mockResolvedValue({});
       vi.mocked(rateLimitDetector.getBestAvailableProfileEnv).mockReturnValue({
         env: { CLAUDE_CODE_OAUTH_TOKEN: 'oauth-token-789' },
         profileId: 'default',
@@ -381,7 +383,7 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
         ANTHROPIC_AUTH_TOKEN: 'sk-profile-active',
         ANTHROPIC_BASE_URL: 'https://active-profile.com'
       };
-      vi.mocked(profileService.getAPIProfileEnv).mockResolvedValue(mockApiProfileEnv);
+      vi.mocked(profileService.getRotatedAPIProfileEnv).mockResolvedValue(mockApiProfileEnv);
 
       await processManager.spawnProcess('task-1', '/fake/cwd', ['run.py'], {}, 'task-execution');
 
@@ -400,7 +402,7 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
         ANTHROPIC_BASE_URL: 'https://api.example.com'
       };
 
-      vi.mocked(profileService.getAPIProfileEnv).mockResolvedValue(mockApiProfileEnv);
+      vi.mocked(profileService.getRotatedAPIProfileEnv).mockResolvedValue(mockApiProfileEnv);
 
       // Mock ALL console methods to capture any debug/error output
       const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -441,7 +443,7 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
         ANTHROPIC_BASE_URL: 'https://api.example.com'
       };
 
-      vi.mocked(profileService.getAPIProfileEnv).mockResolvedValue(mockApiProfileEnv);
+      vi.mocked(profileService.getRotatedAPIProfileEnv).mockResolvedValue(mockApiProfileEnv);
 
       // Mock console methods
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -472,7 +474,7 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
         ANTHROPIC_BASE_URL: 'https://api-a.com'
       };
 
-      vi.mocked(profileService.getAPIProfileEnv).mockResolvedValueOnce(profileAEnv);
+      vi.mocked(profileService.getRotatedAPIProfileEnv).mockResolvedValueOnce(profileAEnv);
 
       await processManager.spawnProcess('task-1', '/fake/cwd', ['run.py'], {}, 'task-execution');
 
@@ -485,7 +487,7 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
         ANTHROPIC_BASE_URL: 'https://api-b.com'
       };
 
-      vi.mocked(profileService.getAPIProfileEnv).mockResolvedValueOnce(profileBEnv);
+      vi.mocked(profileService.getRotatedAPIProfileEnv).mockResolvedValueOnce(profileBEnv);
 
       await processManager.spawnProcess('task-2', '/fake/cwd', ['run.py'], {}, 'task-execution');
 
@@ -518,7 +520,7 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
         profileName: 'Default',
         wasSwapped: false
       });
-      vi.mocked(profileService.getAPIProfileEnv).mockResolvedValue(apiProfileEnv);
+      vi.mocked(profileService.getRotatedAPIProfileEnv).mockResolvedValue(apiProfileEnv);
 
       await processManager.spawnProcess('task-1', '/fake/cwd', ['run.py'], extraEnv, 'task-execution');
 
@@ -537,7 +539,7 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
 
     it('should call getOAuthModeClearVars and apply clearing when in OAuth mode', async () => {
       // OAuth mode - empty API profile
-      vi.mocked(profileService.getAPIProfileEnv).mockResolvedValue({});
+      vi.mocked(profileService.getRotatedAPIProfileEnv).mockResolvedValue({});
 
       await processManager.spawnProcess('task-1', '/fake/cwd', ['run.py'], {}, 'task-execution');
 
@@ -552,9 +554,9 @@ describe('AgentProcessManager - API Profile Env Injection (Story 2.3)', () => {
       expect(envArg.ANTHROPIC_DEFAULT_OPUS_MODEL).toBe('');
     });
 
-    it('should handle getAPIProfileEnv errors gracefully', async () => {
+    it('should handle getRotatedAPIProfileEnv errors gracefully', async () => {
       // Simulate service error
-      vi.mocked(profileService.getAPIProfileEnv).mockRejectedValue(new Error('Service unavailable'));
+      vi.mocked(profileService.getRotatedAPIProfileEnv).mockRejectedValue(new Error('Service unavailable'));
 
       // Should not throw - should fall back to OAuth mode
       await expect(
