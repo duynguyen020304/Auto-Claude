@@ -122,6 +122,17 @@ function calculateFallbackScore(
 }
 
 /**
+ * Return type for profile selection that includes both the selected profile
+ * and any rotation state updates that need to be persisted
+ */
+export interface ProfileSelectionResult {
+  /** The selected profile (null if no available profile) */
+  profile: ClaudeProfile | null;
+  /** State updates that need to be persisted to settings (optional) */
+  stateUpdates?: Partial<ClaudeAutoSwitchSettings>;
+}
+
+/**
  * Get the best profile to switch to based on configured rotation strategy
  *
  * Selection Logic:
@@ -133,20 +144,20 @@ function calculateFallbackScore(
  *    - 'random': Random selection
  *    - 'weighted': Weighted distribution
  *    - 'time-based': Rotate at configured intervals
- * 3. Return the selected profile or null if no available profiles
+ * 3. Return the selected profile along with any state updates that need to be persisted
  *
  * @param profiles - All Claude profiles
  * @param settings - Auto-switch settings (contains thresholds and rotationStrategy)
  * @param excludeProfileId - Profile ID to exclude (usually the current/failing one)
  * @param priorityOrder - User's configured priority order (array of unified IDs like 'oauth-{id}')
- * @returns Selected profile based on rotation strategy, or null if no available profiles
+ * @returns Object with selected profile and optional state updates for persistence
  */
 export function getBestAvailableProfile(
   profiles: ClaudeProfile[],
   settings: ClaudeAutoSwitchSettings,
   excludeProfileId?: string,
   priorityOrder: string[] = []
-): ClaudeProfile | null {
+): ProfileSelectionResult {
   // Get the rotation strategy from settings (default to 'priority')
   const strategy = settings.rotationStrategy ?? 'priority';
 
@@ -158,32 +169,46 @@ export function getBestAvailableProfile(
   switch (strategy) {
     case 'round-robin': {
       const result = roundRobinStrategy(profiles, settings, excludeProfileId);
-      // Note: Caller should update settings.roundRobinLastIndex with result.newIndex
-      return result.profile;
+      // Return state updates for persistence
+      return {
+        profile: result.profile,
+        stateUpdates: result.profile !== null ? { roundRobinLastIndex: result.newIndex } : undefined
+      };
     }
 
     case 'least-used': {
-      return leastUsedStrategy(profiles, settings, excludeProfileId);
+      return { profile: leastUsedStrategy(profiles, settings, excludeProfileId) };
     }
 
     case 'random': {
-      return randomStrategy(profiles, settings, excludeProfileId);
+      return { profile: randomStrategy(profiles, settings, excludeProfileId) };
     }
 
     case 'weighted': {
-      return weightedStrategy(profiles, settings, excludeProfileId);
+      return { profile: weightedStrategy(profiles, settings, excludeProfileId) };
     }
 
     case 'time-based': {
       const result = timeBasedStrategy(profiles, settings, excludeProfileId);
-      // Note: Caller should update settings with result state tracking fields
-      return result.profile;
+      // Return state updates for persistence
+      if (result.profile !== null && result.currentProfileId !== undefined) {
+        return {
+          profile: result.profile,
+          stateUpdates: {
+            timeBasedCurrentProfile: result.currentProfileId,
+            timeBasedLastRotationTime: result.lastRotationTime,
+            timeBasedProfileIndex: result.profileIndex
+          }
+        };
+      }
+      return { profile: result.profile };
     }
 
     case 'priority':
     default: {
       // Use existing priority-based logic (default, backward compatible)
-      return getBestAvailableProfileByPriority(profiles, settings, excludeProfileId, priorityOrder);
+      // Priority strategy doesn't require state tracking
+      return { profile: getBestAvailableProfileByPriority(profiles, settings, excludeProfileId, priorityOrder) };
     }
   }
 }
@@ -298,7 +323,7 @@ export function shouldProactivelySwitch(
   allProfiles: ClaudeProfile[],
   settings: ClaudeAutoSwitchSettings,
   priorityOrder: string[] = []
-): { shouldSwitch: boolean; reason?: string; suggestedProfile?: ClaudeProfile } {
+): { shouldSwitch: boolean; reason?: string; suggestedProfile?: ClaudeProfile; stateUpdates?: Partial<ClaudeAutoSwitchSettings> } {
   if (!settings.enabled) {
     return { shouldSwitch: false };
   }
@@ -311,23 +336,25 @@ export function shouldProactivelySwitch(
 
   // Check if we're approaching limits
   if (usage.weeklyUsagePercent >= settings.weeklyThreshold) {
-    const bestProfile = getBestAvailableProfile(allProfiles, settings, profile.id, priorityOrder);
-    if (bestProfile) {
+    const bestProfileResult = getBestAvailableProfile(allProfiles, settings, profile.id, priorityOrder);
+    if (bestProfileResult.profile) {
       return {
         shouldSwitch: true,
         reason: `Weekly usage at ${usage.weeklyUsagePercent}% (threshold: ${settings.weeklyThreshold}%)`,
-        suggestedProfile: bestProfile
+        suggestedProfile: bestProfileResult.profile,
+        stateUpdates: bestProfileResult.stateUpdates
       };
     }
   }
 
   if (usage.sessionUsagePercent >= settings.sessionThreshold) {
-    const bestProfile = getBestAvailableProfile(allProfiles, settings, profile.id, priorityOrder);
-    if (bestProfile) {
+    const bestProfileResult = getBestAvailableProfile(allProfiles, settings, profile.id, priorityOrder);
+    if (bestProfileResult.profile) {
       return {
         shouldSwitch: true,
         reason: `Session usage at ${usage.sessionUsagePercent}% (threshold: ${settings.sessionThreshold}%)`,
-        suggestedProfile: bestProfile
+        suggestedProfile: bestProfileResult.profile,
+        stateUpdates: bestProfileResult.stateUpdates
       };
     }
   }

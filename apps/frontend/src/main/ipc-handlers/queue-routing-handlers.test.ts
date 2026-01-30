@@ -9,7 +9,8 @@ import { ipcMain, BrowserWindow } from 'electron';
 import { registerQueueRoutingHandlers } from './queue-routing-handlers';
 import { IPC_CHANNELS } from '../../shared/constants';
 import type { AgentManager } from '../agent/agent-manager';
-import type { ProfileAssignmentReason } from '../../shared/types';
+import type { ProfileAssignmentReason, ClaudeProfile } from '../../shared/types';
+import type { ClaudeProfileManager } from '../claude-profile-manager';
 
 // Mock Electron
 vi.mock('electron', () => ({
@@ -21,6 +22,7 @@ vi.mock('electron', () => ({
 
 describe('registerQueueRoutingHandlers', () => {
   let mockAgentManager: Partial<AgentManager>;
+  let mockProfileManager: Partial<ClaudeProfileManager>;
   let mockWindow: Partial<BrowserWindow>;
   let getMainWindow: () => BrowserWindow | null;
   let registeredHandlers: Map<string, Function>;
@@ -58,6 +60,18 @@ describe('registerQueueRoutingHandlers', () => {
       updateTaskSession: vi.fn(),
       getTaskSessionId: vi.fn(() => 'session-123'),
       on: onMock as unknown as AgentManager['on']
+    };
+
+    // Setup mock profile manager
+    mockProfileManager = {
+      getProfile: vi.fn(),
+      getAutoSwitchSettings: vi.fn(() => ({
+        enabled: true,
+        rotationStrategy: 'round-robin',
+        maxUsagePercentage: 85
+      })),
+      getBestAvailableProfile: vi.fn(),
+      updateAutoSwitchSettings: vi.fn()
     };
 
     // Setup mock window
@@ -161,6 +175,198 @@ describe('registerQueueRoutingHandlers', () => {
       expect(result).toEqual({
         success: true,
         data: null
+      });
+    });
+
+    it('should persist rotation state when stateUpdates are provided', async () => {
+      const mockProfile: ClaudeProfile = {
+        id: 'profile-2',
+        name: 'Profile 2',
+        isDefault: false,
+        createdAt: new Date(),
+        isAuthenticated: true
+      };
+
+      const stateUpdates = {
+        lastUsedProfileIndex: 1,
+        lastRotationTime: Date.now()
+      };
+
+      mockProfileManager.getBestAvailableProfile = vi.fn(() => ({
+        profile: mockProfile,
+        stateUpdates
+      }));
+
+      registerQueueRoutingHandlers(
+        mockAgentManager as AgentManager,
+        getMainWindow,
+        mockProfileManager as ClaudeProfileManager
+      );
+
+      const handler = registeredHandlers.get(
+        IPC_CHANNELS.QUEUE_GET_BEST_PROFILE_FOR_TASK
+      );
+      const result = await handler?.({}, { excludeProfileId: 'profile-1' });
+
+      expect(mockProfileManager.updateAutoSwitchSettings).toHaveBeenCalledWith(
+        stateUpdates
+      );
+      expect(result).toEqual({
+        success: true,
+        data: mockProfile
+      });
+    });
+
+    it('should not persist state when no stateUpdates are provided', async () => {
+      const mockProfile: ClaudeProfile = {
+        id: 'profile-2',
+        name: 'Profile 2',
+        isDefault: false,
+        createdAt: new Date()
+      };
+
+      mockProfileManager.getBestAvailableProfile = vi.fn(() => ({
+        profile: mockProfile
+        // No stateUpdates
+      }));
+
+      registerQueueRoutingHandlers(
+        mockAgentManager as AgentManager,
+        getMainWindow,
+        mockProfileManager as ClaudeProfileManager
+      );
+
+      const handler = registeredHandlers.get(
+        IPC_CHANNELS.QUEUE_GET_BEST_PROFILE_FOR_TASK
+      );
+      await handler?.({}, { excludeProfileId: 'profile-1' });
+
+      expect(mockProfileManager.updateAutoSwitchSettings).not.toHaveBeenCalled();
+    });
+
+    it('should use specific profile when apiProfileId is provided', async () => {
+      const mockProfile: ClaudeProfile = {
+        id: 'specific-profile',
+        name: 'Specific Profile',
+        isDefault: false,
+        createdAt: new Date(),
+        isAuthenticated: true
+      };
+
+      mockProfileManager.getProfile = vi.fn(() => mockProfile);
+
+      registerQueueRoutingHandlers(
+        mockAgentManager as AgentManager,
+        getMainWindow,
+        mockProfileManager as ClaudeProfileManager
+      );
+
+      const handler = registeredHandlers.get(
+        IPC_CHANNELS.QUEUE_GET_BEST_PROFILE_FOR_TASK
+      );
+      const result = await handler?.({}, { apiProfileId: 'specific-profile' });
+
+      expect(mockProfileManager.getProfile).toHaveBeenCalledWith('specific-profile');
+      expect(mockProfileManager.getBestAvailableProfile).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        success: true,
+        data: mockProfile
+      });
+    });
+
+    it('should return null when specific profile is not found', async () => {
+      mockProfileManager.getProfile = vi.fn(() => undefined);
+
+      registerQueueRoutingHandlers(
+        mockAgentManager as AgentManager,
+        getMainWindow,
+        mockProfileManager as ClaudeProfileManager
+      );
+
+      const handler = registeredHandlers.get(
+        IPC_CHANNELS.QUEUE_GET_BEST_PROFILE_FOR_TASK
+      );
+      const result = await handler?.({}, { apiProfileId: 'non-existent' });
+
+      expect(result).toEqual({
+        success: true,
+        data: null
+      });
+    });
+
+    it('should return null when auto-switching is disabled', async () => {
+      mockProfileManager.getAutoSwitchSettings = vi.fn(() => ({
+        enabled: false,
+        rotationStrategy: 'round-robin'
+      }));
+
+      registerQueueRoutingHandlers(
+        mockAgentManager as AgentManager,
+        getMainWindow,
+        mockProfileManager as ClaudeProfileManager
+      );
+
+      const handler = registeredHandlers.get(
+        IPC_CHANNELS.QUEUE_GET_BEST_PROFILE_FOR_TASK
+      );
+      const result = await handler?.({}, {});
+
+      expect(mockProfileManager.getBestAvailableProfile).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        success: true,
+        data: null
+      });
+    });
+
+    it('should use rotation strategy for auto profileId', async () => {
+      const mockProfile: ClaudeProfile = {
+        id: 'profile-3',
+        name: 'Profile 3',
+        isDefault: false,
+        createdAt: new Date()
+      };
+
+      mockProfileManager.getBestAvailableProfile = vi.fn(() => ({
+        profile: mockProfile
+      }));
+
+      registerQueueRoutingHandlers(
+        mockAgentManager as AgentManager,
+        getMainWindow,
+        mockProfileManager as ClaudeProfileManager
+      );
+
+      const handler = registeredHandlers.get(
+        IPC_CHANNELS.QUEUE_GET_BEST_PROFILE_FOR_TASK
+      );
+      const result = await handler?.({}, { apiProfileId: 'auto' });
+
+      expect(mockProfileManager.getBestAvailableProfile).toHaveBeenCalledWith(undefined);
+      expect(result).toEqual({
+        success: true,
+        data: mockProfile
+      });
+    });
+
+    it('should return error on getBestAvailableProfile failure', async () => {
+      mockProfileManager.getBestAvailableProfile = vi.fn(() => {
+        throw new Error('Profile selection failed');
+      });
+
+      registerQueueRoutingHandlers(
+        mockAgentManager as AgentManager,
+        getMainWindow,
+        mockProfileManager as ClaudeProfileManager
+      );
+
+      const handler = registeredHandlers.get(
+        IPC_CHANNELS.QUEUE_GET_BEST_PROFILE_FOR_TASK
+      );
+      const result = await handler?.({}, {});
+
+      expect(result).toEqual({
+        success: false,
+        error: 'Profile selection failed'
       });
     });
   });
