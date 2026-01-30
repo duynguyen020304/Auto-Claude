@@ -7,8 +7,9 @@
  */
 
 import { loadProfilesFile, saveProfilesFile, generateProfileId } from '../utils/profile-manager';
-import { updateProfileUsage, getProfileUsage } from '../utils/api-usage-storage';
-import type { APIProfile, TestConnectionResult, APIProfileUsage } from '../../shared/types/profile';
+import { updateProfileUsage, getProfileUsage, getRotationStrategyOrDefault } from '../utils/api-usage-storage';
+import { getBestAvailableAPIProfile } from '../claude-profile/profile-scorer';
+import type { APIProfile, TestConnectionResult, APIProfileUsage, APIProfileRotationStrategy } from '../../shared/types/profile';
 
 /**
  * Validate base URL format
@@ -261,6 +262,105 @@ export async function getAPIProfileEnv(): Promise<Record<string, string>> {
     ANTHROPIC_DEFAULT_HAIKU_MODEL: profile.models?.haiku || '',
     ANTHROPIC_DEFAULT_SONNET_MODEL: profile.models?.sonnet || '',
     ANTHROPIC_DEFAULT_OPUS_MODEL: profile.models?.opus || '',
+  };
+
+  // Filter out empty/whitespace string values (only set env vars that have values)
+  // This handles empty strings, null, undefined, and whitespace-only values
+  const filteredEnvVars: Record<string, string> = {};
+  for (const [key, value] of Object.entries(envVars)) {
+    const trimmedValue = value?.trim();
+    if (trimmedValue && trimmedValue !== '') {
+      filteredEnvVars[key] = trimmedValue;
+    }
+  }
+
+  return filteredEnvVars;
+}
+
+/**
+ * Get environment variables for API profile with rotation strategy
+ *
+ * Extends getAPIProfileEnv() to support automatic profile rotation based on
+ * usage quotas, rate limits, and priority order. Uses rotation strategy
+ * configuration to select the best available API profile.
+ *
+ * Selection Logic:
+ * 1. Load rotation strategy configuration from storage
+ * 2. If rotation is enabled:
+ *    - Use getBestAvailableAPIProfile() to select best profile based on:
+ *      - Priority order (user-configured)
+ *      - Rate limit status (excludes rate-limited profiles)
+ *      - Usage thresholds (excludes profiles at/near quota)
+ *    - Falls back to active profile if no profiles pass availability checks
+ * 3. If rotation is disabled:
+ *    - Use active profile (same as getAPIProfileEnv())
+ * 4. Map selected profile to SDK environment variables
+ *
+ * Environment Variable Mapping:
+ * - profile.baseUrl → ANTHROPIC_BASE_URL
+ * - profile.apiKey → ANTHROPIC_AUTH_TOKEN
+ * - profile.models.default → ANTHROPIC_MODEL
+ * - profile.models.haiku → ANTHROPIC_DEFAULT_HAIKU_MODEL
+ * - profile.models.sonnet → ANTHROPIC_DEFAULT_SONNET_MODEL
+ * - profile.models.opus → ANTHROPIC_DEFAULT_OPUS_MODEL
+ *
+ * Empty string values are filtered out (not set as env vars).
+ *
+ * @returns Promise<Record<string, string>> Environment variables for selected profile
+ */
+export async function getRotatedAPIProfileEnv(): Promise<Record<string, string>> {
+  // Load profiles.json
+  const file = await loadProfilesFile();
+
+  // If no API profiles configured, return empty object (OAuth mode)
+  if (file.profiles.length === 0) {
+    return {};
+  }
+
+  // Load rotation strategy configuration
+  const rotationStrategy: APIProfileRotationStrategy = getRotationStrategyOrDefault();
+
+  let selectedProfile: APIProfile | null = null;
+
+  // Check if rotation is enabled
+  if (rotationStrategy.enabled) {
+    // Use rotation logic to select best available profile
+    selectedProfile = getBestAvailableAPIProfile(
+      file.profiles,
+      rotationStrategy,
+      undefined // No excludeProfileId - consider all profiles
+    );
+
+    // If rotation didn't select a profile (all unavailable), fall back to active profile
+    if (!selectedProfile && file.activeProfileId) {
+      const activeProfile = file.profiles.find((p) => p.id === file.activeProfileId);
+      if (activeProfile) {
+        console.warn('[ProfileService] Rotation: All profiles unavailable, falling back to active profile:', activeProfile.name);
+        selectedProfile = activeProfile;
+      }
+    }
+  } else {
+    // Rotation disabled - use active profile (same as getAPIProfileEnv())
+    if (!file.activeProfileId || file.activeProfileId === '') {
+      return {};
+    }
+
+    selectedProfile = file.profiles.find((p) => p.id === file.activeProfileId) || null;
+  }
+
+  // If no profile selected (no active profile or rotation failed), return empty object
+  if (!selectedProfile) {
+    return {};
+  }
+
+  // Map profile fields to SDK env vars
+  const envVars: Record<string, string> = {
+    ANTHROPIC_BASE_URL: selectedProfile.baseUrl || '',
+    ANTHROPIC_AUTH_TOKEN: selectedProfile.apiKey || '',
+    ANTHROPIC_MODEL: selectedProfile.models?.default || '',
+    ANTHROPIC_DEFAULT_HAIKU_MODEL: selectedProfile.models?.haiku || '',
+    ANTHROPIC_DEFAULT_SONNET_MODEL: selectedProfile.models?.sonnet || '',
+    ANTHROPIC_DEFAULT_OPUS_MODEL: selectedProfile.models?.opus || '',
   };
 
   // Filter out empty/whitespace string values (only set env vars that have values)
