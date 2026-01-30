@@ -751,6 +751,23 @@ def create_client(
                     )
             break
 
+    # Debug logging for MCP tool permissions being granted
+    # This helps verify that MCP tools (especially Context7) are being added to security settings
+    if "context7" in required_servers:
+        logger.info(
+            f"Granting permissions for Context7 MCP tools: {CONTEXT7_TOOLS}"
+        )
+    if "linear" in required_servers:
+        logger.debug(f"Granting permissions for Linear MCP tools: {LINEAR_TOOLS}")
+    if graphiti_mcp_enabled:
+        logger.debug(
+            f"Granting permissions for Graphiti MCP tools: {GRAPHITI_MCP_TOOLS}"
+        )
+    if browser_tools_permissions:
+        logger.debug(
+            f"Granting permissions for browser MCP tools: {browser_tools_permissions}"
+        )
+
     security_settings = {
         "sandbox": {"enabled": True, "autoAllowBashIfSandboxed": True},
         "permissions": {
