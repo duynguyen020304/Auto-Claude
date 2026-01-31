@@ -18,7 +18,9 @@ export function getBundledSourcePath(): string {
 
   // Detect if we're in a worktree environment
   // Worktrees are located at: .auto-claude/worktrees/tasks/<task-name>/
-  const currentPath = process.cwd() || app.getAppPath();
+  // IMPORTANT: Use path.resolve() to ensure we have an absolute path for pattern matching
+  // process.cwd() can return a relative path (e.g., "apps/frontend") which won't match
+  const currentPath = path.resolve(process.cwd() || app.getAppPath());
   const worktreeMatch = currentPath.match(/\.auto-claude\/worktrees\/tasks\/[^/]+/);
 
   // Build list of possible backend paths
@@ -34,12 +36,14 @@ export function getBundledSourcePath(): string {
   }
 
   // Standard paths (for non-worktree development)
+  // Use resolved paths for consistency
+  const resolvedCwd = path.resolve(process.cwd());
   possiblePaths.push(
     // New structure: apps/frontend -> apps/backend
     path.join(app.getAppPath(), '..', 'backend'),
     path.join(app.getAppPath(), '..', '..', 'apps', 'backend'),
-    path.join(process.cwd(), 'apps', 'backend'),
-    path.join(process.cwd(), '..', 'backend')
+    path.join(resolvedCwd, 'apps', 'backend'),
+    path.join(resolvedCwd, '..', 'backend')
   );
 
   for (const p of possiblePaths) {
