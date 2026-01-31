@@ -269,14 +269,7 @@ export class AgentProcessManager {
     }
 
     const currentProfileId = rateLimitDetection.profileId;
-    const selectionResult = profileManager.getBestAvailableProfile(currentProfileId);
-
-    // Persist rotation state if provided (for round-robin, time-based strategies)
-    if (selectionResult.stateUpdates) {
-      profileManager.updateAutoSwitchSettings(selectionResult.stateUpdates);
-    }
-
-    const bestProfile = selectionResult.profile;
+    const { profile: bestProfile } = profileManager.getBestAvailableProfileWithState(currentProfileId);
 
     console.log('[AgentProcess] Best available profile:', bestProfile ? {
       id: bestProfile.id,

@@ -182,14 +182,7 @@ export function detectRateLimit(
     }
 
     // Find best alternative profile
-    const selectionResult = profileManager.getBestAvailableProfile(effectiveProfileId);
-
-    // Persist rotation state if provided (for round-robin, time-based strategies)
-    if (selectionResult.stateUpdates) {
-      profileManager.updateAutoSwitchSettings(selectionResult.stateUpdates);
-    }
-
-    const bestProfile = selectionResult.profile;
+    const { profile: bestProfile } = profileManager.getBestAvailableProfileWithState(effectiveProfileId);
 
     return {
       isRateLimited: true,
@@ -209,14 +202,7 @@ export function detectRateLimit(
     if (pattern.test(output)) {
       const profileManager = getClaudeProfileManager();
       const effectiveProfileId = profileId || profileManager.getActiveProfile().id;
-      const selectionResult = profileManager.getBestAvailableProfile(effectiveProfileId);
-
-      // Persist rotation state if provided (for round-robin, time-based strategies)
-      if (selectionResult.stateUpdates) {
-        profileManager.updateAutoSwitchSettings(selectionResult.stateUpdates);
-      }
-
-      const bestProfile = selectionResult.profile;
+      const { profile: bestProfile } = profileManager.getBestAvailableProfileWithState(effectiveProfileId);
 
       return {
         isRateLimited: true,
@@ -501,14 +487,7 @@ export function getBestAvailableProfileEnv(): BestProfileEnvResult {
     }
 
     // Try to find a better profile
-    const selectionResult = profileManager.getBestAvailableProfile(activeProfile.id);
-
-    // Persist rotation state if provided (for round-robin, time-based strategies)
-    if (selectionResult.stateUpdates) {
-      profileManager.updateAutoSwitchSettings(selectionResult.stateUpdates);
-    }
-
-    const bestProfile = selectionResult.profile;
+    const { profile: bestProfile } = profileManager.getBestAvailableProfileWithState(activeProfile.id);
 
     if (bestProfile) {
       if (process.env.DEBUG === 'true') {

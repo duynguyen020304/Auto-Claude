@@ -15,6 +15,8 @@
 import type { ClaudeProfile, ClaudeAutoSwitchSettings } from '../../shared/types';
 import { isProfileRateLimited } from './rate-limit-manager';
 import { isProfileAuthenticated } from './profile-utils';
+import { getProfileUsage } from '../utils/api-usage-storage';
+import type { APIProfile, APIProfileRotationStrategy } from '../../shared/types/profile';
 
 /**
  * Check if debug logging is enabled
@@ -1228,6 +1230,189 @@ export function timeBasedStrategy(
     currentProfileId: newCurrentProfileId,
     lastRotationTime: newLastRotationTime,
     profileIndex: newProfileIndex
+  };
+}
+
+/**
+ * Get the best available API profile based on rotation strategy and usage data
+ *
+ * Selection Logic:
+ * 1. Return null if rotation disabled
+ * 2. Filter candidates (excluding excludeProfileId)
+ * 3. Return null if no candidates
+ * 4. Check availability for each candidate:
+ *    - Get usage data via getProfileUsage
+ *    - Check if rate limited and reset time not expired
+ *    - Check usage threshold: requestCount / quotaLimit >= maxUsagePercent
+ * 5. Filter to available profiles only
+ * 6. Sort by priorityOrder (first in priority order wins)
+ * 7. Return first available profile, or null if none available
+ *
+ * @param profiles - All API profiles
+ * @param strategy - Rotation strategy configuration
+ * @param excludeProfileId - Profile ID to exclude (usually the current/failing one)
+ * @returns Best available API profile or null
+ */
+export function getBestAvailableAPIProfile(
+  profiles: APIProfile[],
+  strategy: APIProfileRotationStrategy,
+  excludeProfileId?: string
+): APIProfile | null {
+  // Return null if rotation disabled
+  if (!strategy.enabled) {
+    return null;
+  }
+
+  // Filter candidates (excluding the excluded profile)
+  const candidates = profiles.filter(p => p.id !== excludeProfileId);
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  // Check availability for each candidate
+  interface ProfileWithAvailability {
+    profile: APIProfile;
+    isAvailable: boolean;
+    priorityIndex: number;
+  }
+
+  const now = Date.now();
+  const profilesWithAvailability: ProfileWithAvailability[] = candidates.map(profile => {
+    // Get priority index (first in priority order wins)
+    const priorityIndex = strategy.priorityOrder.indexOf(profile.id);
+
+    // Get usage data
+    const usage = getProfileUsage(profile.id);
+
+    // Default to available if no usage data
+    if (!usage) {
+      return {
+        profile,
+        isAvailable: true,
+        priorityIndex: priorityIndex === -1 ? Infinity : priorityIndex
+      };
+    }
+
+    // Check if rate limited and reset time not expired
+    if (usage.isRateLimited) {
+      const resetTime = usage.rateLimitResetTime ?? 0;
+      if (now < resetTime) {
+        return {
+          profile,
+          isAvailable: false,
+          priorityIndex: priorityIndex === -1 ? Infinity : priorityIndex
+        };
+      }
+    }
+
+    // Check usage threshold
+    if (usage.quotaLimit && usage.quotaLimit > 0) {
+      const usagePercent = (usage.requestCount / usage.quotaLimit) * 100;
+      if (usagePercent >= strategy.thresholds.maxUsagePercent) {
+        return {
+          profile,
+          isAvailable: false,
+          priorityIndex: priorityIndex === -1 ? Infinity : priorityIndex
+        };
+      }
+    }
+
+    // Profile is available
+    return {
+      profile,
+      isAvailable: true,
+      priorityIndex: priorityIndex === -1 ? Infinity : priorityIndex
+    };
+  });
+
+  // Filter to available profiles only
+  const availableProfiles = profilesWithAvailability.filter(p => p.isAvailable);
+
+  if (availableProfiles.length === 0) {
+    console.warn('[ProfileScorer] No available API profiles (all rate limited or at usage threshold)');
+    return null;
+  }
+
+  // Sort by priority order (lower index = higher priority)
+  availableProfiles.sort((a, b) => a.priorityIndex - b.priorityIndex);
+
+  // Return first available profile
+  return availableProfiles[0].profile;
+}
+
+/**
+ * Get the best available profile with fallback support
+ *
+ * Selection Logic:
+ * 1. Try to get best available API profile
+ * 2. If API profile found, return it with profileType: 'api'
+ * 3. If no API profile and fallbackToOAuth is enabled:
+ *    - Use getBestAvailableProfile for OAuth profiles
+ *    - Return OAuth profile with profileType: 'oauth' and reason
+ * 4. If no fallback available, return null with appropriate reason
+ *
+ * @param apiProfiles - All API profiles
+ * @param oauthProfiles - All OAuth profiles
+ * @param apiStrategy - Rotation strategy for API profiles
+ * @param oauthSettings - Auto-switch settings for OAuth profiles
+ * @param priorityOrder - Priority order for OAuth profiles
+ * @param excludeProfileId - Profile ID to exclude (unified ID like 'api-xxx' or 'oauth-xxx')
+ * @returns Object with profile, profileType, and reason
+ */
+export function getBestAvailableProfileWithFallback(
+  apiProfiles: APIProfile[],
+  oauthProfiles: ClaudeProfile[],
+  apiStrategy: APIProfileRotationStrategy,
+  oauthSettings: ClaudeAutoSwitchSettings,
+  priorityOrder: string[],
+  excludeProfileId?: string
+): {
+  profile: ClaudeProfile | APIProfile | null;
+  profileType: 'api' | 'oauth' | null;
+  reason: string;
+} {
+  // Extract profile type from excludeProfileId if provided
+  let excludeApiProfileId: string | undefined;
+  let excludeOAuthProfileId: string | undefined;
+
+  if (excludeProfileId) {
+    if (excludeProfileId.startsWith('api-')) {
+      excludeApiProfileId = excludeProfileId.slice(4);
+    } else if (excludeProfileId.startsWith('oauth-')) {
+      excludeOAuthProfileId = excludeProfileId.slice(6);
+    }
+  }
+
+  // Try API profiles first
+  const apiProfile = getBestAvailableAPIProfile(apiProfiles, apiStrategy, excludeApiProfileId);
+  if (apiProfile) {
+    return {
+      profile: apiProfile,
+      profileType: 'api',
+      reason: 'API profile available'
+    };
+  }
+
+  // No API profile available - try OAuth fallback
+  if (apiStrategy.fallbackToOAuth) {
+    const oauthResult = getBestAvailableProfile(oauthProfiles, oauthSettings, excludeOAuthProfileId, priorityOrder);
+    if (oauthResult.profile) {
+      return {
+        profile: oauthResult.profile,
+        profileType: 'oauth',
+        reason: 'No API profile available, using OAuth fallback'
+      };
+    }
+  }
+
+  // No profile available
+  return {
+    profile: null,
+    profileType: null,
+    reason: apiStrategy.fallbackToOAuth
+      ? 'No available API or OAuth profiles'
+      : 'No available API profiles (OAuth fallback disabled)'
   };
 }
 

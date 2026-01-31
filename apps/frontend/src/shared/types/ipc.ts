@@ -135,7 +135,7 @@ import type {
   GitLabMRReviewProgress,
   GitLabNewCommitsCheck
 } from './integrations';
-import type { APIProfile, ProfilesFile, TestConnectionResult, DiscoverModelsResult } from './profile';
+import type { APIProfile, ProfilesFile, TestConnectionResult, DiscoverModelsResult, APIProfileRotationStrategy } from './profile';
 import type { KanbanPreferences } from './kanban';
 
 // Electron API exposed via contextBridge
@@ -420,6 +420,9 @@ export interface ElectronAPI {
   // Note: AbortSignal is handled in preload via separate cancel IPC channels, not passed through IPC
   testConnection: (baseUrl: string, apiKey: string, signal?: AbortSignal) => Promise<IPCResult<TestConnectionResult>>;
   discoverModels: (baseUrl: string, apiKey: string, signal?: AbortSignal) => Promise<IPCResult<DiscoverModelsResult>>;
+  // API profile rotation strategy
+  getAPIProfileRotationStrategy: () => Promise<IPCResult<APIProfileRotationStrategy>>;
+  updateAPIProfileRotationStrategy: (strategy: APIProfileRotationStrategy) => Promise<IPCResult<APIProfileRotationStrategy>>;
 
   // Dialog operations
   selectDirectory: () => Promise<string | null>;

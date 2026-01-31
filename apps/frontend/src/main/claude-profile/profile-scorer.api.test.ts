@@ -424,6 +424,7 @@ describe('API Profile Rotation', () => {
         usageCheckInterval: 30000,
         sessionThreshold: 95,
         weeklyThreshold: 99,
+        autoSwitchOnRateLimit: false,
         rotationStrategy: 'priority' as const
       };
 

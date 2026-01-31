@@ -659,7 +659,7 @@ export function AccountSettings({ settings, onSettingsChange, isOpen }: AccountS
     try {
       const newSettings = { ...apiRotationSettings, ...updates };
       const result = await window.electronAPI.updateAPIProfileRotationStrategy(newSettings);
-      if (result?.success) {
+      if (result?.success && result.data) {
         setApiRotationSettings(result.data);
       } else {
         toast({

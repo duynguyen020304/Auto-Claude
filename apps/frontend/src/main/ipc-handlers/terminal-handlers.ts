@@ -458,14 +458,9 @@ export function registerTerminalHandlers(
     async (_, excludeProfileId?: string): Promise<IPCResult<ClaudeProfile | null>> => {
       try {
         const profileManager = getClaudeProfileManager();
-        const selectionResult = profileManager.getBestAvailableProfile(excludeProfileId);
+        const { profile: bestProfile } = profileManager.getBestAvailableProfileWithState(excludeProfileId);
 
-        // Persist rotation state if provided (for round-robin, time-based strategies)
-        if (selectionResult.stateUpdates) {
-          profileManager.updateAutoSwitchSettings(selectionResult.stateUpdates);
-        }
-
-        return { success: true, data: selectionResult.profile };
+        return { success: true, data: bestProfile };
       } catch (error) {
         return {
           success: false,
