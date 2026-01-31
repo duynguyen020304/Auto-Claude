@@ -16,14 +16,31 @@ export function getBundledSourcePath(): string {
     return path.join(process.resourcesPath, 'backend');
   }
 
-  // Development mode - look for backend in various locations
-  const possiblePaths = [
+  // Detect if we're in a worktree environment
+  // Worktrees are located at: .auto-claude/worktrees/tasks/<task-name>/
+  const currentPath = process.cwd() || app.getAppPath();
+  const worktreeMatch = currentPath.match(/\.auto-claude\/worktrees\/tasks\/[^/]+/);
+
+  // Build list of possible backend paths
+  const possiblePaths: string[] = [];
+
+  // If in a worktree, prioritize the worktree's backend
+  if (worktreeMatch) {
+    // Extract the worktree root and add its backend
+    const worktreeIndex = currentPath.indexOf('.auto-claude/worktrees/tasks');
+    const worktreeRoot = currentPath.substring(0, worktreeIndex + worktreeMatch[0].length);
+    possiblePaths.push(path.join(worktreeRoot, 'apps', 'backend'));
+    console.log(`[path-resolver] Detected worktree environment, using backend from: ${worktreeRoot}/apps/backend`);
+  }
+
+  // Standard paths (for non-worktree development)
+  possiblePaths.push(
     // New structure: apps/frontend -> apps/backend
     path.join(app.getAppPath(), '..', 'backend'),
     path.join(app.getAppPath(), '..', '..', 'apps', 'backend'),
     path.join(process.cwd(), 'apps', 'backend'),
     path.join(process.cwd(), '..', 'backend')
-  ];
+  );
 
   for (const p of possiblePaths) {
     // Validate it's a proper backend source (must have runners/spec_runner.py)
