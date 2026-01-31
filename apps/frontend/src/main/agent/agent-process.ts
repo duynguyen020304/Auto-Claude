@@ -13,7 +13,7 @@ import { AgentEvents } from './agent-events';
 import { ProcessType, ExecutionProgressData } from './types';
 import type { CompletablePhase } from '../../shared/constants/phase-protocol';
 import { detectRateLimit, createSDKRateLimitInfo, getBestAvailableProfileEnv, detectAuthFailure } from '../rate-limit-detector';
-import { getAPIProfileEnv } from '../services/profile';
+import { getRotatedAPIProfileEnv, trackAPIProfileUsage } from '../services/profile';
 import { projectStore } from '../project-store';
 import { getClaudeProfileManager } from '../claude-profile-manager';
 import { parsePythonCommand, validatePythonPath } from '../python-detector';
@@ -325,6 +325,40 @@ export class AgentProcessManager {
   }
 
   /**
+   * Extract the API profile ID from environment variables
+   *
+   * Determines which API profile was used by examining the environment
+   * variables that were set for the subprocess. Returns the profile ID
+   * or undefined if no API profile was used (OAuth mode).
+   *
+   * @param apiProfileEnv - Environment variables from getRotatedAPIProfileEnv()
+   * @returns Profile ID or undefined
+   */
+  private async extractAPIProfileId(apiProfileEnv: Record<string, string>): Promise<string | undefined> {
+    // If no ANTHROPIC_BASE_URL or ANTHROPIC_AUTH_TOKEN, no API profile was used
+    if (!apiProfileEnv.ANTHROPIC_BASE_URL || !apiProfileEnv.ANTHROPIC_AUTH_TOKEN) {
+      return undefined;
+    }
+
+    try {
+      // Load profiles to find which one matches the env vars
+      const { loadProfilesFile } = await import('../utils/profile-manager');
+      const file = await loadProfilesFile();
+
+      // Find profile by matching baseUrl and apiKey
+      const matchedProfile = file.profiles.find(
+        (p) => p.baseUrl === apiProfileEnv.ANTHROPIC_BASE_URL &&
+               p.apiKey === apiProfileEnv.ANTHROPIC_AUTH_TOKEN
+      );
+
+      return matchedProfile?.id;
+    } catch (error) {
+      console.warn('[AgentProcess] Failed to extract API profile ID:', error instanceof Error ? error.message : String(error));
+      return undefined;
+    }
+  }
+
+  /**
    * Get the configured Python path.
    * Returns explicitly configured path, or falls back to getConfiguredPythonPath()
    * which uses the venv Python if ready.
@@ -520,6 +554,18 @@ export class AgentProcessManager {
 
     const spawnId = this.state.generateSpawnId();
 
+    // Get active API profile environment variables (with rotation strategy support)
+    let apiProfileEnv: Record<string, string> = {};
+    let apiProfileId: string | undefined;
+    try {
+      apiProfileEnv = await getRotatedAPIProfileEnv();
+      // Extract API profile ID for usage tracking
+      apiProfileId = await this.extractAPIProfileId(apiProfileEnv);
+    } catch (error) {
+      console.error('[Agent Process] Failed to get API profile env:', error);
+      // Continue with empty profile env (falls back to OAuth mode)
+    }
+
     // IMPORTANT: Add to tracking IMMEDIATELY, before async operations.
     // This ensures getRunningTasks() returns the task right away, preventing
     // flaky tests on slower Windows CI where async setup may take longer than
@@ -528,22 +574,14 @@ export class AgentProcessManager {
       taskId,
       process: null, // Will be set after spawn() call completes below
       startedAt: new Date(),
-      spawnId
+      spawnId,
+      apiProfileId // Store API profile ID for usage tracking on exit
     });
 
     const env = this.setupProcessEnvironment(extraEnv);
 
     // Get Python environment (PYTHONPATH for bundled packages, etc.)
     const pythonEnv = pythonEnvManager.getPythonEnv();
-
-    // Get active API profile environment variables
-    let apiProfileEnv: Record<string, string> = {};
-    try {
-      apiProfileEnv = await getAPIProfileEnv();
-    } catch (error) {
-      console.error('[Agent Process] Failed to get API profile env:', error);
-      // Continue with empty profile env (falls back to OAuth mode)
-    }
 
     // Get OAuth mode clearing vars (clears stale ANTHROPIC_* vars when in OAuth mode)
     const oauthModeClearVars = getOAuthModeClearVars(apiProfileEnv);
@@ -730,7 +768,21 @@ export class AgentProcessManager {
         processLog(stderrBuffer);
       }
 
+      // Get process info before deleting from state
+      const agentProcessInfo = this.state.getProcess(taskId);
+      const apiProfileId = agentProcessInfo?.apiProfileId;
+
       this.state.deleteProcess(taskId);
+
+      // Track API profile usage for successful completions
+      if (code === 0 && apiProfileId) {
+        try {
+          trackAPIProfileUsage(apiProfileId, 1, 0);
+          console.log(`[AgentProcess] Tracked usage for API profile ${apiProfileId}`);
+        } catch (error) {
+          console.warn('[AgentProcess] Failed to track API profile usage:', error instanceof Error ? error.message : String(error));
+        }
+      }
 
       if (this.state.wasSpawnKilled(spawnId)) {
         this.state.clearKilledSpawn(spawnId);

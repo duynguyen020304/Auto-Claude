@@ -563,6 +563,18 @@
         "deleting": "Suppression..."
       }
     },
+    "apiRotation": {
+      "title": "Rotation des profils API",
+      "description": "Configurez la rotation automatique entre les profils API pour éviter les limites de taux et optimiser l'utilisation",
+      "enableRotation": "Activer la rotation",
+      "enableRotationDescription": "Basculez automatiquement entre les profils API en fonction de la priorité et de l'utilisation",
+      "fallbackToOAuth": "Replier sur Claude Code",
+      "fallbackToOAuthDescription": "Basculez vers les comptes Claude Code lorsque tous les profils API sont indisponibles",
+      "usageThreshold": "Seuil d'utilisation",
+      "usageThresholdDescription": "Basculez vers le profil suivant lorsque l'utilisation atteint ce niveau (recommandé: 95%)",
+      "priorityOrder": "Ordre de priorité des profils",
+      "dragToReorder": "Faites glisser les profiles pour réorganiser la priorité"
+    },
     "autoSwitching": {
       "title": "Basculement automatique de compte",
       "description": "Basculez automatiquement entre les comptes pour éviter les interruptions. Configurez la surveillance proactive pour basculer avant d'atteindre les limites.",

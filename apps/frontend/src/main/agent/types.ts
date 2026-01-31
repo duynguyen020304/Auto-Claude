@@ -15,6 +15,7 @@ export interface AgentProcess {
   projectPath?: string; // For ideation processes to load session on completion
   spawnId: number; // Unique ID to identify this specific spawn
   queueProcessType?: QueueProcessType; // Type of queue process (ideation or roadmap)
+  apiProfileId?: string; // API profile ID used for this task (for usage tracking)
 }
 
 export interface ExecutionProgressData {

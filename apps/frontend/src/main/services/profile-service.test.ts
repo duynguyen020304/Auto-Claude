@@ -12,7 +12,8 @@ import {
   createProfile,
   updateProfile,
   getAPIProfileEnv,
-  testConnection
+  testConnection,
+  trackAPIProfileUsage
 } from './profile-service';
 import type { APIProfile, ProfilesFile, TestConnectionResult } from '../../shared/types/profile';
 
@@ -21,6 +22,12 @@ vi.mock('../utils/profile-manager', () => ({
   loadProfilesFile: vi.fn(),
   saveProfilesFile: vi.fn(),
   generateProfileId: vi.fn(() => 'mock-uuid-1234')
+}));
+
+// Mock api-usage-storage
+vi.mock('../utils/api-usage-storage', () => ({
+  getProfileUsage: vi.fn(),
+  updateProfileUsage: vi.fn()
 }));
 
 describe('profile-service', () => {
@@ -1026,6 +1033,172 @@ describe('profile-service', () => {
       });
       // Should timeout at 10 seconds, but we use a mock for faster test
       expect(elapsed).toBeLessThan(5000); // Well under 10s due to mock
+    });
+  });
+
+  describe('trackAPIProfileUsage', () => {
+    it('should track usage for new profile (no existing usage data)', async () => {
+      const { getProfileUsage, updateProfileUsage } = vi.mocked(
+        await import('../utils/api-usage-storage')
+      );
+
+      // Mock no existing usage data
+      getProfileUsage.mockReturnValue(null);
+
+      // Track usage
+      trackAPIProfileUsage('profile-123', 5, 10000);
+
+      // Verify update was called with correct data
+      expect(updateProfileUsage).toHaveBeenCalledWith('profile-123', {
+        profileId: 'profile-123',
+        requestCount: 5,
+        tokenUsage: 10000,
+        lastRequestTime: expect.any(Number),
+        isRateLimited: false,
+        rateLimitResetTime: undefined,
+        quotaLimit: undefined,
+        quotaWindow: undefined
+      });
+
+      // Verify lastRequestTime is recent (within last second)
+      const callArgs = updateProfileUsage.mock.calls[0][1];
+      expect(callArgs.lastRequestTime).toBeGreaterThan(Date.now() - 1000);
+      expect(callArgs.lastRequestTime).toBeLessThanOrEqual(Date.now());
+    });
+
+    it('should accumulate usage for existing profile', async () => {
+      const { getProfileUsage, updateProfileUsage } = vi.mocked(
+        await import('../utils/api-usage-storage')
+      );
+
+      // Mock existing usage data
+      getProfileUsage.mockReturnValue({
+        profileId: 'profile-123',
+        requestCount: 10,
+        tokenUsage: 50000,
+        lastRequestTime: Date.now() - 10000,
+        isRateLimited: false
+      });
+
+      // Track additional usage
+      trackAPIProfileUsage('profile-123', 3, 5000);
+
+      // Verify update accumulated the counts
+      expect(updateProfileUsage).toHaveBeenCalledWith('profile-123', {
+        profileId: 'profile-123',
+        requestCount: 13, // 10 + 3
+        tokenUsage: 55000, // 50000 + 5000
+        lastRequestTime: expect.any(Number),
+        isRateLimited: false,
+        rateLimitResetTime: undefined,
+        quotaLimit: undefined,
+        quotaWindow: undefined
+      });
+    });
+
+    it('should use default values when requestCount and tokenUsage are not provided', async () => {
+      const { getProfileUsage, updateProfileUsage } = vi.mocked(
+        await import('../utils/api-usage-storage')
+      );
+
+      getProfileUsage.mockReturnValue(null);
+
+      // Track usage with defaults
+      trackAPIProfileUsage('profile-123');
+
+      expect(updateProfileUsage).toHaveBeenCalledWith('profile-123', {
+        profileId: 'profile-123',
+        requestCount: 1, // Default
+        tokenUsage: 0, // Default
+        lastRequestTime: expect.any(Number),
+        isRateLimited: false,
+        rateLimitResetTime: undefined,
+        quotaLimit: undefined,
+        quotaWindow: undefined
+      });
+    });
+
+    it('should preserve rate limit status and quota settings from existing usage data', async () => {
+      const { getProfileUsage, updateProfileUsage } = vi.mocked(
+        await import('../utils/api-usage-storage')
+      );
+
+      // Mock existing usage data with rate limit and quota info
+      getProfileUsage.mockReturnValue({
+        profileId: 'profile-123',
+        requestCount: 100,
+        tokenUsage: 500000,
+        lastRequestTime: Date.now() - 5000,
+        isRateLimited: true,
+        rateLimitResetTime: Date.now() + 60000,
+        quotaLimit: 1000000,
+        quotaWindow: 3600
+      });
+
+      // Track additional usage
+      trackAPIProfileUsage('profile-123', 1, 1000);
+
+      // Verify rate limit and quota settings are preserved
+      expect(updateProfileUsage).toHaveBeenCalledWith('profile-123', {
+        profileId: 'profile-123',
+        requestCount: 101, // 100 + 1
+        tokenUsage: 501000, // 500000 + 1000
+        lastRequestTime: expect.any(Number),
+        isRateLimited: true, // Preserved
+        rateLimitResetTime: Date.now() + 60000, // Preserved
+        quotaLimit: 1000000, // Preserved
+        quotaWindow: 3600 // Preserved
+      });
+    });
+
+    it('should handle zero requestCount and tokenUsage', async () => {
+      const { getProfileUsage, updateProfileUsage } = vi.mocked(
+        await import('../utils/api-usage-storage')
+      );
+
+      getProfileUsage.mockReturnValue(null);
+
+      // Track usage with zeros
+      trackAPIProfileUsage('profile-123', 0, 0);
+
+      expect(updateProfileUsage).toHaveBeenCalledWith('profile-123', {
+        profileId: 'profile-123',
+        requestCount: 0,
+        tokenUsage: 0,
+        lastRequestTime: expect.any(Number),
+        isRateLimited: false,
+        rateLimitResetTime: undefined,
+        quotaLimit: undefined,
+        quotaWindow: undefined
+      });
+    });
+
+    it('should handle large token usage values', async () => {
+      const { getProfileUsage, updateProfileUsage } = vi.mocked(
+        await import('../utils/api-usage-storage')
+      );
+
+      getProfileUsage.mockReturnValue({
+        profileId: 'profile-123',
+        requestCount: 1000,
+        tokenUsage: 9000000,
+        lastRequestTime: Date.now() - 1000,
+        isRateLimited: false
+      });
+
+      // Track large token usage
+      trackAPIProfileUsage('profile-123', 10, 1000000);
+
+      expect(updateProfileUsage).toHaveBeenCalledWith('profile-123', {
+        profileId: 'profile-123',
+        requestCount: 1010, // 1000 + 10
+        tokenUsage: 10000000, // 9000000 + 1000000
+        lastRequestTime: expect.any(Number),
+        isRateLimited: false,
+        rateLimitResetTime: undefined,
+        quotaLimit: undefined,
+        quotaWindow: undefined
+      });
     });
   });
 });

@@ -13,7 +13,7 @@
 import { ipcMain } from 'electron';
 import { IPC_CHANNELS } from '../../shared/constants';
 import type { IPCResult } from '../../shared/types';
-import type { APIProfile, ProfileFormData, ProfilesFile, TestConnectionResult, DiscoverModelsResult } from '@shared/types/profile';
+import type { APIProfile, ProfileFormData, ProfilesFile, TestConnectionResult, DiscoverModelsResult, APIProfileRotationStrategy } from '@shared/types/profile';
 import {
   loadProfilesFile,
   saveProfilesFile,
@@ -26,6 +26,7 @@ import {
   testConnection,
   discoverModels
 } from '../services/profile';
+import { loadRotationStrategy, saveRotationStrategy } from '../utils/api-usage-storage';
 
 // Track active test connection requests for cancellation
 const activeTestConnections = new Map<number, AbortController>();
@@ -352,6 +353,42 @@ export function registerProfileHandlers(): void {
       if (controller) {
         controller.abort();
         activeDiscoverModelsRequests.delete(requestId);
+      }
+    }
+  );
+
+  /**
+   * Get API profile rotation strategy
+   */
+  ipcMain.handle(
+    IPC_CHANNELS.PROFILES_GET_ROTATION_STRATEGY,
+    async (): Promise<IPCResult<APIProfileRotationStrategy>> => {
+      try {
+        const strategy = loadRotationStrategy();
+        return { success: true, data: strategy ?? { enabled: false, priorityOrder: [], fallbackToOAuth: false, thresholds: { maxUsagePercent: 95, rateLimitBackoff: 60 } } };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to load rotation strategy'
+        };
+      }
+    }
+  );
+
+  /**
+   * Update API profile rotation strategy
+   */
+  ipcMain.handle(
+    IPC_CHANNELS.PROFILES_UPDATE_ROTATION_STRATEGY,
+    async (_, strategy: APIProfileRotationStrategy): Promise<IPCResult<APIProfileRotationStrategy>> => {
+      try {
+        saveRotationStrategy(strategy);
+        return { success: true, data: strategy };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to save rotation strategy'
+        };
       }
     }
   );

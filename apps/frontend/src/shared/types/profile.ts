@@ -90,3 +90,31 @@ export interface DiscoverModelsError {
   errorType: ConnectionErrorType;
   message: string;
 }
+
+/**
+ * API Profile Usage - tracks usage data for API profiles
+ * Used for rotation strategy and quota management
+ */
+export interface APIProfileUsage {
+  profileId: string; // UUID of the API profile
+  requestCount: number; // Total requests made
+  tokenUsage: number; // Total tokens consumed
+  lastRequestTime: number; // Unix timestamp (ms) of last request
+  rateLimitResetTime?: number; // Unix timestamp (ms) when rate limit resets (if rate limited)
+  isRateLimited: boolean; // Currently rate limited
+  quotaLimit?: number; // Optional quota limit (user-configured)
+  quotaWindow?: number; // Quota time window in seconds
+}
+
+/**
+ * API Profile Rotation Strategy - configuration for automatic API profile rotation
+ */
+export interface APIProfileRotationStrategy {
+  enabled: boolean; // Whether rotation is enabled
+  priorityOrder: string[]; // API profile IDs in priority order
+  fallbackToOAuth: boolean; // Allow fallback to OAuth profiles
+  thresholds: {
+    maxUsagePercent: number; // Switch profile at X% of quota (0-100)
+    rateLimitBackoff: number; // Seconds to wait after rate limit
+  };
+}

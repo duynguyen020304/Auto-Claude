@@ -10,11 +10,17 @@
  *    - Must be below user's configured thresholds (default: 95% session, 99% weekly)
  * 3. First profile in priority order that passes all filters is selected
  * 4. If no profile passes all filters, falls back to "least bad" option
+ *
+ * API Profile Rotation:
+ * - API profiles use custom usage tracking (request count, token usage, rate limits)
+ * - Supports same 6 rotation strategies as OAuth profiles
+ * - Separate functions to maintain clear separation between OAuth and API profile logic
  */
 
-import type { ClaudeProfile, ClaudeAutoSwitchSettings } from '../../shared/types';
+import type { ClaudeProfile, ClaudeAutoSwitchSettings, APIProfile, APIProfileUsage, APIProfileRotationStrategy } from '../../shared/types';
 import { isProfileRateLimited } from './rate-limit-manager';
 import { isProfileAuthenticated } from './profile-utils';
+import { getAPIProfileUsage } from '../services/profile-service';
 
 const isDebug = process.env.DEBUG === 'true';
 
@@ -909,4 +915,718 @@ export function getProfilesSortedByAvailability(profiles: ClaudeProfile[]): Clau
     const bSession = b.usage?.sessionUsagePercent ?? 0;
     return aSession - bSession;
   });
+}
+
+// ============================================================================
+// API Profile Rotation Functions
+// ============================================================================
+
+interface APIScoredProfile {
+  profile: APIProfile;
+  score: number;
+  priorityIndex: number;
+  isAvailable: boolean;
+  unavailableReason?: string;
+  usage: APIProfileUsage | null;
+}
+
+/**
+ * Check if an API profile is available for use based on all criteria
+ */
+function checkAPIProfileAvailability(
+  profile: APIProfile,
+  usage: APIProfileUsage | null,
+  strategy: APIProfileRotationStrategy
+): { available: boolean; reason?: string } {
+  // Check rate limit status
+  if (usage?.isRateLimited) {
+    // Check if rate limit has expired
+    const now = Date.now();
+    if (usage.rateLimitResetTime && now < usage.rateLimitResetTime) {
+      const resetDate = new Date(usage.rateLimitResetTime);
+      return {
+        available: false,
+        reason: `rate limited until ${resetDate.toISOString()}`
+      };
+    } else if (usage.rateLimitResetTime && now >= usage.rateLimitResetTime) {
+      // Rate limit has expired, profile is available again
+      // (Caller should clear the rate limit status)
+      return { available: true };
+    }
+    // No reset time but marked as limited
+    return { available: false, reason: 'rate limited (no reset time)' };
+  }
+
+  // Check quota limits if configured
+  if (usage && strategy.thresholds.maxUsagePercent < 100) {
+    if (usage.quotaLimit && usage.quotaLimit > 0) {
+      // Calculate usage percentage
+      const usagePercent = (usage.requestCount / usage.quotaLimit) * 100;
+
+      // Using >= to reject profiles AT or ABOVE threshold
+      if (usagePercent >= strategy.thresholds.maxUsagePercent) {
+        return {
+          available: false,
+          reason: `usage ${usagePercent.toFixed(1)}% >= threshold ${strategy.thresholds.maxUsagePercent}%`
+        };
+      }
+    }
+  }
+
+  return { available: true };
+}
+
+/**
+ * Calculate a fallback score for API profiles when no profiles meet all criteria
+ */
+function calculateAPIFallbackScore(
+  profile: APIProfile,
+  usage: APIProfileUsage | null,
+  strategy: APIProfileRotationStrategy
+): number {
+  let score = 100;
+  const now = Date.now();
+
+  // Rate limit status
+  if (usage?.isRateLimited) {
+    if (usage.rateLimitResetTime) {
+      const hoursUntilReset = (usage.rateLimitResetTime - now) / (1000 * 60 * 60);
+      score -= 200; // Rate limited is bad
+
+      // Bonus for profiles that reset sooner
+      score += Math.max(0, 50 - hoursUntilReset);
+    } else {
+      score -= 500; // Rate limited with no reset time is worse
+    }
+  }
+
+  // Usage penalties (prefer lower usage)
+  if (usage && strategy.thresholds.maxUsagePercent < 100) {
+    if (usage.quotaLimit && usage.quotaLimit > 0) {
+      const usagePercent = (usage.requestCount / usage.quotaLimit) * 100;
+
+      // Penalize based on how far over threshold
+      const overage = Math.max(0, usagePercent - strategy.thresholds.maxUsagePercent);
+      score -= overage * 2;
+
+      // Also factor in absolute usage (lower is better)
+      score -= usagePercent * 0.3;
+    }
+
+    // Penalize high token usage
+    if (usage.tokenUsage > 0) {
+      score -= Math.log10(usage.tokenUsage + 1) * 2;
+    }
+  }
+
+  return score;
+}
+
+/**
+ * Get the best API profile to use based on configured rotation strategy
+ *
+ * Selection Logic:
+ * 1. Check if rotation is enabled in APIProfileRotationStrategy
+ * 2. Apply priority-based strategy (uses user's configured priority order)
+ * 3. Return the selected profile or null if no available profiles
+ *
+ * NOTE: Currently only 'priority' strategy is implemented for API profiles.
+ * The type APIProfileRotationStrategy doesn't include a rotationStrategy field,
+ * so we default to priority-based selection using the priorityOrder array.
+ *
+ * @param profiles - All API profiles
+ * @param strategy - API profile rotation strategy configuration
+ * @param excludeProfileId - Profile ID to exclude (usually the current/failing one)
+ * @returns Selected API profile based on priority order, or null if no available profiles
+ */
+export function getBestAvailableAPIProfile(
+  profiles: APIProfile[],
+  strategy: APIProfileRotationStrategy,
+  excludeProfileId?: string
+): APIProfile | null {
+  if (!strategy.enabled) {
+    // Rotation disabled, return null (caller should use active profile)
+    return null;
+  }
+
+  if (isDebug) {
+    console.warn('[ProfileScorer] Using API rotation strategy: priority');
+  }
+
+  // Use priority-based logic (currently the only supported strategy for API profiles)
+  return getBestAvailableAPIProfileByPriority(profiles, strategy, excludeProfileId);
+}
+
+/**
+ * Get the best API profile based on priority order and availability
+ */
+function getBestAvailableAPIProfileByPriority(
+  profiles: APIProfile[],
+  strategy: APIProfileRotationStrategy,
+  excludeProfileId?: string
+): APIProfile | null {
+  // Get all profiles except the excluded one
+  const candidates = profiles.filter(p => p.id !== excludeProfileId);
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  if (isDebug) {
+    console.warn('[ProfileScorer] Evaluating', candidates.length, 'API candidate profiles (excluding:', excludeProfileId, ')');
+    console.warn('[ProfileScorer] Priority order:', strategy.priorityOrder);
+    console.warn('[ProfileScorer] Thresholds: max usage =', strategy.thresholds.maxUsagePercent, '%');
+  }
+
+  // Score and check availability for each profile
+  const scoredProfiles: APIScoredProfile[] = candidates.map(profile => {
+    const usage = getAPIProfileUsage(profile.id);
+    const priorityIndex = strategy.priorityOrder.indexOf(profile.id);
+    const availability = checkAPIProfileAvailability(profile, usage, strategy);
+    const fallbackScore = calculateAPIFallbackScore(profile, usage, strategy);
+
+    if (isDebug) {
+      console.warn('[ProfileScorer] Scoring API profile:', profile.name, '(', profile.id, ')');
+      console.warn('[ProfileScorer]   Priority index:', priorityIndex === -1 ? 'not in list (Infinity)' : priorityIndex);
+      console.warn('[ProfileScorer]   Available:', availability.available, availability.reason ? `(${availability.reason})` : '');
+      console.warn('[ProfileScorer]   Usage:', usage ? `requests=${usage.requestCount}, tokens=${usage.tokenUsage}` : 'none');
+      console.warn('[ProfileScorer]   Fallback score:', fallbackScore);
+    }
+
+    return {
+      profile,
+      score: fallbackScore,
+      priorityIndex: priorityIndex === -1 ? Infinity : priorityIndex,
+      isAvailable: availability.available,
+      unavailableReason: availability.reason,
+      usage
+    };
+  });
+
+  // Sort by:
+  // 1. Available profiles first
+  // 2. Within available: by priority index (lower = higher priority)
+  // 3. Within unavailable: by fallback score (higher = better)
+  scoredProfiles.sort((a, b) => {
+    // Available profiles always come first
+    if (a.isAvailable !== b.isAvailable) {
+      return a.isAvailable ? -1 : 1;
+    }
+
+    // For available profiles, sort by priority order
+    if (a.isAvailable && b.isAvailable) {
+      // If both have priority indices, use them
+      if (a.priorityIndex !== b.priorityIndex) {
+        return a.priorityIndex - b.priorityIndex;
+      }
+      // Tiebreaker: prefer lower usage
+      return b.score - a.score;
+    }
+
+    // For unavailable profiles, sort by fallback score (for "least bad" selection)
+    return b.score - a.score;
+  });
+
+  const best = scoredProfiles[0];
+
+  if (best.isAvailable) {
+    console.warn('[ProfileScorer] Best available API profile:', best.profile.name, '(priority index:', best.priorityIndex, ')');
+    return best.profile;
+  }
+
+  // No profile meets all criteria - check if we should return the least bad option
+  if (best.score > 0) {
+    console.warn('[ProfileScorer] No ideal API profile available, using least-bad option:', best.profile.name,
+      '(score:', best.score, ', reason:', best.unavailableReason, ')');
+    return best.profile;
+  }
+
+  // All profiles are truly unusable
+  console.warn('[ProfileScorer] No usable API profile available, all have issues');
+  return null;
+}
+
+/**
+ * Round-robin strategy for API profiles
+ */
+function apiRoundRobinStrategy(
+  profiles: APIProfile[],
+  strategy: APIProfileRotationStrategy,
+  excludeProfileId?: string
+): { profile: APIProfile | null; newIndex: number } {
+  const candidates = profiles.filter(p => p.id !== excludeProfileId);
+
+  if (candidates.length === 0) {
+    return { profile: null, newIndex: 0 };
+  }
+
+  if (isDebug) {
+    console.warn('[ProfileScorer] API Round-robin: evaluating', candidates.length, 'profiles');
+  }
+
+  // Filter to available profiles only
+  const availableProfiles: APIProfile[] = [];
+
+  for (const profile of candidates) {
+    const usage = getAPIProfileUsage(profile.id);
+    const availability = checkAPIProfileAvailability(profile, usage, strategy);
+
+    if (availability.available) {
+      availableProfiles.push(profile);
+    }
+
+    if (isDebug) {
+      console.warn('[ProfileScorer] API Round-robin: profile', profile.name, 'available:', availability.available);
+    }
+  }
+
+  if (availableProfiles.length === 0) {
+    console.warn('[ProfileScorer] API Round-robin: no available profiles');
+    return { profile: null, newIndex: 0 };
+  }
+
+  // Get last used index (stored in strategy settings or default to 0)
+  const lastIndex = (strategy as any).roundRobinLastIndex ?? 0;
+  const nextIndex = (lastIndex + 1) % availableProfiles.length;
+  const selectedProfile = availableProfiles[nextIndex];
+
+  if (isDebug) {
+    console.warn('[ProfileScorer] API Round-robin: selected profile', selectedProfile.name, 'at index', nextIndex);
+  }
+
+  // Note: Caller should update strategy.roundRobinLastIndex with nextIndex
+  return { profile: selectedProfile, newIndex: nextIndex };
+}
+
+/**
+ * Least-used strategy for API profiles
+ */
+function apiLeastUsedStrategy(
+  profiles: APIProfile[],
+  strategy: APIProfileRotationStrategy,
+  excludeProfileId?: string
+): APIProfile | null {
+  const candidates = profiles.filter(p => p.id !== excludeProfileId);
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  if (isDebug) {
+    console.warn('[ProfileScorer] API Least-used: evaluating', candidates.length, 'profiles');
+  }
+
+  // Filter to available profiles only and calculate usage scores
+  interface UsageScore {
+    profile: APIProfile;
+    score: number;
+    requestCount: number;
+    tokenUsage: number;
+  }
+
+  const scoredProfiles: UsageScore[] = [];
+
+  for (const profile of candidates) {
+    const usage = getAPIProfileUsage(profile.id);
+    const availability = checkAPIProfileAvailability(profile, usage, strategy);
+
+    if (availability.available) {
+      const requestCount = usage?.requestCount ?? 0;
+      const tokenUsage = usage?.tokenUsage ?? 0;
+
+      // Calculate combined score (lower is better)
+      // Token usage weighted less (logarithmic scale)
+      const score = requestCount + Math.log10(tokenUsage + 1) * 100;
+
+      scoredProfiles.push({
+        profile,
+        score,
+        requestCount,
+        tokenUsage
+      });
+
+      if (isDebug) {
+        console.warn('[ProfileScorer] API Least-used: profile', profile.name, 'score:', score);
+      }
+    }
+  }
+
+  if (scoredProfiles.length === 0) {
+    console.warn('[ProfileScorer] API Least-used: no available profiles');
+    return null;
+  }
+
+  // Sort by score ascending (lowest usage first)
+  scoredProfiles.sort((a, b) => a.score - b.score);
+
+  const selected = scoredProfiles[0];
+  console.warn('[ProfileScorer] API Least-used: selected profile', selected.profile.name);
+
+  return selected.profile;
+}
+
+/**
+ * Random strategy for API profiles
+ */
+function apiRandomStrategy(
+  profiles: APIProfile[],
+  strategy: APIProfileRotationStrategy,
+  excludeProfileId?: string
+): APIProfile | null {
+  const candidates = profiles.filter(p => p.id !== excludeProfileId);
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  if (isDebug) {
+    console.warn('[ProfileScorer] API Random: evaluating', candidates.length, 'profiles');
+  }
+
+  // Filter to available profiles only
+  const availableProfiles: APIProfile[] = [];
+
+  for (const profile of candidates) {
+    const usage = getAPIProfileUsage(profile.id);
+    const availability = checkAPIProfileAvailability(profile, usage, strategy);
+
+    if (availability.available) {
+      availableProfiles.push(profile);
+    }
+
+    if (isDebug) {
+      console.warn('[ProfileScorer] API Random: profile', profile.name, 'available:', availability.available);
+    }
+  }
+
+  if (availableProfiles.length === 0) {
+    console.warn('[ProfileScorer] API Random: no available profiles');
+    return null;
+  }
+
+  // Randomly select one profile
+  const randomIndex = Math.floor(Math.random() * availableProfiles.length);
+  const selectedProfile = availableProfiles[randomIndex];
+
+  if (isDebug) {
+    console.warn('[ProfileScorer] API Random: selected profile', selectedProfile.name, 'at index', randomIndex);
+  }
+
+  return selectedProfile;
+}
+
+/**
+ * Weighted distribution strategy for API profiles
+ */
+function apiWeightedStrategy(
+  profiles: APIProfile[],
+  strategy: APIProfileRotationStrategy,
+  excludeProfileId?: string
+): APIProfile | null {
+  const candidates = profiles.filter(p => p.id !== excludeProfileId);
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  if (isDebug) {
+    console.warn('[ProfileScorer] API Weighted: evaluating', candidates.length, 'profiles');
+  }
+
+  // Filter to available profiles only
+  const availableProfiles: APIProfile[] = [];
+
+  for (const profile of candidates) {
+    const usage = getAPIProfileUsage(profile.id);
+    const availability = checkAPIProfileAvailability(profile, usage, strategy);
+
+    if (availability.available) {
+      availableProfiles.push(profile);
+    }
+
+    if (isDebug) {
+      console.warn('[ProfileScorer] API Weighted: profile', profile.name, 'available:', availability.available);
+    }
+  }
+
+  if (availableProfiles.length === 0) {
+    console.warn('[ProfileScorer] API Weighted: no available profiles');
+    return null;
+  }
+
+  // Get weights from strategy (priority order can be used as weights)
+  const configuredWeights = (strategy as any).profileWeights ?? {};
+
+  // Build weighted list
+  interface WeightedProfile {
+    profile: APIProfile;
+    weight: number;
+    cumulativeWeight: number;
+  }
+
+  const weightedProfiles: WeightedProfile[] = [];
+  let totalWeight = 0;
+
+  for (const profile of availableProfiles) {
+    // Get weight for this profile (default: 1, treat zero/negative as 1)
+    const rawWeight = configuredWeights[profile.id];
+    const weight = (rawWeight != null && rawWeight > 0) ? rawWeight : 1;
+
+    totalWeight += weight;
+
+    weightedProfiles.push({
+      profile,
+      weight,
+      cumulativeWeight: totalWeight
+    });
+
+    if (isDebug) {
+      console.warn('[ProfileScorer] API Weighted: profile', profile.name, 'weight:', weight);
+    }
+  }
+
+  // Weighted random selection
+  const randomValue = Math.random() * totalWeight;
+  const selectedProfile = weightedProfiles.find(wp => wp.cumulativeWeight >= randomValue)?.profile ?? null;
+
+  if (selectedProfile && isDebug) {
+    console.warn('[ProfileScorer] API Weighted: selected profile', selectedProfile.name);
+  }
+
+  return selectedProfile;
+}
+
+/**
+ * Time-based strategy for API profiles
+ */
+function apiTimeBasedStrategy(
+  profiles: APIProfile[],
+  strategy: APIProfileRotationStrategy,
+  excludeProfileId?: string
+): {
+  profile: APIProfile | null;
+  currentProfileId?: string;
+  lastRotationTime?: number;
+  profileIndex?: number;
+} {
+  const candidates = profiles.filter(p => p.id !== excludeProfileId);
+
+  if (candidates.length === 0) {
+    return { profile: null, currentProfileId: undefined, lastRotationTime: undefined, profileIndex: 0 };
+  }
+
+  if (isDebug) {
+    console.warn('[ProfileScorer] API Time-based: evaluating', candidates.length, 'profiles');
+  }
+
+  // Filter to available profiles only
+  const availableProfiles: APIProfile[] = [];
+
+  for (const profile of candidates) {
+    const usage = getAPIProfileUsage(profile.id);
+    const availability = checkAPIProfileAvailability(profile, usage, strategy);
+
+    if (availability.available) {
+      availableProfiles.push(profile);
+    }
+
+    if (isDebug) {
+      console.warn('[ProfileScorer] API Time-based: profile', profile.name, 'available:', availability.available);
+    }
+  }
+
+  if (availableProfiles.length === 0) {
+    console.warn('[ProfileScorer] API Time-based: no available profiles');
+    return { profile: null, currentProfileId: undefined, lastRotationTime: undefined, profileIndex: 0 };
+  }
+
+  const now = Date.now();
+  const rotationIntervalMs = ((strategy as any).rotationInterval ?? 300) * 1000; // Default: 5 minutes
+
+  // Get state tracking from strategy
+  const currentProfileId = (strategy as any).timeBasedCurrentProfile;
+  const lastRotationTime = (strategy as any).timeBasedLastRotationTime;
+  let currentIndex = (strategy as any).timeBasedProfileIndex ?? 0;
+
+  let selectedProfile: APIProfile = availableProfiles[0];
+  let shouldRotate = false;
+  let newProfileIndex = currentIndex;
+  let newCurrentProfileId = currentProfileId;
+  let newLastRotationTime = lastRotationTime;
+
+  if (isDebug) {
+    console.warn('[ProfileScorer] API Time-based: current profile ID =', currentProfileId, ', index =', currentIndex);
+  }
+
+  // Check if we have a current profile and it's still available
+  if (currentProfileId && lastRotationTime) {
+    const elapsedMs = now - lastRotationTime;
+    const currentProfile = availableProfiles.find(p => p.id === currentProfileId);
+
+    if (currentProfile && elapsedMs < rotationIntervalMs) {
+      // Interval not elapsed, continue using current profile
+      selectedProfile = currentProfile;
+      shouldRotate = false;
+    } else if (currentProfile && elapsedMs >= rotationIntervalMs) {
+      // Interval elapsed, rotate to next profile
+      shouldRotate = true;
+    } else {
+      // Current profile no longer available, reset to first profile
+      shouldRotate = true;
+      currentIndex = 0;
+      newProfileIndex = 0;
+    }
+  } else {
+    // No state tracking, start with first profile
+    shouldRotate = true;
+    currentIndex = 0;
+    newProfileIndex = 0;
+  }
+
+  if (shouldRotate) {
+    // Calculate next index (circular)
+    newProfileIndex = (currentIndex + 1) % availableProfiles.length;
+    selectedProfile = availableProfiles[newProfileIndex];
+    newCurrentProfileId = selectedProfile.id;
+    newLastRotationTime = now;
+
+    if (isDebug) {
+      console.warn('[ProfileScorer] API Time-based: rotated to profile', selectedProfile.name, 'at index', newProfileIndex);
+    }
+  }
+
+  // Note: Caller should update strategy state tracking fields
+  return {
+    profile: selectedProfile,
+    currentProfileId: newCurrentProfileId,
+    lastRotationTime: newLastRotationTime,
+    profileIndex: newProfileIndex
+  };
+}
+
+// ============================================================================
+// API Profile to OAuth Fallback Logic
+// ============================================================================
+
+/**
+ * Result type for profile selection that can be either API or OAuth
+ */
+export interface ProfileSelectionResult {
+  profile: APIProfile | ClaudeProfile | null;
+  profileType: 'api' | 'oauth' | null;
+  reason?: string;
+}
+
+/**
+ * Get the best available profile with fallback from API to OAuth
+ *
+ * Selection Logic:
+ * 1. First, try to get an available API profile using the configured strategy
+ * 2. If no API profile is available and fallbackToOAuth is enabled:
+ *    - Fall back to OAuth profiles using the OAuth auto-switch settings
+ *    - Return the best available OAuth profile
+ * 3. If fallback is disabled or no OAuth profiles available, return null
+ *
+ * Use Cases:
+ * - API profiles are rate-limited or over quota
+ * - All API profiles are unavailable
+ * - User wants OAuth as a safety net
+ *
+ * @param apiProfiles - All configured API profiles
+ * @param oauthProfiles - All configured OAuth profiles
+ * @param apiStrategy - API profile rotation strategy configuration
+ * @param oauthSettings - OAuth auto-switch settings
+ * @param oauthPriorityOrder - User's configured priority order for OAuth profiles (array of unified IDs like 'oauth-{id}')
+ * @param excludeProfileId - Profile ID to exclude (usually the current/failing one)
+ * @returns ProfileSelectionResult with selected profile, type, and reason
+ */
+export function getBestAvailableProfileWithFallback(
+  apiProfiles: APIProfile[],
+  oauthProfiles: ClaudeProfile[],
+  apiStrategy: APIProfileRotationStrategy,
+  oauthSettings: ClaudeAutoSwitchSettings,
+  oauthPriorityOrder: string[] = [],
+  excludeProfileId?: string
+): ProfileSelectionResult {
+  if (isDebug) {
+    console.warn('[ProfileScorer] Profile selection with fallback:');
+    console.warn('[ProfileScorer]   API profiles:', apiProfiles.length);
+    console.warn('[ProfileScorer]   OAuth profiles:', oauthProfiles.length);
+    console.warn('[ProfileScorer]   Fallback to OAuth:', apiStrategy.fallbackToOAuth);
+  }
+
+  // Step 1: Try to get an available API profile
+  const apiProfile = getBestAvailableAPIProfile(apiProfiles, apiStrategy, excludeProfileId);
+
+  if (apiProfile) {
+    if (isDebug) {
+      console.warn('[ProfileScorer] Selected API profile:', apiProfile.name);
+    }
+
+    return {
+      profile: apiProfile,
+      profileType: 'api',
+      reason: 'API profile available'
+    };
+  }
+
+  // Step 2: No API profile available - check if we should fall back to OAuth
+  if (!apiStrategy.fallbackToOAuth) {
+    if (isDebug) {
+      console.warn('[ProfileScorer] No API profile available and OAuth fallback disabled');
+    }
+
+    return {
+      profile: null,
+      profileType: null,
+      reason: 'No API profile available and OAuth fallback disabled'
+    };
+  }
+
+  // Step 3: Fall back to OAuth profiles
+  if (oauthProfiles.length === 0) {
+    if (isDebug) {
+      console.warn('[ProfileScorer] Fallback enabled but no OAuth profiles configured');
+    }
+
+    return {
+      profile: null,
+      profileType: null,
+      reason: 'Fallback enabled but no OAuth profiles configured'
+    };
+  }
+
+  if (isDebug) {
+    console.warn('[ProfileScorer] Falling back to OAuth profiles');
+  }
+
+  const oauthProfile = getBestAvailableProfile(
+    oauthProfiles,
+    oauthSettings,
+    excludeProfileId,
+    oauthPriorityOrder
+  );
+
+  if (oauthProfile) {
+    if (isDebug) {
+      console.warn('[ProfileScorer] Selected OAuth profile as fallback:', oauthProfile.name);
+    }
+
+    return {
+      profile: oauthProfile,
+      profileType: 'oauth',
+      reason: 'Fallback to OAuth profile (no API profiles available)'
+    };
+  }
+
+  // Step 4: No profiles available at all
+  if (isDebug) {
+    console.warn('[ProfileScorer] No API or OAuth profiles available');
+  }
+
+  return {
+    profile: null,
+    profileType: null,
+    reason: 'No API or OAuth profiles available'
+  };
 }

@@ -3,10 +3,13 @@
  *
  * Provides validation functions for URL, API key, and profile name uniqueness.
  * Handles creating new profiles with validation.
+ * Tracks API profile usage for rotation strategies.
  */
 
 import { loadProfilesFile, saveProfilesFile, generateProfileId } from '../utils/profile-manager';
-import type { APIProfile, TestConnectionResult } from '../../shared/types/profile';
+import { updateProfileUsage, getProfileUsage, getRotationStrategyOrDefault } from '../utils/api-usage-storage';
+import { getBestAvailableAPIProfile } from '../claude-profile/profile-scorer';
+import type { APIProfile, TestConnectionResult, APIProfileUsage, APIProfileRotationStrategy } from '../../shared/types/profile';
 
 /**
  * Validate base URL format
@@ -275,6 +278,105 @@ export async function getAPIProfileEnv(): Promise<Record<string, string>> {
 }
 
 /**
+ * Get environment variables for API profile with rotation strategy
+ *
+ * Extends getAPIProfileEnv() to support automatic profile rotation based on
+ * usage quotas, rate limits, and priority order. Uses rotation strategy
+ * configuration to select the best available API profile.
+ *
+ * Selection Logic:
+ * 1. Load rotation strategy configuration from storage
+ * 2. If rotation is enabled:
+ *    - Use getBestAvailableAPIProfile() to select best profile based on:
+ *      - Priority order (user-configured)
+ *      - Rate limit status (excludes rate-limited profiles)
+ *      - Usage thresholds (excludes profiles at/near quota)
+ *    - Falls back to active profile if no profiles pass availability checks
+ * 3. If rotation is disabled:
+ *    - Use active profile (same as getAPIProfileEnv())
+ * 4. Map selected profile to SDK environment variables
+ *
+ * Environment Variable Mapping:
+ * - profile.baseUrl → ANTHROPIC_BASE_URL
+ * - profile.apiKey → ANTHROPIC_AUTH_TOKEN
+ * - profile.models.default → ANTHROPIC_MODEL
+ * - profile.models.haiku → ANTHROPIC_DEFAULT_HAIKU_MODEL
+ * - profile.models.sonnet → ANTHROPIC_DEFAULT_SONNET_MODEL
+ * - profile.models.opus → ANTHROPIC_DEFAULT_OPUS_MODEL
+ *
+ * Empty string values are filtered out (not set as env vars).
+ *
+ * @returns Promise<Record<string, string>> Environment variables for selected profile
+ */
+export async function getRotatedAPIProfileEnv(): Promise<Record<string, string>> {
+  // Load profiles.json
+  const file = await loadProfilesFile();
+
+  // If no API profiles configured, return empty object (OAuth mode)
+  if (file.profiles.length === 0) {
+    return {};
+  }
+
+  // Load rotation strategy configuration
+  const rotationStrategy: APIProfileRotationStrategy = getRotationStrategyOrDefault();
+
+  let selectedProfile: APIProfile | null = null;
+
+  // Check if rotation is enabled
+  if (rotationStrategy.enabled) {
+    // Use rotation logic to select best available profile
+    selectedProfile = getBestAvailableAPIProfile(
+      file.profiles,
+      rotationStrategy,
+      undefined // No excludeProfileId - consider all profiles
+    );
+
+    // If rotation didn't select a profile (all unavailable), fall back to active profile
+    if (!selectedProfile && file.activeProfileId) {
+      const activeProfile = file.profiles.find((p) => p.id === file.activeProfileId);
+      if (activeProfile) {
+        console.warn('[ProfileService] Rotation: All profiles unavailable, falling back to active profile:', activeProfile.name);
+        selectedProfile = activeProfile;
+      }
+    }
+  } else {
+    // Rotation disabled - use active profile (same as getAPIProfileEnv())
+    if (!file.activeProfileId || file.activeProfileId === '') {
+      return {};
+    }
+
+    selectedProfile = file.profiles.find((p) => p.id === file.activeProfileId) || null;
+  }
+
+  // If no profile selected (no active profile or rotation failed), return empty object
+  if (!selectedProfile) {
+    return {};
+  }
+
+  // Map profile fields to SDK env vars
+  const envVars: Record<string, string> = {
+    ANTHROPIC_BASE_URL: selectedProfile.baseUrl || '',
+    ANTHROPIC_AUTH_TOKEN: selectedProfile.apiKey || '',
+    ANTHROPIC_MODEL: selectedProfile.models?.default || '',
+    ANTHROPIC_DEFAULT_HAIKU_MODEL: selectedProfile.models?.haiku || '',
+    ANTHROPIC_DEFAULT_SONNET_MODEL: selectedProfile.models?.sonnet || '',
+    ANTHROPIC_DEFAULT_OPUS_MODEL: selectedProfile.models?.opus || '',
+  };
+
+  // Filter out empty/whitespace string values (only set env vars that have values)
+  // This handles empty strings, null, undefined, and whitespace-only values
+  const filteredEnvVars: Record<string, string> = {};
+  for (const [key, value] of Object.entries(envVars)) {
+    const trimmedValue = value?.trim();
+    if (trimmedValue && trimmedValue !== '') {
+      filteredEnvVars[key] = trimmedValue;
+    }
+  }
+
+  return filteredEnvVars;
+}
+
+/**
  * Test API profile connection
  *
  * Validates credentials by making a minimal API request to the /v1/models endpoint.
@@ -507,4 +609,266 @@ export async function testConnection(
       message: 'Connection test failed. Please try again.'
     };
   }
+}
+
+/**
+ * Track API profile usage after a request
+ *
+ * Updates request count, token usage, and last request time for rotation strategies.
+ * Persists data to disk for recovery across app restarts.
+ *
+ * @param profileId - UUID of the API profile that was used
+ * @param requestCount - Number of requests made (default: 1)
+ * @param tokenUsage - Number of tokens consumed (default: 0)
+ */
+export function trackAPIProfileUsage(
+  profileId: string,
+  requestCount: number = 1,
+  tokenUsage: number = 0
+): void {
+  // Get current usage data
+  const currentUsage = getProfileUsage(profileId);
+
+  // Calculate new totals
+  const newRequestCount = (currentUsage?.requestCount || 0) + requestCount;
+  const newTokenUsage = (currentUsage?.tokenUsage || 0) + tokenUsage;
+
+  // Update usage data
+  updateProfileUsage(profileId, {
+    profileId,
+    requestCount: newRequestCount,
+    tokenUsage: newTokenUsage,
+    lastRequestTime: Date.now(),
+    isRateLimited: currentUsage?.isRateLimited || false,
+    rateLimitResetTime: currentUsage?.rateLimitResetTime,
+    quotaLimit: currentUsage?.quotaLimit,
+    quotaWindow: currentUsage?.quotaWindow
+  });
+}
+
+/**
+ * Get API profile usage data
+ *
+ * Returns usage statistics for a specific API profile including request count,
+ * token usage, last request time, and rate limit status. Returns null if the
+ * profile has no usage data yet.
+ *
+ * @param profileId - UUID of the API profile
+ * @returns Usage data or null if not found
+ */
+export function getAPIProfileUsage(profileId: string): APIProfileUsage | null {
+  return getProfileUsage(profileId);
+}
+
+/**
+ * Check if an API profile is available for use
+ *
+ * Determines availability based on rate limit status and quota constraints.
+ * A profile is unavailable if:
+ * - It is currently rate limited (and rate limit reset time has not passed)
+ * - It has exceeded its quota limit (if configured)
+ *
+ * This function also clears expired rate limits automatically. If the rate limit
+ * reset time has passed, the profile is marked as available again.
+ *
+ * @param profileId - UUID of the API profile
+ * @returns true if profile is available, false otherwise
+ */
+export function isAPIProfileAvailable(profileId: string): boolean {
+  const usage = getProfileUsage(profileId);
+
+  // No usage data means profile has never been used - available
+  if (!usage) {
+    return true;
+  }
+
+  // Check if currently rate limited
+  if (usage.isRateLimited) {
+    // If rate limit reset time is set, check if it has expired
+    if (usage.rateLimitResetTime) {
+      const now = Date.now();
+      if (now >= usage.rateLimitResetTime) {
+        // Rate limit has expired - clear the flag and mark as available
+        updateProfileUsage(profileId, {
+          isRateLimited: false,
+          rateLimitResetTime: undefined
+        });
+        return true;
+      }
+      // Still within rate limit backoff period
+      return false;
+    }
+    // Rate limited but no reset time - should be cleared manually
+    // Conservatively return false to avoid hitting rate limits
+    return false;
+  }
+
+  // Check quota limits (if configured)
+  if (usage.quotaLimit && usage.quotaWindow) {
+    // Quota is configured - check if usage exceeds limit
+    // Note: This is a simple check. A more sophisticated implementation would
+    // check usage within the quota window (sliding window or token bucket).
+    // For now, we just check total request count against quota.
+    if (usage.requestCount >= usage.quotaLimit) {
+      return false;
+    }
+  }
+
+  // Profile is available
+  return true;
+}
+
+/**
+ * Result of parsing rate limit information from API response headers
+ */
+export interface RateLimitInfo {
+  /** Whether the response indicates rate limiting */
+  isRateLimited: boolean;
+  /** Remaining requests before rate limit */
+  remainingRequests?: number;
+  /** Total request limit */
+  requestLimit?: number;
+  /** Unix timestamp (ms) when the rate limit resets */
+  resetTime?: number;
+  /** Whether a 429 status was received */
+  is429: boolean;
+}
+
+/**
+ * Parse rate limit headers from an API response
+ *
+ * Handles multiple header formats:
+ * - Anthropic-specific: anthropic-ratelimit-requests-*
+ * - Standard: RateLimit-* (used by some proxies)
+ * - Retry-After: HTTP-date or seconds (for 429 responses)
+ *
+ * @param response - Fetch Response object from API call
+ * @returns Parsed rate limit information
+ */
+export function parseRateLimitHeaders(response: Response): RateLimitInfo {
+  const headers = response.headers;
+  const result: RateLimitInfo = {
+    isRateLimited: false,
+    is429: response.status === 429
+  };
+
+  // Check Anthropic-specific rate limit headers
+  const requestsRemaining = headers.get('anthropic-ratelimit-requests-remaining');
+  const requestsLimit = headers.get('anthropic-ratelimit-requests-limit');
+  const requestsReset = headers.get('anthropic-ratelimit-requests-reset');
+
+  // Parse remaining requests
+  if (requestsRemaining !== null) {
+    const parsed = parseInt(requestsRemaining, 10);
+    if (!isNaN(parsed)) {
+      result.remainingRequests = parsed;
+    }
+  }
+
+  // Parse request limit
+  if (requestsLimit !== null) {
+    const parsed = parseInt(requestsLimit, 10);
+    if (!isNaN(parsed)) {
+      result.requestLimit = parsed;
+    }
+  }
+
+  // Parse reset time (Anthropic returns Unix timestamp in seconds)
+  if (requestsReset !== null) {
+    const parsed = parseInt(requestsReset, 10);
+    if (!isNaN(parsed)) {
+      // Convert to milliseconds
+      result.resetTime = parsed * 1000;
+    }
+  }
+
+  // Check standard RateLimit headers (used by some proxies/compatible APIs)
+  if (result.remainingRequests === undefined) {
+    const rateLimitRemaining = headers.get('ratelimit-remaining') || headers.get('x-ratelimit-remaining');
+    if (rateLimitRemaining !== null) {
+      const parsed = parseInt(rateLimitRemaining, 10);
+      if (!isNaN(parsed)) {
+        result.remainingRequests = parsed;
+      }
+    }
+  }
+
+  if (result.requestLimit === undefined) {
+    const rateLimitLimit = headers.get('ratelimit-limit') || headers.get('x-ratelimit-limit');
+    if (rateLimitLimit !== null) {
+      const parsed = parseInt(rateLimitLimit, 10);
+      if (!isNaN(parsed)) {
+        result.requestLimit = parsed;
+      }
+    }
+  }
+
+  if (result.resetTime === undefined) {
+    const rateLimitReset = headers.get('ratelimit-reset') || headers.get('x-ratelimit-reset');
+    if (rateLimitReset !== null) {
+      const parsed = parseInt(rateLimitReset, 10);
+      if (!isNaN(parsed)) {
+        // Some APIs return seconds, some return milliseconds
+        // If less than 10000000000 (year 2286), assume seconds
+        result.resetTime = parsed < 10000000000 ? parsed * 1000 : parsed;
+      }
+    }
+  }
+
+  // Handle 429 Too Many Requests with Retry-After header
+  if (result.is429) {
+    const retryAfter = headers.get('retry-after');
+    if (retryAfter !== null && result.resetTime === undefined) {
+      // Retry-After can be HTTP-date or seconds
+      // Try parsing as seconds first
+      const seconds = parseInt(retryAfter, 10);
+      if (!isNaN(seconds)) {
+        result.resetTime = Date.now() + (seconds * 1000);
+      } else {
+        // Try parsing as HTTP-date (e.g., "Fri, 31 Dec 2024 23:59:59 GMT")
+        const date = new Date(retryAfter);
+        if (!isNaN(date.getTime())) {
+          result.resetTime = date.getTime();
+        }
+      }
+    }
+  }
+
+  // Determine if rate limited
+  // Either: 429 status, or remaining requests is 0, or we're near the limit
+  if (result.is429) {
+    result.isRateLimited = true;
+  } else if (result.remainingRequests !== undefined && result.remainingRequests <= 0) {
+    result.isRateLimited = true;
+  }
+
+  return result;
+}
+
+/**
+ * Update API profile rate limit status from API response
+ *
+ * Parses rate limit headers from the response and updates the profile's
+ * usage data with the latest rate limit information. Marks the profile
+ * as rate limited if necessary.
+ *
+ * This should be called after every API request to track rate limit status.
+ *
+ * @param profileId - UUID of the API profile that was used
+ * @param response - Fetch Response object from the API call
+ * @returns Rate limit information parsed from headers
+ */
+export function updateAPIProfileRateLimit(
+  profileId: string,
+  response: Response
+): RateLimitInfo {
+  const rateLimitInfo = parseRateLimitHeaders(response);
+
+  // Update profile usage with rate limit information
+  updateProfileUsage(profileId, {
+    isRateLimited: rateLimitInfo.isRateLimited,
+    rateLimitResetTime: rateLimitInfo.resetTime
+  });
+
+  return rateLimitInfo;
 }
