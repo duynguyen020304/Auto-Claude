@@ -6,7 +6,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   parseRateLimitHeaders,
   updateAPIProfileRateLimit,
-  type RateLimitInfo
 } from '../services/profile-service';
 
 // Mock the api-usage-storage module

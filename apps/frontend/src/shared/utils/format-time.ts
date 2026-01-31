@@ -129,7 +129,7 @@ export function formatTimeRemaining(
     const date = new Date(timestamp);
 
     // Handle invalid dates (isNaN check before using getTime())
-    if (isNaN(date.getTime())) return undefined;
+    if (Number.isNaN(date.getTime())) return undefined;
 
     const now = new Date();
     const diffMs = date.getTime() - now.getTime();
@@ -179,7 +179,7 @@ export function formatTimeRemainingSimple(timestamp: string | undefined): string
     const date = new Date(timestamp);
 
     // Handle invalid dates
-    if (isNaN(date.getTime())) return 'Unknown';
+    if (Number.isNaN(date.getTime())) return 'Unknown';
 
     const now = new Date();
     const diffMs = date.getTime() - now.getTime();
@@ -226,7 +226,7 @@ export function formatTimeAgo(
     const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
 
     // Handle invalid dates (isNaN check before using getTime())
-    if (isNaN(date.getTime())) return undefined;
+    if (Number.isNaN(date.getTime())) return undefined;
 
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();

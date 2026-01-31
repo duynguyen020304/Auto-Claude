@@ -10,9 +10,7 @@
  */
 
 import type {
-  User,
   UserProfile,
-  AuthToken,
   AuthResponse,
   RegisterData,
   LoginCredentials,

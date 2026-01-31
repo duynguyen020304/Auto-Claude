@@ -3,7 +3,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { InsightsService } from '../insights-service';
-import { SessionQueue, SessionPriority, type ActiveSession } from '../insights/session-queue';
+import { SessionQueue, SessionPriority } from '../insights/session-queue';
 
 // Mock all dependencies
 vi.mock('../insights/config');
@@ -15,6 +15,7 @@ vi.mock('../insights/insights-executor');
 describe('InsightsService', () => {
   let service: InsightsService;
   let mockSessionQueue: SessionQueue;
+  // biome-ignore lint/suspicious/noExplicitAny: Mock type
   let mockExecutor: any;
 
   beforeEach(() => {
@@ -37,8 +38,8 @@ describe('InsightsService', () => {
     service = new InsightsService();
 
     // Replace the service's sessionQueue and executor with our mocks
-    (service as any).sessionQueue = mockSessionQueue;
-    (service as any).executor = mockExecutor;
+    (service as unknown as Record<string, unknown>).sessionQueue = mockSessionQueue;
+    (service as unknown as Record<string, unknown>).executor = mockExecutor;
   });
 
   describe('cancelSession', () => {
@@ -106,7 +107,7 @@ describe('InsightsService', () => {
       // Manually add to activeSessions without proper tracking
       mockSessionQueue.markSessionActive(sessionId, projectId);
       // Then manually clear the activeSessions map to simulate missing project ID
-      (mockSessionQueue as any).activeSessions.delete(sessionId);
+      (mockSessionQueue as unknown as { activeSessions: Map<string, unknown> }).activeSessions.delete(sessionId);
 
       // Cancel the session
       const result = service.cancelSession(sessionId);

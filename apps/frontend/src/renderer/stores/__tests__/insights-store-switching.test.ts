@@ -48,7 +48,7 @@ describe('insights-store - rapid session switching', () => {
     expect(state.streamingContent).toBe('Content from B');
 
     // Verify session B state in sessionStates map
-    let sessionBState = store.getSessionState(sessionBId);
+    const sessionBState = store.getSessionState(sessionBId);
     expect(sessionBState?.status.phase).toBe('idle');
     expect(sessionBState?.pendingMessage).toBe('Message from B');
     expect(sessionBState?.streamingContent).toBe('Content from B');
@@ -79,7 +79,7 @@ describe('insights-store - rapid session switching', () => {
     store.setStatus({ phase: 'streaming', message: 'Updating B' }, sessionBId);
 
     // Verify current session (A) state remains unchanged
-    let state = useInsightsStore.getState();
+    const state = useInsightsStore.getState();
     expect(state.status.phase).toBe('idle');
     expect(state.currentSessionId).toBe(sessionAId);
 
@@ -137,7 +137,7 @@ describe('insights-store - rapid session switching', () => {
     expect(sessionBState?.toolsUsed[0].name).toBe('tool-b');
 
     // Verify session C state (current session)
-    let state = useInsightsStore.getState();
+    const state = useInsightsStore.getState();
     expect(state.status.phase).toBe('streaming');
     expect(state.pendingMessage).toBe('Pending C');
     expect(state.streamingContent).toBe('Content C');
@@ -219,7 +219,7 @@ describe('insights-store - rapid session switching', () => {
 
     // Verify session B state is unaffected
     store.setCurrentSessionId(sessionBId);
-    let state = useInsightsStore.getState();
+    const state = useInsightsStore.getState();
     expect(state.status.phase).toBe('thinking');
     expect(state.pendingMessage).toBe('Pending B');
     expect(state.streamingContent).toBe('Content B');

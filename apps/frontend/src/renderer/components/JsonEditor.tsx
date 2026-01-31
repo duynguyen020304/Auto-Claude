@@ -94,7 +94,7 @@ export const JsonEditor = forwardRef<JsonEditorRef, JsonEditorProps>(
       setInternalValue(newValue);
 
       // Try to parse JSON to validate
-      let parsed: unknown = undefined;
+      let parsed: unknown ;
       try {
         parsed = JSON.parse(newValue);
       } catch {

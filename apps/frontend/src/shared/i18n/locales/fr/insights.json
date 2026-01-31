@@ -22,5 +22,69 @@
     "startNew": "Commencer une nouvelle session",
     "continueSession": "Continuer la session",
     "noSessions": "Aucune session pour le moment"
+  },
+  "insights": {
+    "title": "Perspectives",
+    "subtitle": "Posez des questions sur votre base de code",
+    "hideSidebar": "Masquer la barre latérale",
+    "showSidebar": "Afficher la barre latérale",
+    "newChat": "Nouvelle discussion",
+    "startConversation": "Commencer une conversation",
+    "startConversationDescription": "Posez des questions sur votre base de code, obtenez des suggestions d'amélioration ou discutez des fonctionnalités que vous souhaitez implémenter.",
+    "suggestion1": "Quelle est l'architecture de ce projet?",
+    "suggestion2": "Suggérer des améliorations de qualité de code",
+    "suggestion3": "Quelles fonctionnalités pourrais-je ajouter ensuite?",
+    "suggestion4": "Y a-t-il des problèmes de sécurité?",
+    "assistant": "Assistant",
+    "thinking": "Réflexion...",
+    "askAboutCodebase": "Poser une question sur votre base de code...",
+    "pressEnterToSend": "Appuyez sur Entrée pour envoyer, Maj+Entrée pour une nouvelle ligne",
+    "you": "Vous",
+    "suggestedTask": "Tâche suggérée",
+    "creating": "Création...",
+    "taskCreated": "Tâche créée",
+    "retry": "Réessayer",
+    "createTask": "Créer une tâche",
+    "concurrentSessions": "Sessions simultanées ({{count}})",
+    "current": "Actuel",
+    "processing": "Traitement...",
+    "usingTool": "Utilisation de {{toolName}}...",
+    "cancelSession": "Annuler cette session",
+    "toolsUsed": "{{count}} outil utilisé",
+    "toolsUsed_plural": "{{count}} outils utilisés",
+    "readingFile": "Lecture du fichier",
+    "searchingFiles": "Recherche de fichiers",
+    "searchingCode": "Recherche de code",
+    "quickActions": {
+      "risks": "Quels sont les risques ?",
+      "similarCode": "Afficher le code similaire",
+      "effort": "Quel effort est requis ?",
+      "alternatives": "Quelles sont les alternatives ?"
+    }
+  },
+  "modelSelector": {
+    "agentProfile": "Profil de l'agent",
+    "custom": "Personnalisé...",
+    "chooseModelThinking": "Choisir le modèle et le niveau de réflexion",
+    "balanced": "Équilibré"
+  },
+  "ideationItem": {
+    "rationale": "Justification",
+    "affectedFilesCount": "{{count}} fichier",
+    "affectedFilesCount_plural": "{{count}} fichiers",
+    "effort": "Effort estimé",
+    "priority": "Priorité",
+    "affectedFiles": "Fichiers concernés",
+    "codeExample": "Exemple de code",
+    "feasibilityDescription": "Basé sur l'effort estimé et l'analyse de complexité.",
+    "noFeasibilityData": "Aucune donnée de faisabilité disponible.",
+    "noContextData": "Aucune donnée de contexte disponible.",
+    "explorationPrompt": "Posez des questions de suivi pour explorer cet élément d'idéation plus en détail.",
+    "sections": {
+      "summary": "Résumé",
+      "feasibility": "Faisabilité",
+      "context": "Contexte",
+      "exploration": "Exploration Q&R"
+    }
   }
 }

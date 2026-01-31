@@ -11,7 +11,7 @@
  * To run: cd apps/frontend && npx playwright test archived-tasks-persistence --config=e2e/playwright.config.ts
  */
 import { test, expect } from '@playwright/test';
-import { mkdirSync, rmSync, existsSync, writeFileSync, readFileSync } from 'fs';
+import { mkdirSync, rmSync, existsSync } from 'fs';
 import { tmpdir } from 'os';
 import path from 'path';
 
@@ -39,7 +39,7 @@ function setStorageItem(key: string, value: string): void {
 }
 
 // Helper to remove item from storage mock
-function removeStorageItem(key: string): void {
+function _removeStorageItem(key: string): void {
   storageMock.delete(key);
 }
 
@@ -97,20 +97,33 @@ function createMockTask(specId: string, status: string, isArchived: boolean = fa
   };
 }
 
+// Type for task order state
+interface TaskOrder {
+  backlog: string[];
+  queue: string[];
+  in_progress: string[];
+  ai_review: string[];
+  human_review: string[];
+  done: string[];
+  pr_created: string[];
+  error: string[];
+  [key: string]: string[];
+}
+
 // Helper to simulate task order storage state
-function saveTaskOrderToStorage(projectId: string, taskOrder: any): void {
+function saveTaskOrderToStorage(projectId: string, taskOrder: TaskOrder): void {
   const key = getTaskOrderKey(projectId);
   setStorageItem(key, JSON.stringify(taskOrder));
 }
 
 // Helper to load task order from storage
-function loadTaskOrderFromStorage(projectId: string): any {
+function loadTaskOrderFromStorage(projectId: string): TaskOrder | null {
   const key = getTaskOrderKey(projectId);
   const stored = getStorageItem(key);
   if (!stored) {
     return null;
   }
-  return JSON.parse(stored);
+  return JSON.parse(stored) as TaskOrder;
 }
 
 // Helper to simulate cleanupArchivedTaskIds function
@@ -371,8 +384,8 @@ test.describe('Archived Tasks - App Restart Simulation', () => {
 
     saveTaskOrderToStorage(projectId, initialOrder);
 
-    let loaded = loadTaskOrderFromStorage(projectId);
-    expect(loaded.backlog).toHaveLength(3);
+    const loaded = loadTaskOrderFromStorage(projectId);
+    expect(loaded?.backlog).toHaveLength(3);
 
     // Step 2: Simulate archiving task '002'
     const activeTasks = [
@@ -527,11 +540,11 @@ test.describe('Archived Tasks - Edge Cases and Error Handling', () => {
   test('should handle columns with non-array values', () => {
     const projectId = 'test-project';
 
-    const invalidOrder = {
+    const invalidOrder: Record<string, unknown> = {
       backlog: ['001', '002'],
-      queue: 'not-an-array' as any,
+      queue: 'not-an-array',
       in_progress: ['003'],
-      ai_review: null as any,
+      ai_review: null,
       human_review: [],
       done: [],
       pr_created: [],

@@ -41,7 +41,7 @@ function info(message) {
   log(`ℹ️  ${message}`, 'cyan');
 }
 
-function warn(message) {
+function _warn(message) {
   log(`⚠️  ${message}`, 'yellow');
 }
 

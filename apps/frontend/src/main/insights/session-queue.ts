@@ -105,7 +105,7 @@ export class SessionQueue {
   enqueue(session: QueuedSession): void {
     // Find insertion point: after all sessions with higher priority,
     // and before sessions with same priority but later queue time
-    let insertIndex = this.queue.findIndex(s =>
+    const insertIndex = this.queue.findIndex(s =>
       s.priority < session.priority ||
       (s.priority === session.priority && s.queuedAt > session.queuedAt)
     );

@@ -137,6 +137,7 @@ test.describe('File Mention E2E - Mock Backend Integration', () => {
 
     expect(mentions).toBeDefined();
     expect(mentions).toHaveLength(1);
+    // biome-ignore lint/style/noNonNullAssertion: Test assertion - we know this is defined
     expect(mentions![0]).toBe('@src/App.tsx');
   });
 
@@ -147,6 +148,7 @@ test.describe('File Mention E2E - Mock Backend Integration', () => {
 
     expect(matches).toBeDefined();
     expect(matches).toHaveLength(1);
+    // biome-ignore lint/style/noNonNullAssertion: Test assertion - we know this is defined
     expect(matches![0]).toContain('@src/utils.ts');
   });
 
@@ -241,6 +243,7 @@ test.describe('File Mention E2E - Error Handling', () => {
     try {
       readFileSync(filePath, 'utf-8');
       expect(true).toBe(false); // Should not reach here
+    // biome-ignore lint/suspicious/noExplicitAny: Testing error type in catch block
     } catch (error: any) {
       expect(error.code).toBe('ENOENT');
     }
@@ -286,6 +289,7 @@ test.describe('File Mention E2E - Complete Flow Integration', () => {
     const regex = /@([^\s:]+)/g;
     const matches = userMessage.match(regex);
     expect(matches).toBeDefined();
+    // biome-ignore lint/style/noNonNullAssertion: Test assertion - we know this is defined
     expect(matches![0]).toContain('@src/constants.ts');
 
     // Step 3: Create the file
@@ -324,8 +328,11 @@ test.describe('File Mention E2E - Complete Flow Integration', () => {
     const match = userMessage.match(regex);
 
     expect(match).toBeDefined();
+    // biome-ignore lint/style/noNonNullAssertion: Test assertion - we know this is defined
     expect(match![1]).toBe('src/App.tsx');
+    // biome-ignore lint/style/noNonNullAssertion: Test assertion - we know this is defined
     expect(match![2]).toBe('4');
+    // biome-ignore lint/style/noNonNullAssertion: Test assertion - we know this is defined
     expect(match![3]).toBe('7');
 
     // Step 2: Create file with content
@@ -362,6 +369,7 @@ test.describe('File Mention E2E - Complete Flow Integration', () => {
     const matches = userMessage.match(regex);
 
     expect(matches).toBeDefined();
+    // biome-ignore lint/style/noNonNullAssertion: Test assertion - we know this is defined
     expect(matches![0]).toBe('@src/missing.ts');
 
     // Step 2: Try to read file (should fail gracefully)
@@ -374,7 +382,8 @@ test.describe('File Mention E2E - Complete Flow Integration', () => {
 
     try {
       readFileSync(filePath, 'utf-8');
-    } catch (error: any) {
+    // biome-ignore lint/suspicious/noExplicitAny: Testing error type in catch block
+    } catch (_error: any) {
       errorOccurred = true;
       errorMessage = `File not found: src/missing.ts`;
     }
@@ -451,10 +460,12 @@ test.describe('File Mention E2E - Security Validation', () => {
     expect(matches).toBeDefined();
 
     // Check for path traversal patterns
+    // biome-ignore lint/style/noNonNullAssertion: Test assertion - we know this is defined
     const hasPathTraversal = matches!.some(match => match.includes('../'));
     expect(hasPathTraversal).toBe(true);
 
     // Verify the malicious path is outside project
+    // biome-ignore lint/style/noNonNullAssertion: Test assertion - we know this is defined
     const maliciousPath = matches![0].substring(1); // Remove @
     const resolvedPath = path.join(TEST_PROJECT_DIR, maliciousPath);
 
@@ -468,9 +479,11 @@ test.describe('File Mention E2E - Security Validation', () => {
     const matches = absolutePathMessage.match(regex);
 
     expect(matches).toBeDefined();
+    // biome-ignore lint/style/noNonNullAssertion: Test assertion - we know this is defined
     expect(matches![0]).toBe('@/etc/passwd');
 
     // Check for absolute path pattern
+    // biome-ignore lint/style/noNonNullAssertion: Test assertion - we know this is defined
     const hasAbsolutePath = matches![0].startsWith('@/') || matches![0].startsWith('@\\');
     expect(hasAbsolutePath).toBe(true);
   });

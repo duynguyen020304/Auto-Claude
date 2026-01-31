@@ -202,7 +202,7 @@ describe('insights-store - session state isolation', () => {
     store.setCurrentSessionId(sessionBId);
 
     // Verify second session has initial state
-    let stateB = store.getSessionState(sessionBId);
+    const stateB = store.getSessionState(sessionBId);
     expect(stateB).toBeDefined();
     expect(stateB?.status.phase).toBe('idle');
     expect(stateB?.pendingMessage).toBe('');

@@ -104,7 +104,7 @@ export const HistoryItem = memo<HistoryItemProps>(({ item, onDelete, className }
           </div>
         );
 
-      case 'ideation':
+      case 'ideation': {
         const ideationData = data as IdeationHistory;
         return (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -131,8 +131,9 @@ export const HistoryItem = memo<HistoryItemProps>(({ item, onDelete, className }
             )}
           </div>
         );
+      }
 
-      case 'roadmap':
+      case 'roadmap': {
         const roadmapData = data as RoadmapHistory;
         return (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -150,8 +151,9 @@ export const HistoryItem = memo<HistoryItemProps>(({ item, onDelete, className }
             )}
           </div>
         );
+      }
 
-      case 'repo':
+      case 'repo': {
         const repoData = data as RepoHistory;
         return (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -168,6 +170,7 @@ export const HistoryItem = memo<HistoryItemProps>(({ item, onDelete, className }
             <span>{t('tasks:history.item.createdAt', { date: createdAt })}</span>
           </div>
         );
+      }
 
       default:
         return null;

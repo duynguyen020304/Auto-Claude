@@ -248,7 +248,8 @@ describe('SETTINGS_CLAUDE_CODE_GET_ONBOARDING_STATUS handler', () => {
       const originalReadFileSync = (readFileSync as any).getMockImplementation();
 
       // Override existsSync to make file appear to exist
-      (existsSync as any).mockImplementation((path: string) => {
+      // biome-ignore lint/suspicious/noExplicitAny: Mock implementation for testing
+      (existsSync as unknown as { mockImplementation: (fn: (path: string) => boolean | string) => void }).mockImplementation((path: string) => {
         if (path === claudeJsonPath) {
           return true; // File appears to exist
         }
@@ -256,7 +257,7 @@ describe('SETTINGS_CLAUDE_CODE_GET_ONBOARDING_STATUS handler', () => {
       });
 
       // Override readFileSync to throw error for our specific file
-      (readFileSync as any).mockImplementation((path: string) => {
+      (readFileSync as unknown as { mockImplementation: (fn: (path: string) => string) => void }).mockImplementation((path: string) => {
         if (path === claudeJsonPath) {
           throw new Error('EACCES: permission denied, open \'' + path + '\'');
         }

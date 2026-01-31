@@ -61,7 +61,7 @@ function logFail(message, error) {
   results.failed.push({ message, error: error?.message });
 }
 
-function logSkip(message) {
+function _logSkip(message) {
   log(`  ⊘ ${message}`, colors.yellow);
   results.skipped.push(message);
 }
@@ -89,7 +89,7 @@ function checkBackendAvailable() {
     );
 
     return result.includes('OK');
-  } catch (error) {
+  } catch (_error) {
     return false;
   }
 }
@@ -377,7 +377,7 @@ function testTranslations() {
           let current = json;
 
           for (const k of keys) {
-            if (!current || !current.hasOwnProperty(k)) {
+            if (!current || !Object.hasOwn(current, k)) {
               return false;
             }
             current = current[k];

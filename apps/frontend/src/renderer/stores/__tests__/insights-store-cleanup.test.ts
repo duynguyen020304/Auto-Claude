@@ -148,7 +148,7 @@ describe('insights-store - session removal', () => {
     store.removeSession(sessionAId);
 
     // Verify session A state is removed
-    let sessionAState = store.getSessionState(sessionAId);
+    const sessionAState = store.getSessionState(sessionAId);
     expect(sessionAState).toBeUndefined();
 
     // Verify session B state is preserved

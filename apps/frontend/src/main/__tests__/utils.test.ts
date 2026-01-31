@@ -178,7 +178,7 @@ describe("safeSendToRenderer", () => {
 
   describe("error handling - non-disposal errors", () => {
     it("catches other errors and returns false", () => {
-      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => { /* no-op */ });
 
       mockSend.mockImplementation(() => {
         throw new Error("Some other IPC error");
@@ -340,7 +340,7 @@ describe("safeSendToRenderer", () => {
     });
 
     it("handles many unique channels without throwing errors", async () => {
-      const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => { /* no-op */ });
 
       mockWindow = {
         isDestroyed: vi.fn(() => true),

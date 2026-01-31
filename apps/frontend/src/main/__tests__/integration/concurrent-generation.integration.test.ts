@@ -331,9 +331,10 @@ describe('Concurrent Generation - End-to-End Integration', () => {
 
       // Dequeue and verify order
       const order: string[] = [];
-      let session;
-      while ((session = sessionQueue.dequeue())) {
+      let session = sessionQueue.dequeue();
+      while (session) {
         order.push(session.sessionId);
+        session = sessionQueue.dequeue();
       }
 
       expect(order).toEqual(['urgent-1', 'high-1', 'normal-1', 'low-1']);
@@ -366,9 +367,10 @@ describe('Concurrent Generation - End-to-End Integration', () => {
 
       // Dequeue and verify FIFO order
       const order: string[] = [];
-      let session;
-      while ((session = sessionQueue.dequeue())) {
-        order.push(session.sessionId);
+      let nextSession = sessionQueue.dequeue();
+      while (nextSession) {
+        order.push(nextSession.sessionId);
+        nextSession = sessionQueue.dequeue();
       }
 
       expect(order).toEqual(['normal-1', 'normal-2', 'normal-3']);
@@ -418,7 +420,8 @@ describe('Concurrent Generation - End-to-End Integration', () => {
       const projectId = 'project-1';
 
       // Manually enqueue a session
-      (service as any).sessionQueue.enqueue({
+      const serviceQueue = (service as unknown as { sessionQueue: SessionQueue }).sessionQueue;
+      serviceQueue.enqueue({
         sessionId,
         projectId,
         priority: SessionPriority.NORMAL,
@@ -426,14 +429,14 @@ describe('Concurrent Generation - End-to-End Integration', () => {
       });
 
       // Verify it's queued
-      expect((service as any).sessionQueue.isQueued(sessionId)).toBe(true);
+      expect(serviceQueue.isQueued(sessionId)).toBe(true);
 
       // Cancel the session
       const result = service.cancelSession(sessionId);
 
       // Verify cancellation
       expect(result).toBe(true);
-      expect((service as any).sessionQueue.isQueued(sessionId)).toBe(false);
+      expect(serviceQueue.isQueued(sessionId)).toBe(false);
     });
 
     it('should return false when cancelling non-existent session', () => {

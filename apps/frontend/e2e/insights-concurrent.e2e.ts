@@ -41,7 +41,7 @@ function createSessionFile(
   sessionId: string,
   projectId: string,
   title: string,
-  status: 'idle' | 'thinking' | 'streaming' | 'error' | 'completed'
+  _status: 'idle' | 'thinking' | 'streaming' | 'error' | 'completed'
 ): void {
   const sessionData = {
     id: sessionId,
@@ -238,7 +238,7 @@ test.describe('Concurrent Generation E2E - Queue Priority', () => {
   });
 
   test('should enforce per-project concurrent session limits', () => {
-    const maxConcurrentSessions = 2;
+    const _maxConcurrentSessions = 2;
     const maxSessionsPerProject = 1;
 
     // Simulate active sessions tracking
@@ -287,7 +287,7 @@ test.describe('Concurrent Generation E2E - Rate Limiting', () => {
   test('should enforce rate limit per project in rolling window', () => {
     const rateLimitCount = 3;
     const rateLimitWindowMs = 60000; // 1 minute
-    const projectId = 'proj-011';
+    const _projectId = 'proj-011';
 
     // Simulate rate limiter timestamps
     const now = Date.now();
@@ -315,7 +315,7 @@ test.describe('Concurrent Generation E2E - Rate Limiting', () => {
   test('should allow new session after rate limit window expires', () => {
     const rateLimitCount = 2;
     const rateLimitWindowMs = 60000; // 1 minute
-    const projectId = 'proj-012';
+    const _projectId = 'proj-012';
 
     const now = Date.now();
     const timestamps: number[] = [
@@ -439,7 +439,7 @@ test.describe('Concurrent Generation E2E - UI State Synchronization', () => {
   test('should display concurrent sessions with status indicators', () => {
     // Simulate concurrent sessions from different projects
     // (Note: generatingSessionIds Map tracks one session per project)
-    const sessions = [
+    const _sessions = [
       { id: 'sess-024', title: 'Architecture Analysis', projectId: 'proj-015' },
       { id: 'sess-025', title: 'Code Review', projectId: 'proj-016' },
       { id: 'sess-026', title: 'Feature Planning', projectId: 'proj-015' }
@@ -518,13 +518,18 @@ test.describe('Concurrent Generation E2E - UI State Synchronization', () => {
     });
 
     // Update streaming content (immutable Map update)
+    const state1Data = sessionStates.get(session1Id);
+    const state2Data = sessionStates.get(session2Id);
+    if (!state1Data || !state2Data) {
+      throw new Error('Session data not found');
+    }
     sessionStates.set(session1Id, {
-      ...sessionStates.get(session1Id)!,
+      ...state1Data,
       streamingContent: 'Analyzing component structure...'
     });
 
     sessionStates.set(session2Id, {
-      ...sessionStates.get(session2Id)!,
+      ...state2Data,
       streamingContent: 'Reviewing API endpoints...'
     });
 
@@ -620,7 +625,7 @@ test.describe('Concurrent Generation E2E - Configuration', () => {
   test('should apply new concurrency limits dynamically', () => {
     // Initial config
     let maxConcurrentSessions = 1;
-    let activeSessions = ['sess-032', 'sess-033', 'sess-034'];
+    const activeSessions = ['sess-032', 'sess-033', 'sess-034'];
 
     // Initially, only 1 session can run
     const canRunInitially = activeSessions.slice(0, maxConcurrentSessions);
@@ -706,7 +711,7 @@ test.describe('Concurrent Generation E2E - Complete Flow Integration', () => {
   });
 
   test('should handle concurrent session cancellation and queue progression', () => {
-    const projectId = 'proj-018';
+    const _projectId = 'proj-018';
 
     // Queue: [URGENT, HIGH, NORMAL, LOW]
     const queue = [
@@ -716,8 +721,8 @@ test.describe('Concurrent Generation E2E - Complete Flow Integration', () => {
       { id: 'sess-041', priority: 0, queuedAt: 4000 }
     ];
 
-    const maxConcurrentSessions = 2;
-    const maxSessionsPerProject = 1;
+    const _maxConcurrentSessions = 2;
+    const _maxSessionsPerProject = 1;
 
     // Start first session (URGENT)
     const activeSession = queue[0];
