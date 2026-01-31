@@ -15,7 +15,8 @@ import {
   FolderSearch,
   PanelLeftClose,
   PanelLeft,
-  X
+  X,
+  Zap
 } from 'lucide-react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -116,6 +117,9 @@ export function Insights({ projectId }: InsightsProps) {
   const [showSidebar, setShowSidebar] = useState(true);
   const [isUserAtBottom, setIsUserAtBottom] = useState(true);
   const [viewportEl, setViewportEl] = useState<HTMLElement | null>(null);
+  const [convertingToSpec, setConvertingToSpec] = useState(false);
+  const [specCreated, setSpecCreated] = useState(false);
+  const [specConversionError, setSpecConversionError] = useState<string | null>(null);
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -166,6 +170,8 @@ export function Insights({ projectId }: InsightsProps) {
   useEffect(() => {
     setTaskCreated(new Set());
     setTaskCreationErrors(new Map());
+    setSpecCreated(false);
+    setSpecConversionError(null);
   }, [session?.id]);
 
   const handleSend = () => {
@@ -250,6 +256,32 @@ export function Insights({ projectId }: InsightsProps) {
     abortGeneration(sessionId);
   };
 
+  const handleConvertToSpec = async () => {
+    if (!session?.roadmapContext) return;
+
+    setSpecConversionError(null);
+    setConvertingToSpec(true);
+
+    try {
+      const result = await window.electronAPI.convertFeatureToSpec(
+        projectId,
+        session.roadmapContext.featureId
+      );
+
+      if (result.success && result.data) {
+        setSpecCreated(true);
+        // Add the new task to the store to update kanban board state
+        addTask(result.data);
+      } else {
+        setSpecConversionError(t('errors.taskCreationFailed'));
+      }
+    } catch (error) {
+      setSpecConversionError(t('errors.taskCreationFailed'));
+    } finally {
+      setConvertingToSpec(false);
+    }
+  };
+
   const isLoading = status.phase === 'thinking' || status.phase === 'streaming';
   const messages = session?.messages || [];
 
@@ -292,11 +324,43 @@ export function Insights({ projectId }: InsightsProps) {
             <div>
               <h2 className="font-semibold text-foreground">{t('insights:insights.title')}</h2>
               <p className="text-sm text-muted-foreground">
-                {t('insights:insights.subtitle')}
+                {session?.roadmapContext
+                  ? t('insights:insights.exploringRoadmapItem')
+                  : t('insights:insights.subtitle')
+                }
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {session?.roadmapContext && (
+              <Button
+                size="sm"
+                onClick={handleConvertToSpec}
+                disabled={convertingToSpec || specCreated}
+                variant={specConversionError ? "destructive" : "default"}
+              >
+                {convertingToSpec ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {t('insights:insights.convertingToSpec')}
+                  </>
+                ) : specCreated ? (
+                  <>
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                    {t('insights:insights.specCreated')}
+                  </>
+                ) : specConversionError ? (
+                  <>
+                    {t('insights:insights.convertToSpec')}
+                  </>
+                ) : (
+                  <>
+                    <Zap className="mr-2 h-4 w-4" />
+                    {t('insights:insights.convertToSpec')}
+                  </>
+                )}
+              </Button>
+            )}
             <InsightsModelSelector
               currentConfig={session?.modelConfig}
               onConfigChange={handleModelConfigChange}
@@ -312,6 +376,14 @@ export function Insights({ projectId }: InsightsProps) {
             </Button>
           </div>
         </div>
+
+        {/* Spec conversion error message */}
+        {specConversionError && (
+          <div className="mx-6 mt-4 flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{specConversionError}</span>
+          </div>
+        )}
 
       {/* Messages */}
       <ScrollArea

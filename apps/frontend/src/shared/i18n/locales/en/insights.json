@@ -59,7 +59,11 @@
     "toolsUsed": "{{count}} tool{{s}} used",
     "readingFile": "Reading file",
     "searchingFiles": "Searching files",
-    "searchingCode": "Searching code"
+    "searchingCode": "Searching code",
+    "exploringRoadmapItem": "Exploring Roadmap Feature",
+    "convertToSpec": "Convert to Spec",
+    "convertingToSpec": "Converting...",
+    "specCreated": "Spec Created"
   },
   "modelSelector": {
     "agentProfile": "Agent Profile",
