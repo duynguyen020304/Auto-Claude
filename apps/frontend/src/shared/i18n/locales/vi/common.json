@@ -52,7 +52,9 @@
     "hideTokenEntryAriaLabel": "Ẩn nhập token",
     "enterTokenManuallyAriaLabel": "Nhập token thủ công",
     "renameProfileAriaLabel": "Đổi tên hồ sơ",
-    "deleteProfileAriaLabel": "Xóa hồ sơ"
+    "deleteProfileAriaLabel": "Xóa hồ sơ",
+    "refreshIdeasAriaLabel": "Làm mới ý tưởng",
+    "replaceIdeasAriaLabel": "Thay thế ý tưởng"
   },
   "buttons": {
     "save": "Lưu",

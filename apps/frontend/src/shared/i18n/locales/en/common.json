@@ -52,7 +52,9 @@
     "hideTokenEntryAriaLabel": "Hide token entry",
     "enterTokenManuallyAriaLabel": "Enter token manually",
     "renameProfileAriaLabel": "Rename profile",
-    "deleteProfileAriaLabel": "Delete profile"
+    "deleteProfileAriaLabel": "Delete profile",
+    "refreshIdeasAriaLabel": "Refresh ideas",
+    "replaceIdeasAriaLabel": "Replace ideas"
   },
   "buttons": {
     "save": "Save",
