@@ -282,3 +282,204 @@ class TestGetAllAgentTypes:
         assert isinstance(types, list)
         assert types == sorted(types)
         assert len(types) > 10  # Should have many agent types
+
+
+class TestContext7Permissions:
+    """
+    Tests for Context7 MCP server permission handling.
+
+    Ensures that the CONTEXT7_ENABLED configuration in .auto-claude/.env
+    correctly controls whether the context7 MCP server is included in
+    the required_servers list for agents (particularly qa_reviewer).
+    """
+
+    def test_context7_enabled_true(self):
+        """
+        Verify CONTEXT7_ENABLED=true includes context7 in required_servers.
+
+        This is the primary happy path test - when explicitly enabled,
+        qa_reviewer should have context7 MCP server available.
+        """
+        from agents.tools_pkg.models import get_required_mcp_servers
+
+        mcp_config = {"CONTEXT7_ENABLED": "true"}
+        servers = get_required_mcp_servers(
+            "qa_reviewer",
+            project_capabilities=None,
+            linear_enabled=False,
+            mcp_config=mcp_config
+        )
+
+        assert "context7" in servers, (
+            "qa_reviewer should have context7 in required_servers "
+            "when CONTEXT7_ENABLED=true"
+        )
+
+    def test_context7_enabled_false(self):
+        """
+        Verify CONTEXT7_ENABLED=false excludes context7 from required_servers.
+
+        This tests the explicit disable path - when set to 'false',
+        context7 should be filtered out even though AGENT_CONFIGS
+        includes it in the base mcp_servers list.
+        """
+        from agents.tools_pkg.models import get_required_mcp_servers
+
+        mcp_config = {"CONTEXT7_ENABLED": "false"}
+        servers = get_required_mcp_servers(
+            "qa_reviewer",
+            project_capabilities=None,
+            linear_enabled=False,
+            mcp_config=mcp_config
+        )
+
+        assert "context7" not in servers, (
+            "qa_reviewer should NOT have context7 when CONTEXT7_ENABLED=false"
+        )
+
+    def test_context7_enabled_unset(self):
+        """
+        Verify CONTEXT7_ENABLED unset defaults to including context7.
+
+        This ensures backward compatibility - existing projects without
+        CONTEXT7_ENABLED in their .auto-claude/.env should continue
+        to have context7 available (default behavior is enabled).
+        """
+        from agents.tools_pkg.models import get_required_mcp_servers
+
+        mcp_config = {}  # No CONTEXT7_ENABLED key
+        servers = get_required_mcp_servers(
+            "qa_reviewer",
+            project_capabilities=None,
+            linear_enabled=False,
+            mcp_config=mcp_config
+        )
+
+        assert "context7" in servers, (
+            "qa_reviewer should have context7 when CONTEXT7_ENABLED is unset "
+            "(should default to true for backward compatibility)"
+        )
+
+    def test_context7_case_insensitive(self):
+        """
+        Verify CONTEXT7_ENABLED handles case-insensitive boolean values.
+
+        Users might write 'True', 'TRUE', 'true', etc. All should be
+        recognized as enabling context7.
+        """
+        from agents.tools_pkg.models import get_required_mcp_servers
+
+        test_values = ["True", "TRUE", "TrUe", "tRuE"]
+
+        for value in test_values:
+            mcp_config = {"CONTEXT7_ENABLED": value}
+            servers = get_required_mcp_servers(
+                "qa_reviewer",
+                project_capabilities=None,
+                linear_enabled=False,
+                mcp_config=mcp_config
+            )
+
+            assert "context7" in servers, (
+                f"qa_reviewer should handle '{value}' as enabled "
+                f"(case-insensitive boolean parsing)"
+            )
+
+    def test_context7_truthy_values(self):
+        """
+        Verify CONTEXT7_ENABLED accepts common truthy values.
+
+        Beyond strict boolean strings, users might use '1', 'yes', etc.
+        These should be treated as enabled for user-friendly configuration.
+        """
+        from agents.tools_pkg.models import get_required_mcp_servers
+
+        # Test numeric truthy values
+        for value in ["1", "yes", "YES", "Yes"]:
+            mcp_config = {"CONTEXT7_ENABLED": value}
+            servers = get_required_mcp_servers(
+                "qa_reviewer",
+                project_capabilities=None,
+                linear_enabled=False,
+                mcp_config=mcp_config
+            )
+
+            # Note: Current implementation uses str().lower() == "false" check,
+            # so anything except "false" (case-insensitive) is treated as enabled
+            assert "context7" in servers, (
+                f"qa_reviewer should accept '{value}' as enabled "
+                f"(truthy value treated as true)"
+            )
+
+    def test_context7_false_case_insensitive(self):
+        """
+        Verify CONTEXT7_ENABLED=false handles case-insensitive false values.
+
+        Users might write 'False', 'FALSE', 'false', etc. All should be
+        recognized as disabling context7.
+        """
+        from agents.tools_pkg.models import get_required_mcp_servers
+
+        test_values = ["False", "FALSE", "FaLsE", "fAlSe"]
+
+        for value in test_values:
+            mcp_config = {"CONTEXT7_ENABLED": value}
+            servers = get_required_mcp_servers(
+                "qa_reviewer",
+                project_capabilities=None,
+                linear_enabled=False,
+                mcp_config=mcp_config
+            )
+
+            assert "context7" not in servers, (
+                f"qa_reviewer should handle '{value}' as disabled "
+                f"(case-insensitive boolean parsing)"
+            )
+
+    def test_context7_affects_other_agents(self):
+        """
+        Verify CONTEXT7_ENABLED affects all agents that have context7 in mcp_servers.
+
+        qa_reviewer, planner, coder, and other agents should all respect
+        the CONTEXT7_ENABLED setting consistently.
+        """
+        from agents.tools_pkg.models import get_required_mcp_servers
+
+        mcp_config = {"CONTEXT7_ENABLED": "false"}
+
+        # Test multiple agent types that include context7
+        for agent_type in ["qa_reviewer", "planner", "coder", "qa_fixer"]:
+            servers = get_required_mcp_servers(
+                agent_type,
+                project_capabilities=None,
+                linear_enabled=False,
+                mcp_config=mcp_config
+            )
+
+            assert "context7" not in servers, (
+                f"{agent_type} should respect CONTEXT7_ENABLED=false"
+            )
+
+    def test_context7_does_not_affect_agents_without_context7(self):
+        """
+        Verify CONTEXT7_ENABLED has no effect on agents that don't use context7.
+
+        Agents like spec_gatherer that don't have context7 in their
+        mcp_servers list should be unaffected by CONTEXT7_ENABLED.
+        """
+        from agents.tools_pkg.models import get_required_mcp_servers
+
+        mcp_config = {"CONTEXT7_ENABLED": "true"}
+
+        # spec_gatherer doesn't have context7 in its mcp_servers list
+        servers = get_required_mcp_servers(
+            "spec_gatherer",
+            project_capabilities=None,
+            linear_enabled=False,
+            mcp_config=mcp_config
+        )
+
+        assert "context7" not in servers, (
+            "spec_gatherer should not have context7 even when "
+            "CONTEXT7_ENABLED=true (not in AGENT_CONFIGS)"
+        )

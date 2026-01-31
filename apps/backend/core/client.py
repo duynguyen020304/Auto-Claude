@@ -663,6 +663,10 @@ def create_client(
     # Load per-project MCP configuration from .auto-claude/.env
     mcp_config = load_project_mcp_config(project_dir)
 
+    # Debug logging for CONTEXT7_ENABLED
+    context7_enabled = mcp_config.get("CONTEXT7_ENABLED", "true")
+    logger.info(f"CONTEXT7_ENABLED: {context7_enabled}")
+
     # Get allowed tools using phase-aware configuration
     # This respects AGENT_CONFIGS and only includes tools the agent needs
     # Also respects per-project MCP configuration
@@ -682,6 +686,13 @@ def create_client(
         linear_enabled,
         mcp_config,
     )
+
+    # Debug logging for required_servers list
+    logger.info(f"MCP servers for {agent_type}: {required_servers}")
+
+    # Debug logging for context7 inclusion in required_servers
+    context7_included = "context7" in required_servers
+    logger.info(f"context7 included in required_servers: {context7_included}")
 
     # Check if Graphiti MCP is enabled (already filtered by get_required_mcp_servers)
     graphiti_mcp_enabled = "graphiti" in required_servers
@@ -739,6 +750,23 @@ def create_client(
                         [f"{op}({path_str}/**)" for op in permission_ops]
                     )
             break
+
+    # Debug logging for MCP tool permissions being granted
+    # This helps verify that MCP tools (especially Context7) are being added to security settings
+    if "context7" in required_servers:
+        logger.info(
+            f"Granting permissions for Context7 MCP tools: {CONTEXT7_TOOLS}"
+        )
+    if "linear" in required_servers:
+        logger.debug(f"Granting permissions for Linear MCP tools: {LINEAR_TOOLS}")
+    if graphiti_mcp_enabled:
+        logger.debug(
+            f"Granting permissions for Graphiti MCP tools: {GRAPHITI_MCP_TOOLS}"
+        )
+    if browser_tools_permissions:
+        logger.debug(
+            f"Granting permissions for browser MCP tools: {browser_tools_permissions}"
+        )
 
     security_settings = {
         "sandbox": {"enabled": True, "autoAllowBashIfSandboxed": True},

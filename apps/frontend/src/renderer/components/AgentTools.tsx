@@ -410,11 +410,11 @@ function AgentCard({ id, config, modelLabel, thinkingLabel, overrides, mcpServer
       // Custom servers are always available if they exist
       if (customServers.some(s => s.id === mcp)) return true;
       switch (mcp) {
-        case 'context7': return mcpServerStates.context7Enabled !== false;
-        case 'graphiti-memory': return mcpServerStates.graphitiEnabled !== false;
-        case 'linear': return mcpServerStates.linearMcpEnabled !== false;
-        case 'electron': return mcpServerStates.electronEnabled !== false;
-        case 'puppeteer': return mcpServerStates.puppeteerEnabled !== false;
+        case 'context7': return mcpServerStates.context7Enabled === true || mcpServerStates.context7Enabled === undefined;
+        case 'graphiti-memory': return mcpServerStates.graphitiEnabled === true || mcpServerStates.graphitiEnabled === undefined;
+        case 'linear': return mcpServerStates.linearMcpEnabled === true || mcpServerStates.linearMcpEnabled === undefined;
+        case 'electron': return mcpServerStates.electronEnabled === true || mcpServerStates.electronEnabled === undefined;
+        case 'puppeteer': return mcpServerStates.puppeteerEnabled === true || mcpServerStates.puppeteerEnabled === undefined;
         default: return true;
       }
     });
@@ -1257,9 +1257,9 @@ export function AgentTools() {
 
   // Count enabled MCP servers
   const enabledCount = [
-    mcpServers.context7Enabled !== false,
-    mcpServers.graphitiEnabled && envConfig?.graphitiProviderConfig,
-    mcpServers.linearMcpEnabled !== false && envConfig?.linearEnabled,
+    mcpServers.context7Enabled === true || mcpServers.context7Enabled === undefined,
+    mcpServers.graphitiEnabled === true || mcpServers.graphitiEnabled === undefined && envConfig?.graphitiProviderConfig,
+    (mcpServers.linearMcpEnabled === true || mcpServers.linearMcpEnabled === undefined) && envConfig?.linearEnabled,
     mcpServers.electronEnabled,
     mcpServers.puppeteerEnabled,
     true, // auto-claude always enabled
@@ -1374,7 +1374,7 @@ export function AgentTools() {
                     </div>
                   </div>
                   <Switch
-                    checked={mcpServers.context7Enabled !== false}
+                    checked={mcpServers.context7Enabled === true || mcpServers.context7Enabled === undefined}
                     onCheckedChange={(checked) => updateMcpServer('context7Enabled', checked)}
                   />
                 </div>
@@ -1393,7 +1393,7 @@ export function AgentTools() {
                     </div>
                   </div>
                   <Switch
-                    checked={mcpServers.graphitiEnabled !== false && !!envConfig.graphitiProviderConfig}
+                    checked={(mcpServers.graphitiEnabled === true || mcpServers.graphitiEnabled === undefined) && !!envConfig.graphitiProviderConfig}
                     onCheckedChange={(checked) => updateMcpServer('graphitiEnabled', checked)}
                     disabled={!envConfig.graphitiProviderConfig}
                   />
@@ -1413,7 +1413,7 @@ export function AgentTools() {
                     </div>
                   </div>
                   <Switch
-                    checked={mcpServers.linearMcpEnabled !== false && envConfig.linearEnabled}
+                    checked={(mcpServers.linearMcpEnabled === true || mcpServers.linearMcpEnabled === undefined) && envConfig.linearEnabled}
                     onCheckedChange={(checked) => updateMcpServer('linearMcpEnabled', checked)}
                     disabled={!envConfig.linearEnabled}
                   />
