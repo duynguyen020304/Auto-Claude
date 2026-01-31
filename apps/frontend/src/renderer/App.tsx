@@ -59,7 +59,7 @@ import { useTaskStore, loadTasks } from './stores/task-store';
 import { useSettingsStore, loadSettings, loadProfiles, saveSettings } from './stores/settings-store';
 import { useClaudeProfileStore, loadClaudeProfiles } from './stores/claude-profile-store';
 import { useTerminalStore, restoreTerminalSessions } from './stores/terminal-store';
-import { useInsightsStore } from './stores/insights-store';
+import { useInsightsStore, newSession } from './stores/insights-store';
 import { initializeGitHubListeners } from './stores/github';
 import { initDownloadProgressListener } from './stores/download-store';
 import { GlobalDownloadIndicator } from './components/GlobalDownloadIndicator';
@@ -130,6 +130,7 @@ export function App() {
   const settingsLoading = useSettingsStore((state) => state.isLoading);
 
   // Insights store for roadmap exploration
+  const session = useInsightsStore((state) => state.session);
   const exploreRoadmapItem = useInsightsStore((state) => state.exploreRoadmapItem);
 
   // API Profile state
@@ -809,7 +810,7 @@ export function App() {
     }
   };
 
-  const handleExploreInInsights = (feature: RoadmapFeature) => {
+  const handleExploreInInsights = async (feature: RoadmapFeature) => {
     // Convert RoadmapFeature to RoadmapItemContext
     const roadmapContext = {
       featureId: feature.id,
@@ -819,6 +820,12 @@ export function App() {
       dependencies: feature.dependencies,
       acceptanceCriteria: feature.acceptanceCriteria,
     };
+
+    // Ensure we have a session to set context on
+    const currentProjectId = activeProjectId || selectedProjectId;
+    if (!session && currentProjectId) {
+      await newSession(currentProjectId);
+    }
 
     // Set roadmap context in current Insights session
     exploreRoadmapItem(roadmapContext);
