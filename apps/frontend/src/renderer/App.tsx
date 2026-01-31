@@ -59,7 +59,7 @@ import { useTaskStore, loadTasks } from './stores/task-store';
 import { useSettingsStore, loadSettings, loadProfiles, saveSettings } from './stores/settings-store';
 import { useClaudeProfileStore, loadClaudeProfiles } from './stores/claude-profile-store';
 import { useTerminalStore, restoreTerminalSessions } from './stores/terminal-store';
-import { useInsightsStore, newSession } from './stores/insights-store';
+import { useInsightsStore, newSession, sendMessage } from './stores/insights-store';
 import { initializeGitHubListeners } from './stores/github';
 import { initDownloadProgressListener } from './stores/download-store';
 import { GlobalDownloadIndicator } from './components/GlobalDownloadIndicator';
@@ -874,6 +874,12 @@ export function App() {
     // Switch to insights view
     debugLog('[App] Switching to insights view');
     setActiveView('insights');
+
+    // Automatically start the exploration conversation with a helpful prompt
+    // This triggers the AI to proactively help the user understand the roadmap item
+    debugLog('[App] Sending automatic exploration prompt');
+    const explorationPrompt = `Help me explore this roadmap feature: "${feature.title}". What's the scope, what files are affected, and what should I know before starting implementation?`;
+    sendMessage(currentProjectId, explorationPrompt);
   };
 
   return (
