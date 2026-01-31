@@ -813,14 +813,19 @@ export function App() {
   const handleExploreInInsights = async (feature: RoadmapFeature) => {
     debugLog('[App] handleExploreInInsights called', { featureId: feature.id, featureTitle: feature.title });
 
-    // Convert RoadmapFeature to RoadmapItemContext
+    // Convert RoadmapFeature to RoadmapItemContext with all fields
     const roadmapContext = {
       featureId: feature.id,
       title: feature.title,
       description: feature.description,
       rationale: feature.rationale,
+      priority: feature.priority,
+      complexity: feature.complexity,
+      impact: feature.impact,
       dependencies: feature.dependencies,
       acceptanceCriteria: feature.acceptanceCriteria,
+      userStories: feature.userStories,
+      status: feature.status,
     };
 
     debugLog('[App] Roadmap context created', roadmapContext);

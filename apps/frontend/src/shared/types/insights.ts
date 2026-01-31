@@ -172,8 +172,13 @@ export interface RoadmapItemContext {
   title: string;
   description: string;
   rationale: string;
+  priority: 'must' | 'should' | 'could' | 'wont';
+  complexity: 'low' | 'medium' | 'high';
+  impact: 'low' | 'medium' | 'high';
   dependencies: string[];
   acceptanceCriteria: string[];
+  userStories: string[];
+  status: 'under_review' | 'planned' | 'in_progress' | 'done';
 }
 
 export type InsightsChatRole = 'user' | 'assistant';

@@ -119,8 +119,9 @@ def load_roadmap_item_context(project_dir: str, item_id: str) -> dict | None:
         item_id: ID of the roadmap item to load
 
     Returns:
-        Dictionary with roadmap item context (title, description, rationale,
-        acceptanceCriteria, dependencies, status) or None if not found.
+        Dictionary with complete roadmap item context (title, description, rationale,
+        priority, complexity, impact, dependencies, acceptanceCriteria, userStories,
+        status) or None if not found.
     """
     roadmap_path = Path(project_dir) / ".auto-claude" / "roadmap" / "roadmap.json"
 
@@ -140,8 +141,12 @@ def load_roadmap_item_context(project_dir: str, item_id: str) -> dict | None:
                     "title": feature.get("title", ""),
                     "description": feature.get("description", ""),
                     "rationale": feature.get("rationale", ""),
-                    "acceptanceCriteria": feature.get("acceptanceCriteria", []),
+                    "priority": feature.get("priority", "should"),
+                    "complexity": feature.get("complexity", "medium"),
+                    "impact": feature.get("impact", "medium"),
                     "dependencies": feature.get("dependencies", []),
+                    "acceptanceCriteria": feature.get("acceptanceCriteria", []),
+                    "userStories": feature.get("userStories", []),
                     "status": feature.get("status", "not_started"),
                 }
 
@@ -278,12 +283,21 @@ You are currently exploring a specific roadmap feature:
 
 **Rationale:** {roadmap_context.get('rationale', 'No rationale provided')}
 
+**Priority:** {roadmap_context.get('priority', 'should').capitalize()}
+
+**Complexity:** {roadmap_context.get('complexity', 'medium').capitalize()}
+
+**Impact:** {roadmap_context.get('impact', 'medium').capitalize()}
+
+**User Stories:**
+{chr(10).join(f"- {us}" for us in roadmap_context.get('userStories', [])) if roadmap_context.get('userStories') else 'None specified'}
+
 **Acceptance Criteria:**
-{chr(10).join(f"- {c}" for c in roadmap_context.get('acceptanceCriteria', []))}
+{chr(10).join(f"- {ac}" for ac in roadmap_context.get('acceptanceCriteria', []))}
 
 **Dependencies:** {', '.join(roadmap_context.get('dependencies', [])) or 'None'}
 
-**Status:** {roadmap_context.get('status', 'not_started')}
+**Status:** {roadmap_context.get('status', 'not_started').replace('_', ' ').title()}
 
 When answering questions about this roadmap item, analyze the codebase and provide specific, actionable insights. Use the available tools (Read, Glob, Grep) to explore the codebase and ground your answers in actual code.
 """
