@@ -1,0 +1,33 @@
+{
+  "memories": {
+    "title": "Ký ức",
+    "searchPlaceholder": "Tìm kiếm các mẫu, thông tin chi tiết, bẫy...",
+    "total": "Tổng",
+    "sessions": "Phiên",
+    "codebase": "Cơ sở mã",
+    "patterns": "Mẫu",
+    "gotchas": "Bẫy",
+    "source": "Nguồn",
+    "patternType": "Loại Mẫu",
+    "noMemoriesFound": "Không tìm thấy ký ức nào",
+    "viewMemory": "Xem Ký ức",
+    "deleteMemory": "Xóa Ký ức"
+  },
+  "services": {
+    "title": "Dịch vụ",
+    "databases": "Cơ sở dữ liệu",
+    "email": "Email",
+    "payments": "Thanh toán",
+    "cache": "Bộ nhớ đệm",
+    "storage": "Lưu trữ",
+    "api": "API",
+    "auth": "Xác thực"
+  },
+  "projectIndex": {
+    "title": "Chỉ Mục Dự Án",
+    "overview": "Tổng quan",
+    "services": "Dịch vụ",
+    "technologies": "Công nghệ",
+    "architecture": "Kiến trúc"
+  }
+}

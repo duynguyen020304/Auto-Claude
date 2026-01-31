@@ -1,0 +1,24 @@
+{
+  "title": "Merge Requests GitLab",
+  "buttons": {
+    "createMR": "Tạo MR",
+    "refresh": "Làm mới"
+  },
+  "searchPlaceholder": "Tìm kiếm merge requests...",
+  "noMergeRequestsFound": "Không tìm thấy merge request nào",
+  "labels": {
+    "mergeRequest": "Merge Request",
+    "open": "Mở",
+    "merged": "Đã merge",
+    "closed": "Đã đóng",
+    "draft": "Bản nháp"
+  },
+  "form": {
+    "sourceBranch": "Nhánh Nguồn",
+    "targetBranch": "Nhánh Đích",
+    "title": "Tiêu đề",
+    "description": "Mô tả",
+    "assignee": "Người được giao",
+    "reviewer": "Người xem xét"
+  }
+}

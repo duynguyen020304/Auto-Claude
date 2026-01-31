@@ -1,0 +1,39 @@
+{
+  "title": "Lịch Sử",
+  "tabs": {
+    "chat": "Trò chuyện",
+    "ideation": "Sáng tạo ý tưởng",
+    "roadmap": "Lộ trình",
+    "repo": "Kho chứa"
+  },
+  "empty": {
+    "title": "Chưa có lịch sử",
+    "description": "Lịch sử của bạn sẽ xuất hiện ở đây khi bạn bắt đầu sử dụng tính năng này"
+  },
+  "actions": {
+    "search": "Tìm kiếm lịch sử...",
+    "delete": "Xóa",
+    "confirmDelete": "Bạn có chắc chắn muốn xóa mục này không?"
+  },
+  "filters": {
+    "title": "Bộ lọc",
+    "timePeriod": "Khoảng thời gian",
+    "timePeriods": {
+      "all": "Tất cả",
+      "today": "Hôm nay",
+      "yesterday": "Hôm qua",
+      "last7Days": "7 ngày qua",
+      "last30Days": "30 ngày qua",
+      "last90Days": "90 ngày qua"
+    },
+    "status": "Trạng thái",
+    "statuses": {
+      "all": "Tất cả trạng thái",
+      "active": "Hoạt động",
+      "completed": "Hoàn thành",
+      "archived": "Đã lưu trữ"
+    },
+    "clear": "Xóa bộ lọc",
+    "noResults": "Không tìm thấy kết quả"
+  }
+}

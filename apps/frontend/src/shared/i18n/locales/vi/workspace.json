@@ -1,0 +1,28 @@
+{
+  "title": "Không gian làm việc",
+  "buttons": {
+    "addWorkspace": "Thêm Không gian làm việc",
+    "editWorkspace": "Chỉnh sửa Không gian làm việc",
+    "deleteWorkspace": "Xóa Không gian làm việc",
+    "switchWorkspace": "Chuyển Không gian làm việc"
+  },
+  "dialogs": {
+    "addWorkspace": "Thêm Không gian làm việc",
+    "editWorkspace": "Chỉnh sửa Không gian làm việc",
+    "deleteWorkspace": "Xóa Không gian làm việc?",
+    "deleteWarning": "Hành động này sẽ xóa vĩnh viễn không gian làm việc. Không thể hoàn tác hành động này."
+  },
+  "labels": {
+    "workspaceName": "Tên Không gian làm việc",
+    "workspaceDescription": "Mô tả",
+    "defaultWorkspace": "Không gian làm việc Mặc định"
+  },
+  "placeholders": {
+    "workspaceName": "Không gian làm việc Ứng dụng của tôi",
+    "workspaceDescription": "Backend, frontend và ứng dụng di động cho Ứng dụng của tôi"
+  },
+  "empty": {
+    "noWorkspaces": "Chưa có không gian làm việc nào",
+    "createFirst": "Tạo không gian làm việc đầu tiên của bạn"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "title": "Vấn Đề GitHub",
+  "buttons": {
+    "createIssue": "Tạo Vấn Đề",
+    "refresh": "Làm mới",
+    "filter": "Bộ lọc"
+  },
+  "searchPlaceholder": "Tìm kiếm vấn đề...",
+  "noIssuesFound": "Không tìm thấy vấn đề nào",
+  "labels": {
+    "issue": "Vấn đề",
+    "pullRequest": "Pull Request",
+    "open": "Mở",
+    "closed": "Đã đóng",
+    "draft": "Bản nháp"
+  },
+  "filters": {
+    "all": "Tất cả",
+    "open": "Mở",
+    "closed": "Đã đóng",
+    "createdByMe": "Được tạo bởi tôi",
+    "assignedToMe": "Được giao cho tôi"
+  }
+}
