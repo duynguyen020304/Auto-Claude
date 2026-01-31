@@ -166,6 +166,16 @@ export interface InsightsModelConfig {
   thinkingLevel: ThinkingLevel;
 }
 
+// Roadmap item context for exploring roadmap features in Insights Chat
+export interface RoadmapItemContext {
+  featureId: string;
+  title: string;
+  description: string;
+  rationale: string;
+  dependencies: string[];
+  acceptanceCriteria: string[];
+}
+
 export type InsightsChatRole = 'user' | 'assistant';
 
 // Tool usage record for showing what tools the AI used
@@ -196,6 +206,7 @@ export interface InsightsSession {
   title?: string; // Auto-generated from first message or user-set
   messages: InsightsChatMessage[];
   modelConfig?: InsightsModelConfig; // Per-session model configuration
+  roadmapContext?: RoadmapItemContext; // Roadmap item being explored
   createdAt: Date;
   updatedAt: Date;
 }
@@ -207,6 +218,7 @@ export interface InsightsSessionSummary {
   title: string;
   messageCount: number;
   modelConfig?: InsightsModelConfig; // For displaying model indicator in sidebar
+  roadmapContext?: RoadmapItemContext; // Roadmap item being explored
   createdAt: Date;
   updatedAt: Date;
 }
