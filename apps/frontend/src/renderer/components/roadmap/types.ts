@@ -3,6 +3,7 @@ import type { RoadmapFeature, RoadmapPhase, Roadmap, CompetitorPainPoint, Compet
 export interface RoadmapProps {
   projectId: string;
   onGoToTask?: (taskId: string) => void;
+  onExploreInInsights?: (feature: RoadmapFeature) => void;
 }
 
 export interface PhaseCardProps {
@@ -50,5 +51,6 @@ export interface RoadmapTabsProps {
   onFeatureSelect: (feature: RoadmapFeature) => void;
   onConvertToSpec: (feature: RoadmapFeature) => void;
   onGoToTask: (specId: string) => void;
+  onExploreInInsights?: (feature: RoadmapFeature) => void;
   onSave?: () => void;
 }

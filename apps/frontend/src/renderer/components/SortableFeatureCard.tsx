@@ -1,5 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { useTranslation } from 'react-i18next';
 import { cn } from '../lib/utils';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
@@ -9,7 +10,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from './ui/tooltip';
-import { Play, ExternalLink, TrendingUp, Layers, ThumbsUp } from 'lucide-react';
+import { Play, ExternalLink, TrendingUp, Layers, ThumbsUp, Sparkles } from 'lucide-react';
 import {
   ROADMAP_PRIORITY_COLORS,
   ROADMAP_PRIORITY_LABELS,
@@ -24,6 +25,7 @@ interface SortableFeatureCardProps {
   onClick: () => void;
   onConvertToSpec?: (feature: RoadmapFeature) => void;
   onGoToTask?: (specId: string) => void;
+  onExploreInInsights?: (feature: RoadmapFeature) => void;
 }
 
 export function SortableFeatureCard({
@@ -31,8 +33,10 @@ export function SortableFeatureCard({
   roadmap,
   onClick,
   onConvertToSpec,
-  onGoToTask
+  onGoToTask,
+  onExploreInInsights
 }: SortableFeatureCardProps) {
+  const { t } = useTranslation('roadmap');
   const {
     attributes,
     listeners,
@@ -119,7 +123,27 @@ export function SortableFeatureCard({
             </div>
             <h3 className="font-medium text-sm leading-snug line-clamp-2">{feature.title}</h3>
           </div>
-          <div className="shrink-0">
+          <div className="shrink-0 flex items-center gap-1">
+            {onExploreInInsights && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onExploreInInsights(feature);
+                    }}
+                  >
+                    <Sparkles className="h-3 w-3" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {t('featureCard.exploreInInsights')}
+                </TooltipContent>
+              </Tooltip>
+            )}
             {feature.linkedSpecId ? (
               <Button
                 variant="outline"

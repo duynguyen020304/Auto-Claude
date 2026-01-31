@@ -37,6 +37,7 @@ interface RoadmapKanbanViewProps {
   onFeatureClick: (feature: RoadmapFeature) => void;
   onConvertToSpec?: (feature: RoadmapFeature) => void;
   onGoToTask?: (specId: string) => void;
+  onExploreInInsights?: (feature: RoadmapFeature) => void;
   onSave?: () => void;
 }
 
@@ -47,6 +48,7 @@ interface DroppableStatusColumnProps {
   onFeatureClick: (feature: RoadmapFeature) => void;
   onConvertToSpec?: (feature: RoadmapFeature) => void;
   onGoToTask?: (specId: string) => void;
+  onExploreInInsights?: (feature: RoadmapFeature) => void;
   isOver: boolean;
 }
 
@@ -73,6 +75,7 @@ function DroppableStatusColumn({
   onFeatureClick,
   onConvertToSpec,
   onGoToTask,
+  onExploreInInsights,
   isOver
 }: DroppableStatusColumnProps) {
   const { t } = useTranslation('roadmap');
@@ -164,6 +167,7 @@ function DroppableStatusColumn({
                     onClick={() => onFeatureClick(feature)}
                     onConvertToSpec={onConvertToSpec}
                     onGoToTask={onGoToTask}
+                    onExploreInInsights={onExploreInInsights}
                   />
                 ))
               )}
@@ -180,6 +184,7 @@ export function RoadmapKanbanView({
   onFeatureClick,
   onConvertToSpec,
   onGoToTask,
+  onExploreInInsights,
   onSave
 }: RoadmapKanbanViewProps) {
   const { t } = useTranslation('roadmap');
@@ -307,6 +312,7 @@ export function RoadmapKanbanView({
               onFeatureClick={onFeatureClick}
               onConvertToSpec={onConvertToSpec}
               onGoToTask={onGoToTask}
+              onExploreInInsights={onExploreInInsights}
               isOver={overColumnId === column.id}
             />
           ))}

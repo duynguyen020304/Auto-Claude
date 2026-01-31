@@ -24,6 +24,7 @@ export function RoadmapTabs({
   onFeatureSelect,
   onConvertToSpec,
   onGoToTask,
+  onExploreInInsights,
   onSave,
 }: RoadmapTabsProps) {
   const { t } = useTranslation('roadmap');
@@ -44,6 +45,7 @@ export function RoadmapTabs({
           onFeatureClick={onFeatureSelect}
           onConvertToSpec={onConvertToSpec}
           onGoToTask={onGoToTask}
+          onExploreInInsights={onExploreInInsights}
           onSave={onSave}
         />
       </TabsContent>
