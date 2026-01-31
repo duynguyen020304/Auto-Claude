@@ -36,6 +36,7 @@ export interface InsightsAPI {
   switchInsightsSession: (projectId: string, sessionId: string) => Promise<IPCResult<InsightsSession | null>>;
   deleteInsightsSession: (projectId: string, sessionId: string) => Promise<IPCResult>;
   renameInsightsSession: (projectId: string, sessionId: string, newTitle: string) => Promise<IPCResult>;
+  updateInsightsSession: (projectId: string, sessionId: string, updates: Partial<InsightsSession>) => Promise<IPCResult<InsightsSession | null>>;
   updateInsightsModelConfig: (projectId: string, sessionId: string, modelConfig: InsightsModelConfig) => Promise<IPCResult>;
   cancelInsightsSession: (projectId: string, sessionId: string) => Promise<IPCResult>;
   getActiveInsightsSessions: (projectId: string) => Promise<IPCResult<InsightsSessionSummary[]>>;
@@ -98,6 +99,9 @@ export const createInsightsAPI = (): InsightsAPI => ({
 
   renameInsightsSession: (projectId: string, sessionId: string, newTitle: string): Promise<IPCResult> =>
     invokeIpc(IPC_CHANNELS.INSIGHTS_RENAME_SESSION, projectId, sessionId, newTitle),
+
+  updateInsightsSession: (projectId: string, sessionId: string, updates: Partial<InsightsSession>): Promise<IPCResult<InsightsSession | null>> =>
+    invokeIpc(IPC_CHANNELS.INSIGHTS_UPDATE_SESSION, projectId, sessionId, updates),
 
   updateInsightsModelConfig: (projectId: string, sessionId: string, modelConfig: InsightsModelConfig): Promise<IPCResult> =>
     invokeIpc(IPC_CHANNELS.INSIGHTS_UPDATE_MODEL_CONFIG, projectId, sessionId, modelConfig),

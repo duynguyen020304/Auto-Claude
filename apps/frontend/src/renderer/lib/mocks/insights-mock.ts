@@ -78,6 +78,16 @@ export const insightsMock = {
     return { success: true };
   },
 
+  updateInsightsSession: async (_projectId: string, sessionId: string, updates: unknown) => {
+    const session = mockInsightsSessions.find(s => s.id === sessionId);
+    if (session) {
+      Object.assign(session, updates);
+      console.warn('[Browser Mock] Session updated:', sessionId, updates);
+      return { success: true, data: session as any };
+    }
+    return { success: false, error: 'Session not found' };
+  },
+
   updateInsightsModelConfig: async (_projectId: string, _sessionId: string, _modelConfig: unknown) => {
     console.warn('[Browser Mock] updateInsightsModelConfig called');
     return { success: true };

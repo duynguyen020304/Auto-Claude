@@ -754,6 +754,17 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
         featureId: roadmapContext.featureId
       });
 
+      // Persist the updated session to disk so the backend can see the roadmap context
+      if (typeof window !== 'undefined' && window.electronAPI?.updateInsightsSession) {
+        window.electronAPI.updateInsightsSession(
+          updatedSession.projectId,
+          updatedSession.id,
+          { roadmapContext, updatedAt: updatedSession.updatedAt }
+        ).catch((err: unknown) => {
+          console.error('[insights-store] Failed to persist roadmap context to disk:', err);
+        });
+      }
+
       return {
         session: updatedSession
       };

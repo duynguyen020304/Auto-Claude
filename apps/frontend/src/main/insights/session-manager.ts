@@ -158,6 +158,32 @@ export class SessionManager {
   }
 
   /**
+   * Update specific fields of a session
+   * Takes partial session data and merges it with the existing session
+   */
+  updateSession(projectPath: string, sessionId: string, updates: Partial<InsightsSession>): boolean {
+    const session = this.storage.loadSessionById(projectPath, sessionId);
+    if (!session) return false;
+
+    // Merge updates into session
+    Object.assign(session, updates);
+    session.updatedAt = new Date();
+    this.storage.saveSession(projectPath, session);
+
+    // Update cache if this session is cached
+    for (const [projectId, cachedSession] of this.sessions) {
+      if (cachedSession.id === sessionId) {
+        Object.assign(cachedSession, updates);
+        cachedSession.updatedAt = new Date();
+        this.sessions.set(projectId, cachedSession);
+        break;
+      }
+    }
+
+    return true;
+  }
+
+  /**
    * Save session to disk and update cache
    */
   saveSession(projectPath: string, session: InsightsSession): void {

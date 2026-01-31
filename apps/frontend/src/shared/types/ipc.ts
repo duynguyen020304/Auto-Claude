@@ -803,6 +803,7 @@ export interface ElectronAPI {
   switchInsightsSession: (projectId: string, sessionId: string) => Promise<IPCResult<InsightsSession | null>>;
   deleteInsightsSession: (projectId: string, sessionId: string) => Promise<IPCResult>;
   renameInsightsSession: (projectId: string, sessionId: string, newTitle: string) => Promise<IPCResult>;
+  updateInsightsSession: (projectId: string, sessionId: string, updates: Partial<InsightsSession>) => Promise<IPCResult<InsightsSession | null>>;
   updateInsightsModelConfig: (projectId: string, sessionId: string, modelConfig: InsightsModelConfig) => Promise<IPCResult>;
   cancelInsightsSession: (projectId: string, sessionId: string) => Promise<IPCResult>;
   getActiveInsightsSessions: (projectId: string) => Promise<IPCResult<InsightsSessionSummary[]>>;

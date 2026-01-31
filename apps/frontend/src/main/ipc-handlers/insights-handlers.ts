@@ -490,6 +490,25 @@ Generated at: ${new Date().toISOString()}
     }
   );
 
+  // Update session fields
+  ipcMain.handle(
+    IPC_CHANNELS.INSIGHTS_UPDATE_SESSION,
+    async (_, projectId: string, sessionId: string, updates: Partial<InsightsSession>): Promise<IPCResult<InsightsSession | null>> => {
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: "Project not found" };
+      }
+
+      const success = insightsService.updateSession(project.path, sessionId, updates);
+      if (success) {
+        // Load and return the updated session
+        const updatedSession = insightsService.loadSession(projectId, project.path);
+        return { success: true, data: updatedSession };
+      }
+      return { success: false, error: "Failed to update session" };
+    }
+  );
+
   // Update model configuration for a session
   ipcMain.handle(
     IPC_CHANNELS.INSIGHTS_UPDATE_MODEL_CONFIG,

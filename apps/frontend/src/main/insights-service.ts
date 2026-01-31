@@ -267,6 +267,17 @@ export class InsightsService extends EventEmitter {
   }
 
   /**
+   * Update specific fields of a session
+   * @param projectPath - Path to the project
+   * @param sessionId - ID of the session to update
+   * @param updates - Partial session data to merge
+   * @returns true if session was updated, false if session was not found
+   */
+  updateSession(projectPath: string, sessionId: string, updates: Partial<InsightsSession>): boolean {
+    return this.sessionManager.updateSession(projectPath, sessionId, updates);
+  }
+
+  /**
    * Cancel a session by ID
    * Handles both queued sessions (waiting to start) and active sessions (currently running)
    * @param sessionId - Session ID to cancel
