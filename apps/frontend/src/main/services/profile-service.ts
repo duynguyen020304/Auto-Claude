@@ -278,6 +278,66 @@ export async function getAPIProfileEnv(): Promise<Record<string, string>> {
 }
 
 /**
+ * Get environment variables for a specific API profile by ID
+ *
+ * Maps a specific API profile (identified by ID) to SDK environment variables
+ * for injection into Python subprocess. Returns empty object when the profile
+ * is not found or the ID is empty.
+ *
+ * Environment Variable Mapping:
+ * - profile.baseUrl → ANTHROPIC_BASE_URL
+ * - profile.apiKey → ANTHROPIC_AUTH_TOKEN
+ * - profile.models.default → ANTHROPIC_MODEL
+ * - profile.models.haiku → ANTHROPIC_DEFAULT_HAIKU_MODEL
+ * - profile.models.sonnet → ANTHROPIC_DEFAULT_SONNET_MODEL
+ * - profile.models.opus → ANTHROPIC_DEFAULT_OPUS_MODEL
+ *
+ * Empty string values are filtered out (not set as env vars).
+ *
+ * @param profileId - UUID of the API profile to use
+ * @returns Promise<Record<string, string>> Environment variables for the specified profile
+ */
+export async function getAPIProfileEnvById(profileId: string): Promise<Record<string, string>> {
+  // If no profile ID provided, return empty object
+  if (!profileId || profileId === '') {
+    return {};
+  }
+
+  // Load profiles.json
+  const file = await loadProfilesFile();
+
+  // Find profile by ID
+  const profile = file.profiles.find((p) => p.id === profileId);
+
+  // If profile not found, return empty object
+  if (!profile) {
+    return {};
+  }
+
+  // Map profile fields to SDK env vars
+  const envVars: Record<string, string> = {
+    ANTHROPIC_BASE_URL: profile.baseUrl || '',
+    ANTHROPIC_AUTH_TOKEN: profile.apiKey || '',
+    ANTHROPIC_MODEL: profile.models?.default || '',
+    ANTHROPIC_DEFAULT_HAIKU_MODEL: profile.models?.haiku || '',
+    ANTHROPIC_DEFAULT_SONNET_MODEL: profile.models?.sonnet || '',
+    ANTHROPIC_DEFAULT_OPUS_MODEL: profile.models?.opus || '',
+  };
+
+  // Filter out empty/whitespace string values (only set env vars that have values)
+  // This handles empty strings, null, undefined, and whitespace-only values
+  const filteredEnvVars: Record<string, string> = {};
+  for (const [key, value] of Object.entries(envVars)) {
+    const trimmedValue = value?.trim();
+    if (trimmedValue && trimmedValue !== '') {
+      filteredEnvVars[key] = trimmedValue;
+    }
+  }
+
+  return filteredEnvVars;
+}
+
+/**
  * Get environment variables for API profile with rotation strategy
  *
  * Extends getAPIProfileEnv() to support automatic profile rotation based on

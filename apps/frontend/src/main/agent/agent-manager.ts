@@ -210,7 +210,7 @@ export class AgentManager extends EventEmitter {
     this.storeTaskContext(taskId, projectPath, '', {}, true, taskDescription, specDir, metadata, baseBranch);
 
     // Note: This is spec-creation but it chains to task-execution via run.py
-    await this.processManager.spawnProcess(taskId, autoBuildSource, args, combinedEnv, 'task-execution');
+    await this.processManager.spawnProcess(taskId, autoBuildSource, args, combinedEnv, 'task-execution', metadata?.apiProfileId);
   }
 
   /**
@@ -286,6 +286,7 @@ export class AgentManager extends EventEmitter {
     // which allows per-phase configuration for planner, coder, and QA phases
 
     // Store context for potential restart
+    // Note: For existing tasks, apiProfileId is in task_metadata.json which Python scripts read
     this.storeTaskContext(taskId, projectPath, specId, options, false);
 
     await this.processManager.spawnProcess(taskId, autoBuildSource, args, combinedEnv, 'task-execution');
