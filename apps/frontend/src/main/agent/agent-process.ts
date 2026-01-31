@@ -13,7 +13,7 @@ import { AgentEvents } from './agent-events';
 import { ProcessType, ExecutionProgressData } from './types';
 import type { CompletablePhase } from '../../shared/constants/phase-protocol';
 import { detectRateLimit, createSDKRateLimitInfo, getBestAvailableProfileEnv, detectAuthFailure } from '../rate-limit-detector';
-import { getRotatedAPIProfileEnv, trackAPIProfileUsage } from '../services/profile';
+import { getRotatedAPIProfileEnv, getAPIProfileEnvById, trackAPIProfileUsage } from '../services/profile';
 import { projectStore } from '../project-store';
 import { getClaudeProfileManager } from '../claude-profile-manager';
 import { parsePythonCommand, validatePythonPath } from '../python-detector';
@@ -547,20 +547,30 @@ export class AgentProcessManager {
     cwd: string,
     args: string[],
     extraEnv: Record<string, string> = {},
-    processType: ProcessType = 'task-execution'
+    processType: ProcessType = 'task-execution',
+    apiProfileId?: string
   ): Promise<void> {
     const isSpecRunner = processType === 'spec-creation';
     this.killProcess(taskId);
 
     const spawnId = this.state.generateSpawnId();
 
-    // Get active API profile environment variables (with rotation strategy support)
+    // Get active API profile environment variables
+    // If apiProfileId is provided, use that specific profile; otherwise use rotation strategy
     let apiProfileEnv: Record<string, string> = {};
-    let apiProfileId: string | undefined;
+    let trackedApiProfileId: string | undefined;
     try {
-      apiProfileEnv = await getRotatedAPIProfileEnv();
-      // Extract API profile ID for usage tracking
-      apiProfileId = await this.extractAPIProfileId(apiProfileEnv);
+      if (apiProfileId) {
+        // Use the specified profile
+        console.log(`[AgentProcess] Using specified API profile: ${apiProfileId}`);
+        apiProfileEnv = await getAPIProfileEnvById(apiProfileId);
+        trackedApiProfileId = apiProfileId;
+      } else {
+        // Use rotation strategy to get best available profile
+        apiProfileEnv = await getRotatedAPIProfileEnv();
+        // Extract API profile ID for usage tracking
+        trackedApiProfileId = await this.extractAPIProfileId(apiProfileEnv);
+      }
     } catch (error) {
       console.error('[Agent Process] Failed to get API profile env:', error);
       // Continue with empty profile env (falls back to OAuth mode)
@@ -575,7 +585,7 @@ export class AgentProcessManager {
       process: null, // Will be set after spawn() call completes below
       startedAt: new Date(),
       spawnId,
-      apiProfileId // Store API profile ID for usage tracking on exit
+      apiProfileId: trackedApiProfileId // Store API profile ID for usage tracking on exit
     });
 
     const env = this.setupProcessEnvironment(extraEnv);

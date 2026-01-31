@@ -26,6 +26,7 @@ export {
   deleteProfile,
   getAPIProfileEnv,
   getRotatedAPIProfileEnv,
+  getAPIProfileEnvById,
   trackAPIProfileUsage,
   getAPIProfileUsage,
   isAPIProfileAvailable,
