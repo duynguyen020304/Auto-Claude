@@ -1,0 +1,18 @@
+{
+  "title": "Worktrees",
+  "deleteWarning": "Hành động này sẽ xóa vĩnh viễn worktree này. Không thể hoàn tác hành động này.",
+  "deleteTerminalWarning": "Hành động này sẽ xóa vĩnh viễn worktree terminal này. Không thể hoàn tác hành động này.",
+  "confirmDelete": "Xóa Worktree?",
+  "confirmDeleteTerminal": "Xóa Worktree Terminal?",
+  "noWorktrees": "Không tìm thấy worktree nào",
+  "createWorktree": "Tạo Worktree",
+  "switchWorktree": "Chuyển sang Worktree",
+  "activeWorktree": "Worktree Đang hoạt động",
+  "worktreeName": "Tên Worktree",
+  "branchName": "Tên Nhánh",
+  "status": {
+    "active": "Đang hoạt động",
+    "inactive": "Không hoạt động",
+    "dirty": "Có Thay đổi"
+  }
+}
