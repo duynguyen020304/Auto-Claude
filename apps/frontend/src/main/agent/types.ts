@@ -70,6 +70,8 @@ export interface SpecCreationMetadata {
   // Non-auto profile - single model and thinking level
   model?: 'haiku' | 'sonnet' | 'opus';
   thinkingLevel?: 'none' | 'low' | 'medium' | 'high' | 'ultrathink';
+  // API profile selection
+  apiProfileId?: string; // API profile ID for this task (for per-task profile selection)
   // Workspace mode - whether to use worktree isolation
   useWorktree?: boolean; // If false, use --direct mode (no worktree isolation)
 }
