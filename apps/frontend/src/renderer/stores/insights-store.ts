@@ -9,6 +9,7 @@ import type {
   InsightsModelConfig,
   TaskMetadata,
   Task,
+  RoadmapItemContext,
 } from '../../shared/types';
 
 interface ToolUsage {
@@ -61,6 +62,7 @@ interface InsightsState {
   abortGeneration: (sessionId: string) => void;
   cleanupSessionState: (sessionId: string) => void;
   removeSession: (sessionId: string) => void;
+  exploreRoadmapItem: (roadmapContext: RoadmapItemContext) => void;
 
   // Selectors
   getCurrentSessionState: () => InsightsSessionState | undefined;
@@ -725,6 +727,21 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       }
 
       return updates;
+    }),
+
+  exploreRoadmapItem: (roadmapContext) =>
+    set((state) => {
+      if (!state.session) {
+        return state;
+      }
+
+      return {
+        session: {
+          ...state.session,
+          roadmapContext,
+          updatedAt: new Date()
+        }
+      };
     }),
 
   // Selectors
