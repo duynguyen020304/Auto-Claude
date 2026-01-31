@@ -325,6 +325,17 @@ export class AgentManager extends EventEmitter {
 
     const args = [runPath, '--spec', specId, '--project-dir', projectPath, '--qa'];
 
+    // FIX (QA State Reset): Emit initial QA phase state before spawning QA process
+    // This ensures UI shows proper 'qa_fixing' status when QA restarts after review rejection
+    this.emit('execution-progress', taskId, {
+      phase: 'qa_fixing',
+      phaseProgress: 0,
+      overallProgress: 0.8,
+      message: 'Processing feedback...',
+      sequenceNumber: 0,
+      completedPhases: ['planning', 'coding'] // Preserve earlier phases for accurate progress history
+    });
+
     await this.processManager.spawnProcess(taskId, autoBuildSource, args, combinedEnv, 'qa-process');
   }
 

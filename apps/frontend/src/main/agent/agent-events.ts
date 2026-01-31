@@ -16,8 +16,24 @@ export class AgentEvents {
   ): { phase: ExecutionProgressData['phase']; message?: string; currentSubtask?: string } | null {
     const structuredEvent = parsePhaseEvent(log);
     if (structuredEvent) {
+      const newPhase = structuredEvent.phase as ExecutionProgressData['phase'];
+
+      // Allow 'complete' → QA phase transitions for QA restart after rejection
+      if (currentPhase === 'complete' && (newPhase === 'qa_review' || newPhase === 'qa_fixing')) {
+        return {
+          phase: newPhase,
+          message: structuredEvent.message,
+          currentSubtask: structuredEvent.subtask
+        };
+      }
+
+      // Block all other transitions from terminal phases
+      if (isTerminalPhase(currentPhase as ExecutionPhase)) {
+        return null;
+      }
+
       return {
-        phase: structuredEvent.phase as ExecutionProgressData['phase'],
+        phase: newPhase,
         message: structuredEvent.message,
         currentSubtask: structuredEvent.subtask
       };
