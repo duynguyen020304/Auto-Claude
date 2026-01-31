@@ -59,6 +59,7 @@ import { useTaskStore, loadTasks } from './stores/task-store';
 import { useSettingsStore, loadSettings, loadProfiles, saveSettings } from './stores/settings-store';
 import { useClaudeProfileStore, loadClaudeProfiles } from './stores/claude-profile-store';
 import { useTerminalStore, restoreTerminalSessions } from './stores/terminal-store';
+import { useInsightsStore } from './stores/insights-store';
 import { initializeGitHubListeners } from './stores/github';
 import { initDownloadProgressListener } from './stores/download-store';
 import { GlobalDownloadIndicator } from './components/GlobalDownloadIndicator';
@@ -66,7 +67,7 @@ import { useIpcListeners } from './hooks/useIpc';
 import { useGlobalTerminalListeners } from './hooks/useGlobalTerminalListeners';
 import { useTerminalProfileChange } from './hooks/useTerminalProfileChange';
 import { COLOR_THEMES, UI_SCALE_MIN, UI_SCALE_MAX, UI_SCALE_DEFAULT } from '../shared/constants';
-import type { Task, Project, ColorTheme } from '../shared/types';
+import type { Task, Project, ColorTheme, RoadmapFeature } from '../shared/types';
 import { ProjectTabBar } from './components/ProjectTabBar';
 import { AddProjectModal } from './components/AddProjectModal';
 import { ViewStateProvider } from './contexts/ViewStateContext';
@@ -127,6 +128,9 @@ export function App() {
   const tasks = useTaskStore((state) => state.tasks);
   const settings = useSettingsStore((state) => state.settings);
   const settingsLoading = useSettingsStore((state) => state.isLoading);
+
+  // Insights store for roadmap exploration
+  const exploreRoadmapItem = useInsightsStore((state) => state.exploreRoadmapItem);
 
   // API Profile state
   const profiles = useSettingsStore((state) => state.profiles);
@@ -805,6 +809,24 @@ export function App() {
     }
   };
 
+  const handleExploreInInsights = (feature: RoadmapFeature) => {
+    // Convert RoadmapFeature to RoadmapItemContext
+    const roadmapContext = {
+      featureId: feature.id,
+      title: feature.title,
+      description: feature.description,
+      rationale: feature.rationale,
+      dependencies: feature.dependencies,
+      acceptanceCriteria: feature.acceptanceCriteria,
+    };
+
+    // Set roadmap context in current Insights session
+    exploreRoadmapItem(roadmapContext);
+
+    // Switch to insights view
+    setActiveView('insights');
+  };
+
   return (
     <ViewStateProvider>
       <TooltipProvider>
@@ -875,7 +897,11 @@ export function App() {
                   />
                 </div>
                 {activeView === 'roadmap' && (activeProjectId || selectedProjectId) && (
-                  <Roadmap projectId={activeProjectId || selectedProjectId!} onGoToTask={handleGoToTask} />
+                  <Roadmap
+                    projectId={activeProjectId || selectedProjectId!}
+                    onGoToTask={handleGoToTask}
+                    onExploreInInsights={handleExploreInInsights}
+                  />
                 )}
                 {activeView === 'context' && (activeProjectId || selectedProjectId) && (
                   <Context projectId={activeProjectId || selectedProjectId!} />
