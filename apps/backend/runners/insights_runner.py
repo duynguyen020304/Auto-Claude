@@ -353,6 +353,7 @@ async def run_with_sdk(
     model: str = "sonnet",  # Shorthand - resolved via API Profile if configured
     thinking_level: str = "medium",
     mentions: list = None,
+    roadmap_context: dict = None,
 ) -> None:
     """Run the chat using Claude SDK with streaming."""
     if not SDK_AVAILABLE:
@@ -371,7 +372,7 @@ async def run_with_sdk(
     # Ensure SDK can find the token
     ensure_claude_code_oauth_token()
 
-    system_prompt = build_system_prompt(project_dir)
+    system_prompt = build_system_prompt(project_dir, roadmap_context)
     project_path = Path(project_dir).resolve()
 
     # Build conversation context from history
@@ -615,6 +616,11 @@ def main():
         default="[]",
         help='JSON array of file mentions to include in context (e.g., \'[{"filePath": "src/App.tsx", "lineStart": 10, "lineEnd": 20}]\')',
     )
+    parser.add_argument(
+        "--roadmap-item-id",
+        default=None,
+        help="ID of the roadmap item to provide context for",
+    )
     args = parser.parse_args()
 
     debug_section("insights_runner", "Starting Insights Chat")
@@ -665,9 +671,30 @@ def main():
         debug_error("insights_runner", f"Failed to parse mentions: {e}")
         mentions = []
 
+    # Load roadmap item context if provided
+    roadmap_context = None
+    if args.roadmap_item_id:
+        debug_detailed(
+            "insights_runner",
+            "Loading roadmap item context",
+            item_id=args.roadmap_item_id,
+        )
+        roadmap_context = load_roadmap_item_context(project_dir, args.roadmap_item_id)
+        if roadmap_context:
+            debug_success(
+                "insights_runner",
+                "Loaded roadmap item context",
+                title=roadmap_context.get("title", "Unknown"),
+            )
+        else:
+            debug_error(
+                "insights_runner",
+                f"Roadmap item {args.roadmap_item_id} not found",
+            )
+
     # Run the async SDK function
     debug("insights_runner", "Running SDK query")
-    asyncio.run(run_with_sdk(project_dir, user_message, history, model, thinking_level, mentions))
+    asyncio.run(run_with_sdk(project_dir, user_message, history, model, thinking_level, mentions, roadmap_context))
     debug_success("insights_runner", "Query completed")
 
 

@@ -136,7 +136,8 @@ export class InsightsExecutor extends EventEmitter {
     message: string,
     conversationHistory: Array<{ role: string; content: string }>,
     modelConfig?: InsightsModelConfig,
-    priority: SessionPriority = SessionPriority.NORMAL
+    priority: SessionPriority = SessionPriority.NORMAL,
+    roadmapItemId?: string
   ): Promise<ProcessorResult> {
     // Check if session is already active
     if (this.isSessionActive(sessionId)) {
@@ -199,6 +200,11 @@ export class InsightsExecutor extends EventEmitter {
       const modelId = MODEL_ID_MAP[modelConfig.model] || MODEL_ID_MAP['sonnet'];
       args.push('--model', modelId);
       args.push('--thinking-level', modelConfig.thinkingLevel);
+    }
+
+    // Add roadmap item ID if provided
+    if (roadmapItemId) {
+      args.push('--roadmap-item-id', roadmapItemId);
     }
 
     // Spawn Python process

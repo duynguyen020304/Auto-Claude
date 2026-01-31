@@ -225,13 +225,16 @@ export class InsightsService extends EventEmitter {
 
     try {
       // Execute insights query
+      const roadmapItemId = session.roadmapContext?.featureId;
       const result = await this.executor.execute(
         session.id,
         targetProjectId,
         targetProjectPath,
         targetMessage,
         conversationHistory,
-        configToUse
+        configToUse,
+        undefined, // priority - use default
+        roadmapItemId
       );
 
       // Add assistant message to session
