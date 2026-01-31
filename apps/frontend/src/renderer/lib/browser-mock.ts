@@ -166,24 +166,6 @@ const browserMockAPI: ElectronAPI = {
     }
   }),
 
-  getAPIProfileRotationStrategy: async () => ({
-    success: true,
-    data: {
-      enabled: false,
-      priorityOrder: [],
-      fallbackToOAuth: false,
-      thresholds: {
-        maxUsagePercent: 95,
-        rateLimitBackoff: 60
-      }
-    }
-  }),
-
-  updateAPIProfileRotationStrategy: async (_strategy: any) => ({
-    success: true,
-    data: _strategy
-  }),
-
   // User History API (Chat, Ideation, Roadmap, Repo)
   getChatHistories: async () => ({
     success: true,
@@ -469,7 +451,13 @@ const browserMockAPI: ElectronAPI = {
   openLogsFolder: async () => ({ success: false, error: 'Not available in browser mode' }),
   copyDebugInfo: async () => ({ success: false, error: 'Not available in browser mode' }),
   getRecentErrors: async () => [],
-  listLogFiles: async () => []
+  listLogFiles: async () => [],
+
+  // Historical usage operations
+  requestHistoricalUsage: async (_days: number) => ({
+    success: true,
+    data: null
+  })
 };
 
 /**

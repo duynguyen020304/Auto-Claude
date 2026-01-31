@@ -429,14 +429,28 @@ export class UsageMonitor extends EventEmitter {
   clearAuthFailedProfile(profileId: string): void {
     const wasInFailedList = this.authFailedProfiles.has(profileId);
     const wasNeedsReauth = this.needsReauthProfiles.has(profileId);
+
     this.authFailedProfiles.delete(profileId);
     this.needsReauthProfiles.delete(profileId);
     this.clearProfileUsageCache(profileId);
 
     if (wasInFailedList || wasNeedsReauth) {
+      // Log cooldown exit when profile is cleared from auth-failed list
+      console.log('[UsageMonitor] Auth failure cooldown cleared for profile', {
+        profileId,
+        wasInFailedList,
+        wasNeedsReauth,
+        cooldownType: 'auth-failure',
+        action: 'cooldown-exited'
+      });
+
       this.debugLog('[UsageMonitor] Cleared auth failure status for profile: ' + profileId, {
         wasInFailedList,
         wasNeedsReauth
+      });
+    } else {
+      this.debugLog('[UsageMonitor:COOLDOWN_CLEAR] Profile was not in auth-failed list, no action needed', {
+        profileId
       });
     }
   }
@@ -692,8 +706,11 @@ export class UsageMonitor extends EventEmitter {
           // Check if token refresh succeeded but persistence failed
           // The token works for this session but will be lost on restart
           if (tokenResult.persistenceFailed) {
-            console.warn('[UsageMonitor] Token refreshed but persistence failed for profile: ' + profile.name +
-              ' - user should re-authenticate to avoid auth errors on next restart');
+            console.warn('[UsageMonitor] Token refreshed but persistence failed for profile', {
+              profileName: profile.name,
+              profileId: profile.id,
+              reason: 'user should re-authenticate to avoid auth errors on next restart'
+            });
             this.needsReauthProfiles.add(profile.id);
           } else {
             // Token was refreshed and persisted successfully - clear from needsReauth if present
@@ -899,8 +916,11 @@ export class UsageMonitor extends EventEmitter {
           // Check if token refresh succeeded but persistence failed
           // The token works for this session but will be lost on restart
           if (tokenResult.persistenceFailed) {
-            console.warn('[UsageMonitor] Token refreshed but persistence failed for profile: ' + activeProfile.name +
-              ' - user should re-authenticate to avoid auth errors on next restart');
+            console.warn('[UsageMonitor] Token refreshed but persistence failed for profile', {
+              profileName: activeProfile.name,
+              profileId: activeProfile.id,
+              reason: 'user should re-authenticate to avoid auth errors on next restart'
+            });
             this.needsReauthProfiles.add(activeProfile.id);
           } else {
             // Token was refreshed and persisted successfully - clear from needsReauth if present
@@ -1084,10 +1104,39 @@ export class UsageMonitor extends EventEmitter {
    */
   private shouldUseApiMethod(profileId: string): boolean {
     const lastFailure = this.apiFailureTimestamps.get(profileId);
-    if (!lastFailure) return true; // No previous failure, try API
+    if (!lastFailure) {
+      // No previous failure, try API
+      this.debugLog('[UsageMonitor:COOLDOWN_CHECK] No previous API failure recorded, API method allowed', {
+        profileId
+      });
+      return true;
+    }
+
     // Check if cooldown has expired (use >= to allow retry at exact boundary)
     const elapsed = Date.now() - lastFailure;
-    return elapsed >= UsageMonitor.API_FAILURE_COOLDOWN_MS;
+    const cooldownExpired = elapsed >= UsageMonitor.API_FAILURE_COOLDOWN_MS;
+    const cooldownRemainingMs = UsageMonitor.API_FAILURE_COOLDOWN_MS - elapsed;
+
+    // Log cooldown state check with detailed information
+    console.log('[UsageMonitor] Cooldown state check for API method', {
+      profileId,
+      elapsedMs: elapsed,
+      cooldownDurationMs: UsageMonitor.API_FAILURE_COOLDOWN_MS,
+      cooldownRemainingMs: cooldownRemainingMs > 0 ? cooldownRemainingMs : 0,
+      cooldownExpired,
+      willUseApiMethod: cooldownExpired,
+      lastFailureTimestamp: new Date(lastFailure).toISOString()
+    });
+
+    this.debugLog('[UsageMonitor:COOLDOWN_CHECK] API failure cooldown', {
+      profileId,
+      elapsedMs: elapsed,
+      cooldownDurationMs: UsageMonitor.API_FAILURE_COOLDOWN_MS,
+      expired: cooldownExpired,
+      willUseApiMethod: cooldownExpired
+    });
+
+    return cooldownExpired;
   }
 
   /**
@@ -1216,8 +1265,10 @@ export class UsageMonitor extends EventEmitter {
             // Check if token refresh succeeded but persistence failed
             // The token works for this session but will be lost on restart
             if (refreshResult.persistenceFailed) {
-              console.warn('[UsageMonitor] Token refreshed but persistence failed for profile: ' + profileId +
-                ' - user should re-authenticate to avoid auth errors on next restart');
+              console.warn('[UsageMonitor] Token refreshed but persistence failed for profile', {
+                profileId: profileId,
+                reason: 'user should re-authenticate to avoid auth errors on next restart'
+              });
               this.needsReauthProfiles.add(profileId);
             } else {
               // Token was refreshed and persisted successfully - clear from needsReauth if present
@@ -1257,16 +1308,46 @@ export class UsageMonitor extends EventEmitter {
     }
 
     // Mark this profile as auth-failed to prevent swap loops
-    this.authFailedProfiles.set(profileId, Date.now());
+    const failureTimestamp = Date.now();
+    this.authFailedProfiles.set(profileId, failureTimestamp);
+
+    // Log auth failure cooldown entry
+    console.log('[UsageMonitor] Auth failure cooldown entered for profile', {
+      profileId,
+      cooldownType: 'auth-failure',
+      cooldownDurationMs: UsageMonitor.AUTH_FAILURE_COOLDOWN_MS,
+      cooldownDurationMinutes: UsageMonitor.AUTH_FAILURE_COOLDOWN_MS / (60 * 1000),
+      failureTimestamp: new Date(failureTimestamp).toISOString(),
+      resetsAt: new Date(failureTimestamp + UsageMonitor.AUTH_FAILURE_COOLDOWN_MS).toISOString()
+    });
+
     this.debugLog('[UsageMonitor] Auth failure detected, marked profile as failed: ' + profileId);
 
     // Clean up expired entries from the failed profiles map
     const now = Date.now();
+    const profilesCleaned: Array<{ profileId: string; elapsedMs: number }> = [];
+
     this.authFailedProfiles.forEach((timestamp, failedProfileId) => {
-      if (now - timestamp > UsageMonitor.AUTH_FAILURE_COOLDOWN_MS) {
+      const elapsed = now - timestamp;
+      if (elapsed > UsageMonitor.AUTH_FAILURE_COOLDOWN_MS) {
+        profilesCleaned.push({ profileId: failedProfileId, elapsedMs: elapsed });
         this.authFailedProfiles.delete(failedProfileId);
       }
     });
+
+    // Log cleanup of expired cooldown entries
+    if (profilesCleaned.length > 0) {
+      console.log('[UsageMonitor] Cleaned up expired auth failure cooldown entries', {
+        profilesCleaned,
+        cooldownDurationMs: UsageMonitor.AUTH_FAILURE_COOLDOWN_MS,
+        cleanupCount: profilesCleaned.length
+      });
+
+      this.debugLog('[UsageMonitor:COOLDOWN_CLEANUP] Cleaned expired auth failure entries:', {
+        count: profilesCleaned.length,
+        profiles: profilesCleaned
+      });
+    }
 
     try {
       const excludeProfiles = Array.from(this.authFailedProfiles.keys());
@@ -1379,9 +1460,23 @@ export class UsageMonitor extends EventEmitter {
       }
 
       // API failed - record timestamp for cooldown-based retry
+      const failureTimestamp = Date.now();
+
+      // Log API failure cooldown entry
+      console.log('[UsageMonitor] API failure cooldown entered for profile', {
+        profileId,
+        profileName,
+        cooldownType: 'api-failure',
+        failureReason: 'primary-api-fetch-failed',
+        cooldownDurationMs: UsageMonitor.API_FAILURE_COOLDOWN_MS,
+        cooldownDurationMinutes: UsageMonitor.API_FAILURE_COOLDOWN_MS / (60 * 1000),
+        failureTimestamp: new Date(failureTimestamp).toISOString(),
+        resetsAt: new Date(failureTimestamp + UsageMonitor.API_FAILURE_COOLDOWN_MS).toISOString()
+      });
+
       this.debugLog('[UsageMonitor] API method failed, recording failure timestamp for cooldown retry');
       this.debugLog('[UsageMonitor:FETCH] API fetch failed, will retry after cooldown');
-      this.apiFailureTimestamps.set(profileId, Date.now());
+      this.apiFailureTimestamps.set(profileId, failureTimestamp);
     } else if (!credential) {
       this.debugLog('[UsageMonitor:FETCH] No credential available, skipping API method');
     }
@@ -1547,13 +1642,30 @@ export class UsageMonitor extends EventEmitter {
           errorData = await response.json();
         } catch (parseError) {
           // If we can't parse the error response, just log it and continue
+          const failureTimestamp = Date.now();
+
+          // Log API failure cooldown entry
+          console.log('[UsageMonitor] API failure cooldown entered for profile', {
+            profileId,
+            profileName,
+            cooldownType: 'api-failure',
+            failureReason: 'error-response-parse-failure',
+            cooldownDurationMs: UsageMonitor.API_FAILURE_COOLDOWN_MS,
+            cooldownDurationMinutes: UsageMonitor.API_FAILURE_COOLDOWN_MS / (60 * 1000),
+            failureTimestamp: new Date(failureTimestamp).toISOString(),
+            resetsAt: new Date(failureTimestamp + UsageMonitor.API_FAILURE_COOLDOWN_MS).toISOString(),
+            errorStatus: response.status,
+            provider
+          });
+
           this.debugLog('[UsageMonitor:AUTH_DETECTION] Could not parse error response body:', {
             provider,
             status: response.status,
             parseError
           });
+
           // Record failure timestamp for cooldown retry
-          this.apiFailureTimestamps.set(profileId, Date.now());
+          this.apiFailureTimestamps.set(profileId, failureTimestamp);
           return null;
         }
 
@@ -1587,7 +1699,23 @@ export class UsageMonitor extends EventEmitter {
         }
 
         // Record failure timestamp for cooldown retry (non-auth error)
-        this.apiFailureTimestamps.set(profileId, Date.now());
+        const failureTimestamp = Date.now();
+
+        // Log API failure cooldown entry
+        console.log('[UsageMonitor] API failure cooldown entered for profile', {
+          profileId,
+          profileName,
+          cooldownType: 'api-failure',
+          failureReason: 'non-auth-error-in-response-body',
+          cooldownDurationMs: UsageMonitor.API_FAILURE_COOLDOWN_MS,
+          cooldownDurationMinutes: UsageMonitor.API_FAILURE_COOLDOWN_MS / (60 * 1000),
+          failureTimestamp: new Date(failureTimestamp).toISOString(),
+          resetsAt: new Date(failureTimestamp + UsageMonitor.API_FAILURE_COOLDOWN_MS).toISOString(),
+          errorStatus: response.status,
+          provider
+        });
+
+        this.apiFailureTimestamps.set(profileId, failureTimestamp);
         return null;
       }
 
@@ -1644,9 +1772,25 @@ export class UsageMonitor extends EventEmitter {
       }
 
       if (!normalizedUsage) {
+        const failureTimestamp = Date.now();
+
+        // Log API failure cooldown entry
+        console.log('[UsageMonitor] API failure cooldown entered for profile', {
+          profileId,
+          profileName,
+          cooldownType: 'api-failure',
+          failureReason: 'usage-normalization-failure',
+          cooldownDurationMs: UsageMonitor.API_FAILURE_COOLDOWN_MS,
+          cooldownDurationMinutes: UsageMonitor.API_FAILURE_COOLDOWN_MS / (60 * 1000),
+          failureTimestamp: new Date(failureTimestamp).toISOString(),
+          resetsAt: new Date(failureTimestamp + UsageMonitor.API_FAILURE_COOLDOWN_MS).toISOString(),
+          provider
+        });
+
         this.debugLog('[UsageMonitor] Failed to normalize response from ' + provider);
+
         // Record failure timestamp for cooldown retry (normalization failure)
-        this.apiFailureTimestamps.set(profileId, Date.now());
+        this.apiFailureTimestamps.set(profileId, failureTimestamp);
         return null;
       }
 
@@ -1673,8 +1817,25 @@ export class UsageMonitor extends EventEmitter {
       }
 
       console.error('[UsageMonitor] API fetch failed:', error);
+
       // Record failure timestamp for cooldown retry (network/other errors)
-      this.apiFailureTimestamps.set(profileId, Date.now());
+      const failureTimestamp = Date.now();
+
+      // Log API failure cooldown entry
+      console.log('[UsageMonitor] API failure cooldown entered for profile', {
+        profileId,
+        profileName,
+        cooldownType: 'api-failure',
+        failureReason: 'network-or-other-error',
+        cooldownDurationMs: UsageMonitor.API_FAILURE_COOLDOWN_MS,
+        cooldownDurationMinutes: UsageMonitor.API_FAILURE_COOLDOWN_MS / (60 * 1000),
+        failureTimestamp: new Date(failureTimestamp).toISOString(),
+        resetsAt: new Date(failureTimestamp + UsageMonitor.API_FAILURE_COOLDOWN_MS).toISOString(),
+        errorType: error instanceof Error ? error.name : 'unknown',
+        errorMessage: error instanceof Error ? error.message : String(error)
+      });
+
+      this.apiFailureTimestamps.set(profileId, failureTimestamp);
       return null;
     }
   }

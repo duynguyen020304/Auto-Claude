@@ -58,11 +58,13 @@ describe('Task Store', () => {
       error: null,
       taskOrder: {
         backlog: [],
+        queue: [],
         in_progress: [],
         ai_review: [],
         human_review: [],
         pr_created: [],
-        done: []
+        done: [],
+        error: []
       }
     });
   });

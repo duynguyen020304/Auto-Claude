@@ -39,10 +39,9 @@ import {
   DEFAULT_AUTO_SWITCH_SETTINGS
 } from './claude-profile/profile-storage';
 import {
-  getBestAvailableProfile as getBestAvailableProfileImpl,
+  getBestAvailableProfile,
   shouldProactivelySwitch as shouldProactivelySwitchImpl,
-  getProfilesSortedByAvailability as getProfilesSortedByAvailabilityImpl,
-  type ProfileSelectionResult
+  getProfilesSortedByAvailability as getProfilesSortedByAvailabilityImpl
 } from './claude-profile/profile-scorer';
 import { getCredentialsFromKeychain } from './claude-profile/credential-utils';
 import {
@@ -620,34 +619,67 @@ export class ClaudeProfileManager {
 
   /**
    * Get the best profile to switch to based on priority order and availability
-   * Returns profile selection result with optional state updates for rotation strategies
+   * Returns null if no good alternative is available
    *
    * Selection logic:
    * 1. Respects user's configured account priority order
    * 2. Filters by availability (authenticated, not rate-limited, below thresholds)
    * 3. Returns first available profile in priority order
    * 4. Falls back to "least bad" option if no profile meets all criteria
-   * 5. For rotation strategies (round-robin, time-based), includes state updates
-   *
-   * @returns Profile selection result with profile and optional state updates
    */
-  getBestAvailableProfile(excludeProfileId?: string): ProfileSelectionResult {
+  getBestAvailableProfile(excludeProfileId?: string): ClaudeProfile | null {
     const settings = this.getAutoSwitchSettings();
     const priorityOrder = this.getAccountPriorityOrder();
-    return getBestAvailableProfileImpl(this.data.profiles, settings, excludeProfileId, priorityOrder);
+    const result = getBestAvailableProfile(this.data.profiles, settings, excludeProfileId, priorityOrder);
+
+    // Persist state updates for round-robin and time-based strategies
+    if (result.stateUpdates && Object.keys(result.stateUpdates).length > 0) {
+      console.log('[ClaudeProfileManager] Persisting state updates from profile selection:', {
+        stateUpdates: result.stateUpdates,
+        strategy: settings.rotationStrategy || 'priority'
+      });
+      this.updateAutoSwitchSettings(result.stateUpdates);
+    }
+
+    return result.profile;
+  }
+
+  /**
+   * Get the best profile with detailed state update information for logging
+   * Returns both the profile and any state updates that were persisted
+   *
+   * This is similar to getBestAvailableProfile but includes state updates in the return value
+   * for comprehensive logging in queue routing handlers.
+   */
+  getBestAvailableProfileWithState(excludeProfileId?: string): {
+    profile: ClaudeProfile | null;
+    stateUpdates: Record<string, unknown>;
+    strategy: string;
+  } {
+    const settings = this.getAutoSwitchSettings();
+    const priorityOrder = this.getAccountPriorityOrder();
+    const result = getBestAvailableProfile(this.data.profiles, settings, excludeProfileId, priorityOrder);
+
+    // Persist state updates for round-robin and time-based strategies
+    if (result.stateUpdates && Object.keys(result.stateUpdates).length > 0) {
+      console.log('[ClaudeProfileManager] Persisting state updates from profile selection:', {
+        stateUpdates: result.stateUpdates,
+        strategy: settings.rotationStrategy || 'priority'
+      });
+      this.updateAutoSwitchSettings(result.stateUpdates);
+    }
+
+    return {
+      profile: result.profile,
+      stateUpdates: result.stateUpdates || {},
+      strategy: settings.rotationStrategy || 'priority'
+    };
   }
 
   /**
    * Determine if we should proactively switch profiles based on current usage
-   *
-   * @returns Object with shouldSwitch flag, optional reason, suggested profile, and state updates
    */
-  shouldProactivelySwitch(profileId: string): {
-    shouldSwitch: boolean;
-    reason?: string;
-    suggestedProfile?: ClaudeProfile;
-    stateUpdates?: Partial<ClaudeAutoSwitchSettings>;
-  } {
+  shouldProactivelySwitch(profileId: string): { shouldSwitch: boolean; reason?: string; suggestedProfile?: ClaudeProfile } {
     const profile = this.getProfile(profileId);
     if (!profile) {
       return { shouldSwitch: false };

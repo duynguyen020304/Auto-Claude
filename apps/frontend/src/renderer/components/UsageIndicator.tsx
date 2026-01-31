@@ -334,7 +334,7 @@ export function UsageIndicator() {
         const data30d = result30d.success ? result30d.data : null;
 
         const errorMessages = [result7d, result30d]
-          .map((result) => (!result.success ? result.error : null))
+          .map((result) => (!result.success && 'error' in result ? result.error : null))
           .filter((message): message is string => Boolean(message));
 
         if (!data7d && !data30d) {
@@ -373,8 +373,8 @@ export function UsageIndicator() {
             .setCachedHistoricalUsage(activeProfileId, "30d", data30d);
 
         setHistoricalUsage({
-          data7d,
-          data30d,
+          data7d: data7d ?? null,
+          data30d: data30d ?? null,
           isLoading: false,
           error: null,
         });
@@ -418,7 +418,7 @@ export function UsageIndicator() {
   // Show unavailable state - with better messaging based on cause
   if (!isAvailable || !usage) {
     // Check if it's a re-auth issue (better UX than generic "not supported")
-    const needsReauth = activeProfileNeedsReauth;
+    const needsReauth = usage?.needsReauthentication ?? false;
 
     return (
       <Popover>
@@ -1190,10 +1190,10 @@ export function UsageIndicator() {
               >
                 {metric === "tokens"
                   ? t("common:usage.dashboard.hoverTokenUsage", {
-                      count: formatChartValue(hoveredPoint.value),
+                      count: hoveredPoint.value,
                     })
                   : t("common:usage.dashboard.hoverToolUsage", {
-                      count: formatChartValue(hoveredPoint.value),
+                      count: hoveredPoint.value,
                     })}
               </text>
             </g>

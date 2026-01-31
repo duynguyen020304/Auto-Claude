@@ -11,6 +11,8 @@ import type { AgentManager } from '../agent/agent-manager';
 import type { ProfileAssignmentReason, RunningTasksByProfile, ClaudeProfile } from '../../shared/types';
 import type { ClaudeProfileManager } from '../claude-profile-manager';
 
+const DEBUG = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'development';
+
 /**
  * Register queue routing IPC handlers
  */
@@ -50,12 +52,20 @@ export function registerQueueRoutingHandlers(
         profileThreshold?: number;
         /** API profile ID from task metadata ('auto' for rotation strategy, or specific profile ID) */
         apiProfileId?: string;
+        /** Task context for logging */
+        taskId?: string;
+        taskName?: string;
+        /** Project context for logging */
+        projectId?: string;
+        projectName?: string;
       }
     ): Promise<{ success: boolean; data?: ClaudeProfile | null; error?: string }> => {
       try {
         // If no profile manager is available, return null (no preference)
         if (!profileManager) {
-          console.log('[QueueRouting] Profile manager not available, returning null');
+          if (DEBUG) {
+            console.log('[QueueRouting] Profile manager not available, returning null');
+          }
           return { success: true, data: null };
         }
 
@@ -64,13 +74,25 @@ export function registerQueueRoutingHandlers(
           // Specific profile requested - find and return it
           const profile = profileManager.getProfile(options.apiProfileId);
           if (profile) {
-            console.log('[QueueRouting] Using specific profile from task metadata:', {
-              profileId: profile.id,
-              profileName: profile.name
-            });
+            if (DEBUG) {
+              console.log('[QueueRouting] Using specific profile from task metadata:', {
+                profileId: profile.id,
+                profileName: profile.name,
+                taskId: options.taskId || 'not specified',
+                taskName: options.taskName || 'not specified',
+                projectId: options.projectId || 'not specified',
+                projectName: options.projectName || 'not specified'
+              });
+            }
             return { success: true, data: profile };
           } else {
-            console.warn('[QueueRouting] Requested profile not found:', options.apiProfileId);
+            console.warn('[QueueRouting] Requested profile not found:', {
+              requestedProfileId: options.apiProfileId,
+              taskId: options.taskId || 'not specified',
+              taskName: options.taskName || 'not specified',
+              projectId: options.projectId || 'not specified',
+              projectName: options.projectName || 'not specified'
+            });
             return { success: true, data: null };
           }
         }
@@ -80,41 +102,53 @@ export function registerQueueRoutingHandlers(
 
         // If auto-switching is disabled, return null (no preference)
         if (!settings.enabled) {
-          console.log('[QueueRouting] Auto-switching disabled, returning null');
+          if (DEBUG) {
+            console.log('[QueueRouting] Auto-switching disabled, returning null');
+          }
           return { success: true, data: null };
         }
 
-        // Use getBestAvailableProfile which internally handles:
+        // Use getBestAvailableProfileWithState which internally handles:
         // - Rotation strategy from settings (priority, round-robin, least-used, random, weighted, time-based)
         // - Profile authentication status
         // - Rate limit status
         // - Usage thresholds (session and weekly)
-        const selectionResult = profileManager.getBestAvailableProfile(
+        // - State persistence for round-robin and time-based strategies
+        const profileResult = profileManager.getBestAvailableProfileWithState(
           options?.excludeProfileId
         );
 
-        // Persist rotation state if provided (for round-robin, time-based strategies)
-        if (selectionResult.stateUpdates) {
-          profileManager.updateAutoSwitchSettings(selectionResult.stateUpdates);
-          console.log('[QueueRouting] Persisted rotation state:', selectionResult.stateUpdates);
-        }
-
-        const bestProfile = selectionResult.profile;
-
-        if (bestProfile) {
-          const strategy = settings.rotationStrategy || 'priority';
-          console.log('[QueueRouting] Best profile selected using rotation strategy:', {
-            profileId: bestProfile.id,
-            profileName: bestProfile.name,
-            strategy,
-            excludedId: options?.excludeProfileId,
-            apiProfileId: options?.apiProfileId || 'not specified'
-          });
+        if (profileResult.profile) {
+          if (DEBUG) {
+            console.log('[QueueRouting] Best profile selected using rotation strategy:', {
+              profileId: profileResult.profile.id,
+              profileName: profileResult.profile.name,
+              strategy: profileResult.strategy,
+              excludedId: options?.excludeProfileId || 'none',
+              apiProfileId: options?.apiProfileId || 'not specified',
+              taskId: options?.taskId || 'not specified',
+              taskName: options?.taskName || 'not specified',
+              projectId: options?.projectId || 'not specified',
+              projectName: options?.projectName || 'not specified',
+              ...(Object.keys(profileResult.stateUpdates).length > 0 && {
+                stateUpdates: profileResult.stateUpdates
+              })
+            });
+          }
         } else {
-          console.log('[QueueRouting] No suitable profile found for task routing');
+          if (DEBUG) {
+            console.log('[QueueRouting] No suitable profile found for task routing:', {
+              taskId: options?.taskId || 'not specified',
+              taskName: options?.taskName || 'not specified',
+              projectId: options?.projectId || 'not specified',
+              projectName: options?.projectName || 'not specified',
+              excludedId: options?.excludeProfileId || 'none',
+              strategy: profileResult.strategy
+            });
+          }
         }
 
-        return { success: true, data: bestProfile };
+        return { success: true, data: profileResult.profile };
       } catch (error) {
         console.error('[QueueRouting] Failed to get best profile for task:', error);
         return {
@@ -222,5 +256,7 @@ export function registerQueueRoutingHandlers(
     }
   });
 
-  console.log('[QueueRouting] IPC handlers registered');
+  if (DEBUG) {
+    console.log('[QueueRouting] IPC handlers registered');
+  }
 }

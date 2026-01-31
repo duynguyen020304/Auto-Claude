@@ -110,7 +110,7 @@ export function InsightsConcurrencySettings({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {SESSION_PRIORITIES.map((priority) => (
+              {sessionPriorities.map((priority) => (
                 <SelectItem key={priority.value} value={priority.value}>
                   {priority.label}
                 </SelectItem>

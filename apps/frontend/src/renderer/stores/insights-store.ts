@@ -1369,9 +1369,9 @@ export function setupInsightsListeners(): () => void {
   const unsubSessionUpdated = window.electronAPI.onInsightsSessionUpdated(
     (_projectId, session: InsightsSession) => {
       // Update current session if it matches
-      const currentSession = store().session;
+      const currentSession = useInsightsStore.getState().session;
       if (currentSession?.id === session.id) {
-        store().setSession(session);
+        useInsightsStore.getState().setSession(session);
       }
       // Also refresh sessions list for sidebar
       loadInsightsSessions(session.projectId).catch((err) => {

@@ -4,7 +4,7 @@
  */
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { useInsightsStore, setupInsightsListeners } from '../insights-store';
-import type { InsightsStreamChunk } from '../../../../shared/types';
+import type { InsightsStreamChunk } from '../../../shared/types';
 
 // Mock window.electronAPI
 const mockListeners = new Map<string, (...args: unknown[]) => void>();

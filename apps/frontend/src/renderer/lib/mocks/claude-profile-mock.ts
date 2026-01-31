@@ -43,7 +43,10 @@ export const claudeProfileMock = {
       sessionThreshold: 95,
       weeklyThreshold: 99,
       autoSwitchOnRateLimit: false,
-      usageCheckInterval: 30000
+      usageCheckInterval: 30000,
+      rotationStrategy: 'priority' as const,
+      rotationInterval: 300,
+      profileWeights: {}
     }
   }),
 
