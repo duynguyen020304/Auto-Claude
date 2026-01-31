@@ -5,6 +5,7 @@ import type {
   InsightsChatStatus,
   InsightsStreamChunk,
   InsightsModelConfig,
+  RoadmapItemContext,
   Task,
   TaskMetadata,
   IPCResult
@@ -24,6 +25,11 @@ export interface InsightsAPI {
     title: string,
     description: string,
     metadata?: TaskMetadata
+  ) => Promise<IPCResult<Task>>;
+  createSpecFromRoadmap: (
+    projectId: string,
+    roadmapContext: RoadmapItemContext,
+    chatContext?: string
   ) => Promise<IPCResult<Task>>;
   listInsightsSessions: (projectId: string) => Promise<IPCResult<InsightsSessionSummary[]>>;
   newInsightsSession: (projectId: string) => Promise<IPCResult<InsightsSession>>;
@@ -70,6 +76,13 @@ export const createInsightsAPI = (): InsightsAPI => ({
     metadata?: TaskMetadata
   ): Promise<IPCResult<Task>> =>
     invokeIpc(IPC_CHANNELS.INSIGHTS_CREATE_TASK, projectId, title, description, metadata),
+
+  createSpecFromRoadmap: (
+    projectId: string,
+    roadmapContext: RoadmapItemContext,
+    chatContext?: string
+  ): Promise<IPCResult<Task>> =>
+    invokeIpc(IPC_CHANNELS.INSIGHTS_CREATE_SPEC_FROM_ROADMAP, projectId, roadmapContext, chatContext),
 
   listInsightsSessions: (projectId: string): Promise<IPCResult<InsightsSessionSummary[]>> =>
     invokeIpc(IPC_CHANNELS.INSIGHTS_LIST_SESSIONS, projectId),
