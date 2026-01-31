@@ -220,21 +220,81 @@ def load_mentioned_files(project_dir: str, mentions: list) -> str:
     return "\n\n".join(file_contexts) if file_contexts else ""
 
 
-def build_system_prompt(project_dir: str) -> str:
+def build_system_prompt(project_dir: str, roadmap_context: dict = None) -> str:
     """Build the system prompt for the insights agent."""
     context = load_project_context(project_dir)
+
+    # Build roadmap-specific context if provided
+    roadmap_section = ""
+    if roadmap_context:
+        roadmap_section = f"""
+
+## Roadmap Item Context
+You are currently exploring a specific roadmap feature:
+
+**Title:** {roadmap_context.get('title', 'Unknown')}
+
+**Description:** {roadmap_context.get('description', 'No description')}
+
+**Rationale:** {roadmap_context.get('rationale', 'No rationale provided')}
+
+**Acceptance Criteria:**
+{chr(10).join(f"- {c}" for c in roadmap_context.get('acceptanceCriteria', []))}
+
+**Dependencies:** {', '.join(roadmap_context.get('dependencies', [])) or 'None'}
+
+**Status:** {roadmap_context.get('status', 'not_started')}
+
+When answering questions about this roadmap item, analyze the codebase and provide specific, actionable insights. Use the available tools (Read, Glob, Grep) to explore the codebase and ground your answers in actual code.
+"""
 
     return f"""You are an AI assistant helping developers understand and work with their codebase.
 You have access to the following project context:
 
 {context}
-
+{roadmap_section}
 Your capabilities:
 1. Answer questions about the codebase structure, patterns, and architecture
 2. Suggest improvements, features, or bug fixes based on the code
 3. Help plan implementation of new features
 4. Provide code examples and explanations
 
+## Roadmap Item Analysis
+When a roadmap item context is provided above, you can help with:
+
+**Scope Estimation:**
+- Analyze the feature description and acceptance criteria
+- Estimate effort based on actual codebase complexity
+- Identify components, services, and modules involved
+- Provide a complexity rating: trivial, small, medium, large, or complex
+
+**Impact Analysis:**
+- Identify what might break or change
+- Find existing code that conflicts with the feature
+- Detect potential side effects on other features
+- List tests that may need updating
+
+**Dependency Mapping:**
+- Find code that depends on files/modules the feature touches
+- Identify upstream dependencies (what this feature needs)
+- Identify downstream consumers (what depends on this feature)
+- Map integration points between services
+
+**Affected Files Detection:**
+- List specific files that likely need modification
+- Group files by service/component
+- Explain why each file is relevant
+- Prioritize files by importance/complexity
+
+**Complexity Estimation:**
+- Assess technical complexity (architecture changes, new technologies)
+- Assess implementation complexity (amount of code, testing needs)
+- Provide time estimates with rationale
+- Identify potential risks or blockers
+
+Use the Read, Glob, and Grep tools to explore the codebase and provide specific, evidence-based answers. Always explain your reasoning and cite the files you examined.
+
+## Task Suggestions
 When the user asks you to create a task, wants to turn the conversation into a task, or when you believe creating a task would be helpful, output a task suggestion in this exact format on a SINGLE LINE:
 __TASK_SUGGESTION__:{{"title": "Task title here", "description": "Detailed description of what the task involves", "metadata": {{"category": "feature", "complexity": "medium", "impact": "medium"}}}}
 
