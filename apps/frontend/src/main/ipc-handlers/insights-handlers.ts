@@ -16,6 +16,7 @@ import type {
   InsightsSession,
   InsightsSessionSummary,
   InsightsModelConfig,
+  RoadmapItemContext,
   Task,
   TaskMetadata,
   AppSettings,
@@ -257,6 +258,157 @@ export function registerInsightsHandlers(getMainWindow: () => BrowserWindow | nu
         return {
           success: false,
           error: error instanceof Error ? error.message : "Failed to create task",
+        };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.INSIGHTS_CREATE_SPEC_FROM_ROADMAP,
+    async (
+      _,
+      projectId: string,
+      roadmapContext: RoadmapItemContext,
+      chatContext?: string // Additional context gathered from chat
+    ): Promise<IPCResult<Task>> => {
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: "Project not found" };
+      }
+
+      if (!project.autoBuildPath) {
+        return { success: false, error: "Auto Claude not initialized for this project" };
+      }
+
+      try {
+        // Generate a unique spec ID based on existing specs
+        const specsBaseDir = getSpecsDir(project.autoBuildPath);
+        const specsDir = path.join(project.path, specsBaseDir);
+
+        // Find next available spec number
+        let specNumber = 1;
+        if (existsSync(specsDir)) {
+          const existingDirs = readdirSync(specsDir, { withFileTypes: true })
+            .filter((d) => d.isDirectory())
+            .map((d) => d.name);
+
+          const existingNumbers = existingDirs
+            .map((name) => {
+              const match = name.match(/^(\d+)/);
+              return match ? parseInt(match[1], 10) : 0;
+            })
+            .filter((n) => n > 0);
+
+          if (existingNumbers.length > 0) {
+            specNumber = Math.max(...existingNumbers) + 1;
+          }
+        }
+
+        // Create spec ID with zero-padded number and slugified title
+        const slugifiedTitle = roadmapContext.title
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "")
+          .substring(0, 50);
+        const specId = `${String(specNumber).padStart(3, "0")}-${slugifiedTitle}`;
+
+        // Create spec directory
+        const specDir = path.join(specsDir, specId);
+        mkdirSync(specDir, { recursive: true });
+
+        // Build description with rationale and chat context
+        const descriptionParts: string[] = [roadmapContext.description];
+        if (roadmapContext.rationale) {
+          descriptionParts.push(`\n\n**Rationale:**\n${roadmapContext.rationale}`);
+        }
+        if (chatContext) {
+          descriptionParts.push(`\n\n**Additional Context from Chat:**\n${chatContext}`);
+        }
+
+        // Build metadata with source type indicating it came from roadmap exploration
+        const taskMetadata: TaskMetadata = {
+          sourceType: "roadmap",
+          featureId: roadmapContext.featureId,
+        };
+
+        // Create initial implementation_plan.json
+        const now = new Date().toISOString();
+        const implementationPlan = {
+          feature: roadmapContext.title,
+          description: descriptionParts.join("\n"),
+          created_at: now,
+          updated_at: now,
+          status: "pending",
+          phases: [],
+        };
+
+        const planPath = path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
+        writeFileSync(planPath, JSON.stringify(implementationPlan, null, 2), "utf-8");
+
+        // Create spec.md with pre-filled roadmap data
+        const specContent = `# Specification: ${roadmapContext.title}
+
+## Overview
+
+${roadmapContext.description}
+
+${roadmapContext.rationale ? `\n## Rationale\n\n${roadmapContext.rationale}` : ""}
+
+${
+  roadmapContext.acceptanceCriteria && roadmapContext.acceptanceCriteria.length > 0
+    ? `
+## Acceptance Criteria
+
+${roadmapContext.acceptanceCriteria.map((c, i) => `${i + 1}. ${c}`).join("\n")}
+`
+    : ""
+}
+
+${
+  roadmapContext.dependencies && roadmapContext.dependencies.length > 0
+    ? `
+## Dependencies
+
+${roadmapContext.dependencies.map((d) => `- ${d}`).join("\n")}
+`
+    : ""
+}
+
+${chatContext ? `\n## Additional Context\n\n${chatContext}` : ""}
+
+## Source
+
+Created from roadmap feature: ${roadmapContext.featureId}
+Generated at: ${new Date().toISOString()}
+`;
+
+        const specPath = path.join(specDir, "spec.md");
+        writeFileSync(specPath, specContent, "utf-8");
+
+        // Save task metadata
+        const metadataPath = path.join(specDir, "task_metadata.json");
+        writeFileSync(metadataPath, JSON.stringify(taskMetadata, null, 2), "utf-8");
+
+        // Create the task object
+        const task: Task = {
+          id: specId,
+          specId: specId,
+          projectId,
+          title: roadmapContext.title,
+          description: descriptionParts.join("\n"),
+          status: "backlog",
+          subtasks: [],
+          logs: [],
+          metadata: taskMetadata,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        return { success: true, data: task };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Failed to create spec from roadmap",
         };
       }
     }

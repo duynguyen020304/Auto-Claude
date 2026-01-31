@@ -484,6 +484,7 @@ export const IPC_CHANNELS = {
   INSIGHTS_SEND_MESSAGE: 'insights:sendMessage',
   INSIGHTS_CLEAR_SESSION: 'insights:clearSession',
   INSIGHTS_CREATE_TASK: 'insights:createTask',
+  INSIGHTS_CREATE_SPEC_FROM_ROADMAP: 'insights:createSpecFromRoadmap',
   INSIGHTS_LIST_SESSIONS: 'insights:listSessions',
   INSIGHTS_NEW_SESSION: 'insights:newSession',
   INSIGHTS_SWITCH_SESSION: 'insights:switchSession',
