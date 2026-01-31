@@ -122,7 +122,8 @@ describe('API Profile Rotation', () => {
   describe('Priority Strategy', () => {
     it('should select first available profile in priority order', () => {
       // All profiles are available
-      const selected = getBestAvailableAPIProfile(mockProfiles, mockStrategy);
+      const result = getBestAvailableAPIProfile(mockProfiles, mockStrategy);
+      const selected = result.profile;
 
       expect(selected).not.toBeNull();
       expect(selected?.id).toBe('api-profile-1'); // First in priority order
@@ -136,7 +137,8 @@ describe('API Profile Rotation', () => {
         rateLimitResetTime: Date.now() + 3600000 // 1 hour from now
       });
 
-      const selected = getBestAvailableAPIProfile(mockProfiles, mockStrategy);
+      const result = getBestAvailableAPIProfile(mockProfiles, mockStrategy);
+      const selected = result.profile;
 
       expect(selected).not.toBeNull();
       expect(selected?.id).toBe('api-profile-2'); // Second in priority order
@@ -150,7 +152,8 @@ describe('API Profile Rotation', () => {
         quotaWindow: 3600
       });
 
-      const selected = getBestAvailableAPIProfile(mockProfiles, mockStrategy);
+      const result = getBestAvailableAPIProfile(mockProfiles, mockStrategy);
+      const selected = result.profile;
 
       expect(selected).not.toBeNull();
       expect(selected?.id).toBe('api-profile-2'); // Second in priority order
@@ -166,7 +169,8 @@ describe('API Profile Rotation', () => {
         });
       });
 
-      const selected = getBestAvailableAPIProfile(mockProfiles, mockStrategy);
+      const result = getBestAvailableAPIProfile(mockProfiles, mockStrategy);
+      const selected = result.profile;
 
       expect(selected).toBeNull();
     });
@@ -174,13 +178,15 @@ describe('API Profile Rotation', () => {
     it('should return null when rotation is disabled', () => {
       mockStrategy.enabled = false;
 
-      const selected = getBestAvailableAPIProfile(mockProfiles, mockStrategy);
+      const result = getBestAvailableAPIProfile(mockProfiles, mockStrategy);
+      const selected = result.profile;
 
       expect(selected).toBeNull();
     });
 
     it('should exclude specified profile from selection', () => {
-      const selected = getBestAvailableAPIProfile(mockProfiles, mockStrategy, 'api-profile-1');
+      const result = getBestAvailableAPIProfile(mockProfiles, mockStrategy, 'api-profile-1');
+      const selected = result.profile;
 
       expect(selected).not.toBeNull();
       expect(selected?.id).toBe('api-profile-2'); // Second in priority order (first excluded)
@@ -194,7 +200,8 @@ describe('API Profile Rotation', () => {
         rateLimitResetTime: Date.now() - 1000 // 1 second ago (expired)
       });
 
-      const selected = getBestAvailableAPIProfile(mockProfiles, mockStrategy);
+      const result = getBestAvailableAPIProfile(mockProfiles, mockStrategy);
+      const selected = result.profile;
 
       expect(selected).not.toBeNull();
       expect(selected?.id).toBe('api-profile-1'); // Should be available (rate limit expired)
@@ -218,7 +225,8 @@ describe('API Profile Rotation', () => {
         quotaWindow: 3600
       });
 
-      const selected = getBestAvailableAPIProfile(mockProfiles, mockStrategy);
+      const result = getBestAvailableAPIProfile(mockProfiles, mockStrategy);
+      const selected = result.profile;
 
       // Should return the least-bad option (profile-2 at exactly threshold)
       expect(selected).not.toBeNull();
@@ -424,8 +432,8 @@ describe('API Profile Rotation', () => {
         usageCheckInterval: 30000,
         sessionThreshold: 95,
         weeklyThreshold: 99,
-        autoSwitchOnRateLimit: false,
-        rotationStrategy: 'priority' as const
+        rotationStrategy: 'priority' as const,
+        autoSwitchOnRateLimit: true
       };
 
       const result = getBestAvailableProfileWithFallback(
@@ -528,7 +536,8 @@ describe('API Profile Rotation', () => {
 
   describe('Edge Cases and Error Handling', () => {
     it('should handle empty profiles array', () => {
-      const selected = getBestAvailableAPIProfile([], mockStrategy);
+      const result = getBestAvailableAPIProfile([], mockStrategy);
+      const selected = result.profile;
 
       expect(selected).toBeNull();
     });
@@ -537,7 +546,8 @@ describe('API Profile Rotation', () => {
       // Clear usage data for profile-2
       mockUsageData.delete('api-profile-2');
 
-      const selected = getBestAvailableAPIProfile(mockProfiles, mockStrategy);
+      const result = getBestAvailableAPIProfile(mockProfiles, mockStrategy);
+      const selected = result.profile;
 
       expect(selected).not.toBeNull();
       expect(selected?.id).toBe('api-profile-1');
@@ -546,7 +556,8 @@ describe('API Profile Rotation', () => {
     it('should handle all profiles having null usage', () => {
       vi.mocked(getAPIProfileUsage).mockReturnValue(null);
 
-      const selected = getBestAvailableAPIProfile(mockProfiles, mockStrategy);
+      const result = getBestAvailableAPIProfile(mockProfiles, mockStrategy);
+      const selected = result.profile;
 
       expect(selected).not.toBeNull();
       // Should select first available profile (no usage data means no thresholds to check)
@@ -559,7 +570,8 @@ describe('API Profile Rotation', () => {
         // No rateLimitResetTime
       });
 
-      const selected = getBestAvailableAPIProfile(mockProfiles, mockStrategy);
+      const result = getBestAvailableAPIProfile(mockProfiles, mockStrategy);
+      const selected = result.profile;
 
       expect(selected).not.toBeNull();
       expect(selected?.id).toBe('api-profile-2'); // Should skip rate-limited profile
@@ -572,7 +584,8 @@ describe('API Profile Rotation', () => {
         quotaWindow: 3600
       });
 
-      const selected = getBestAvailableAPIProfile(mockProfiles, mockStrategy);
+      const result = getBestAvailableAPIProfile(mockProfiles, mockStrategy);
+      const selected = result.profile;
 
       expect(selected).not.toBeNull();
       expect(selected?.id).toBe('api-profile-2'); // Should skip profile at threshold
@@ -587,7 +600,8 @@ describe('API Profile Rotation', () => {
         quotaWindow: 3600
       });
 
-      const selected = getBestAvailableAPIProfile(mockProfiles, mockStrategy);
+      const result = getBestAvailableAPIProfile(mockProfiles, mockStrategy);
+      const selected = result.profile;
 
       expect(selected).not.toBeNull();
       expect(selected?.id).toBe('api-profile-1'); // Should be available (threshold disabled)
@@ -602,7 +616,8 @@ describe('API Profile Rotation', () => {
         rateLimitResetTime: Date.now() + 3600000
       });
 
-      const selected = getBestAvailableAPIProfile(mockProfiles, mockStrategy);
+      const result = getBestAvailableAPIProfile(mockProfiles, mockStrategy);
+      const selected = result.profile;
 
       expect(selected?.id).not.toBe('api-profile-1');
     });
@@ -614,7 +629,8 @@ describe('API Profile Rotation', () => {
         quotaWindow: 3600
       });
 
-      const selected = getBestAvailableAPIProfile(mockProfiles, mockStrategy);
+      const result = getBestAvailableAPIProfile(mockProfiles, mockStrategy);
+      const selected = result.profile;
 
       expect(selected?.id).not.toBe('api-profile-1');
     });
@@ -626,7 +642,8 @@ describe('API Profile Rotation', () => {
         quotaWindow: 3600
       });
 
-      const selected = getBestAvailableAPIProfile(mockProfiles, mockStrategy);
+      const result = getBestAvailableAPIProfile(mockProfiles, mockStrategy);
+      const selected = result.profile;
 
       expect(selected?.id).toBe('api-profile-1');
     });
@@ -637,7 +654,8 @@ describe('API Profile Rotation', () => {
         // No quotaLimit set
       });
 
-      const selected = getBestAvailableAPIProfile(mockProfiles, mockStrategy);
+      const result = getBestAvailableAPIProfile(mockProfiles, mockStrategy);
+      const selected = result.profile;
 
       expect(selected?.id).toBe('api-profile-1');
     });

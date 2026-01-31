@@ -107,14 +107,36 @@ export interface APIProfileUsage {
 }
 
 /**
+ * API Profile Rotation Strategy Type
+ * Determines how API profiles are selected when rotation is enabled
+ */
+export type APIProfileRotationStrategyType =
+  | 'priority'      // Use priority order (default, existing behavior)
+  | 'round-robin'   // Cycle through profiles sequentially
+  | 'least-used'    // Select profile with lowest usage (tokens + requests)
+  | 'random'        // Random selection with uniform distribution
+  | 'weighted'      // Weighted distribution based on profile weights
+  | 'time-based';   // Rotate at configured time intervals
+
+/**
  * API Profile Rotation Strategy - configuration for automatic API profile rotation
  */
 export interface APIProfileRotationStrategy {
   enabled: boolean; // Whether rotation is enabled
+  strategy?: APIProfileRotationStrategyType; // Strategy for automatic profile selection (default: 'priority')
   priorityOrder: string[]; // API profile IDs in priority order
   fallbackToOAuth: boolean; // Allow fallback to OAuth profiles
   thresholds: {
     maxUsagePercent: number; // Switch profile at X% of quota (0-100)
     rateLimitBackoff: number; // Seconds to wait after rate limit
   };
+  rotationInterval?: number; // Time-based rotation interval in seconds (default: 300 = 5 minutes)
+  weights?: Record<string, number>; // Weighted distribution weights per profile ID (format: { "profileId": weight })
+  rotationIndex?: number; // Round-robin state tracking - last used profile index
+  /** Time-based state tracking - current profile ID */
+  timeBasedCurrentProfile?: string;
+  /** Time-based state tracking - ISO timestamp of last rotation */
+  timeBasedLastRotationTime?: string;
+  /** Time-based state tracking - index of current profile in available profiles list */
+  timeBasedProfileIndex?: number;
 }

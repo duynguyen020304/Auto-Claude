@@ -182,7 +182,7 @@ export function detectRateLimit(
     }
 
     // Find best alternative profile
-    const { profile: bestProfile } = profileManager.getBestAvailableProfileWithState(effectiveProfileId);
+    const bestProfile = profileManager.getBestAvailableProfile(effectiveProfileId);
 
     return {
       isRateLimited: true,
@@ -202,7 +202,7 @@ export function detectRateLimit(
     if (pattern.test(output)) {
       const profileManager = getClaudeProfileManager();
       const effectiveProfileId = profileId || profileManager.getActiveProfile().id;
-      const { profile: bestProfile } = profileManager.getBestAvailableProfileWithState(effectiveProfileId);
+      const bestProfile = profileManager.getBestAvailableProfile(effectiveProfileId);
 
       return {
         isRateLimited: true,
@@ -487,7 +487,7 @@ export function getBestAvailableProfileEnv(): BestProfileEnvResult {
     }
 
     // Try to find a better profile
-    const { profile: bestProfile } = profileManager.getBestAvailableProfileWithState(activeProfile.id);
+    const bestProfile = profileManager.getBestAvailableProfile(activeProfile.id);
 
     if (bestProfile) {
       if (process.env.DEBUG === 'true') {

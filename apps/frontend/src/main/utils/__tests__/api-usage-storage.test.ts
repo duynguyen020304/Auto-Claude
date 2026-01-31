@@ -379,7 +379,11 @@ describe('api-usage-storage', () => {
 
         const result = loadRotationStrategy();
 
-        expect(result).toEqual(mockStrategy);
+        // Strategy field should be added with default value for backward compatibility
+        expect(result).toEqual({
+          ...mockStrategy,
+          strategy: 'priority'
+        });
       });
 
       it('should validate and fix invalid strategy data', () => {
@@ -405,6 +409,122 @@ describe('api-usage-storage', () => {
         expect(result?.priorityOrder).toEqual([]);
         expect(result?.fallbackToOAuth).toBe(false);
         expect(result?.thresholds).toEqual(DEFAULT_ROTATION_STRATEGY.thresholds);
+      });
+
+      it('should validate valid weights object', () => {
+        const strategyWithWeights = {
+          enabled: true,
+          priorityOrder: ['profile-1', 'profile-2'],
+          fallbackToOAuth: false,
+          thresholds: {
+            maxUsagePercent: 90,
+            rateLimitBackoff: 60
+          },
+          weights: {
+            'profile-1': 10,
+            'profile-2': 5
+          }
+        };
+
+        const mockStore = {
+          version: 1,
+          strategy: strategyWithWeights
+        };
+
+        vi.mocked(existsSync).mockReturnValue(true);
+        vi.mocked(readFileSync).mockReturnValue(JSON.stringify(mockStore));
+
+        const result = loadRotationStrategy();
+
+        expect(result).not.toBeNull();
+        expect(result?.weights).toEqual({ 'profile-1': 10, 'profile-2': 5 });
+      });
+
+      it('should reset invalid weights (array) to empty object', () => {
+        const strategyWithInvalidWeights = {
+          enabled: true,
+          priorityOrder: ['profile-1'],
+          fallbackToOAuth: false,
+          thresholds: {
+            maxUsagePercent: 90,
+            rateLimitBackoff: 60
+          },
+          weights: ['invalid', 'array'] as unknown as Record<string, number>
+        };
+
+        const mockStore = {
+          version: 1,
+          strategy: strategyWithInvalidWeights
+        };
+
+        vi.mocked(existsSync).mockReturnValue(true);
+        vi.mocked(readFileSync).mockReturnValue(JSON.stringify(mockStore));
+
+        const result = loadRotationStrategy();
+
+        expect(result).not.toBeNull();
+        expect(result?.weights).toEqual({});
+      });
+
+      it('should remove invalid weight entries (non-numeric values)', () => {
+        const strategyWithInvalidWeightValues = {
+          enabled: true,
+          priorityOrder: ['profile-1', 'profile-2', 'profile-3'],
+          fallbackToOAuth: false,
+          thresholds: {
+            maxUsagePercent: 90,
+            rateLimitBackoff: 60
+          },
+          weights: {
+            'profile-1': 10,
+            'profile-2': 'invalid' as unknown as number,
+            'profile-3': 5
+          }
+        };
+
+        const mockStore = {
+          version: 1,
+          strategy: strategyWithInvalidWeightValues
+        };
+
+        vi.mocked(existsSync).mockReturnValue(true);
+        vi.mocked(readFileSync).mockReturnValue(JSON.stringify(mockStore));
+
+        const result = loadRotationStrategy();
+
+        expect(result).not.toBeNull();
+        expect(result?.weights).toEqual({ 'profile-1': 10, 'profile-3': 5 });
+      });
+
+      it('should remove invalid weight entries (non-positive values)', () => {
+        const strategyWithInvalidWeightValues = {
+          enabled: true,
+          priorityOrder: ['profile-1', 'profile-2', 'profile-3', 'profile-4'],
+          fallbackToOAuth: false,
+          thresholds: {
+            maxUsagePercent: 90,
+            rateLimitBackoff: 60
+          },
+          weights: {
+            'profile-1': 10,
+            'profile-2': 0,
+            'profile-3': -5,
+            'profile-4': 5
+          }
+        };
+
+        const mockStore = {
+          version: 1,
+          strategy: strategyWithInvalidWeightValues
+        };
+
+        vi.mocked(existsSync).mockReturnValue(true);
+        vi.mocked(readFileSync).mockReturnValue(JSON.stringify(mockStore));
+
+        const result = loadRotationStrategy();
+
+        expect(result).not.toBeNull();
+        expect(result?.weights).toEqual({ 'profile-1': 10, 'profile-4': 5 });
       });
     });
 
@@ -439,7 +559,11 @@ describe('api-usage-storage', () => {
 
         const result = await loadRotationStrategyAsync();
 
-        expect(result).toEqual(mockStrategy);
+        // Strategy field should be added with default value for backward compatibility
+        expect(result).toEqual({
+          ...mockStrategy,
+          strategy: 'priority'
+        });
       });
     });
 
@@ -502,7 +626,11 @@ describe('api-usage-storage', () => {
 
         const result = getRotationStrategyOrDefault();
 
-        expect(result).toEqual(mockStrategy);
+        // Strategy field should be added with default value for backward compatibility
+        expect(result).toEqual({
+          ...mockStrategy,
+          strategy: 'priority'
+        });
       });
     });
   });

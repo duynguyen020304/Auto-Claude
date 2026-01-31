@@ -458,7 +458,7 @@ export function registerTerminalHandlers(
     async (_, excludeProfileId?: string): Promise<IPCResult<ClaudeProfile | null>> => {
       try {
         const profileManager = getClaudeProfileManager();
-        const { profile: bestProfile } = profileManager.getBestAvailableProfileWithState(excludeProfileId);
+        const bestProfile = profileManager.getBestAvailableProfile(excludeProfileId);
 
         return { success: true, data: bestProfile };
       } catch (error) {

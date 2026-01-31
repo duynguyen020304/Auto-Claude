@@ -71,12 +71,12 @@ describe('registerQueueRoutingHandlers', () => {
         usageCheckInterval: 30000,
         sessionThreshold: 95,
         weeklyThreshold: 99,
-        autoSwitchOnRateLimit: false,
+        autoSwitchOnRateLimit: true,
         rotationStrategy: 'round-robin' as const,
-        maxUsagePercentage: 85
-      })),
+        rotationInterval: 300,
+        profileWeights: {}
+      } as any)),
       getBestAvailableProfile: vi.fn(),
-      getBestAvailableProfileWithState: vi.fn(),
       updateAutoSwitchSettings: vi.fn()
     };
 
@@ -193,22 +193,7 @@ describe('registerQueueRoutingHandlers', () => {
         isAuthenticated: true
       };
 
-      const stateUpdates = {
-        roundRobinLastIndex: 1,
-        timeBasedLastRotationTime: new Date().toISOString()
-      };
-
-      mockProfileManager.getBestAvailableProfileWithState = vi.fn(() => {
-        // Simulate the actual behavior: persist state updates when provided
-        if (stateUpdates && Object.keys(stateUpdates).length > 0) {
-          mockProfileManager.updateAutoSwitchSettings?.(stateUpdates);
-        }
-        return {
-          profile: mockProfile,
-          stateUpdates,
-          strategy: 'round-robin'
-        };
-      });
+      mockProfileManager.getBestAvailableProfile = vi.fn(() => mockProfile);
 
       registerQueueRoutingHandlers(
         mockAgentManager as AgentManager,
@@ -221,9 +206,7 @@ describe('registerQueueRoutingHandlers', () => {
       );
       const result = await handler?.({}, { excludeProfileId: 'profile-1' });
 
-      expect(mockProfileManager.updateAutoSwitchSettings).toHaveBeenCalledWith(
-        stateUpdates
-      );
+      // State persistence is now handled internally by the profile manager
       expect(result).toEqual({
         success: true,
         data: mockProfile
@@ -238,11 +221,7 @@ describe('registerQueueRoutingHandlers', () => {
         createdAt: new Date()
       };
 
-      mockProfileManager.getBestAvailableProfileWithState = vi.fn(() => ({
-        profile: mockProfile,
-        stateUpdates: {},
-        strategy: 'round-robin'
-      }));
+      mockProfileManager.getBestAvailableProfile = vi.fn(() => mockProfile);
 
       registerQueueRoutingHandlers(
         mockAgentManager as AgentManager,
@@ -281,7 +260,7 @@ describe('registerQueueRoutingHandlers', () => {
       const result = await handler?.({}, { apiProfileId: 'specific-profile' });
 
       expect(mockProfileManager.getProfile).toHaveBeenCalledWith('specific-profile');
-      expect(mockProfileManager.getBestAvailableProfileWithState).not.toHaveBeenCalled();
+      expect(mockProfileManager.getBestAvailableProfile).not.toHaveBeenCalled();
       expect(result).toEqual({
         success: true,
         data: mockProfile
@@ -316,8 +295,10 @@ describe('registerQueueRoutingHandlers', () => {
         sessionThreshold: 95,
         weeklyThreshold: 99,
         autoSwitchOnRateLimit: false,
-        rotationStrategy: 'round-robin' as const
-      }));
+        rotationStrategy: 'round-robin',
+        rotationInterval: 300,
+        profileWeights: {}
+      } as any));
 
       registerQueueRoutingHandlers(
         mockAgentManager as AgentManager,
@@ -330,7 +311,7 @@ describe('registerQueueRoutingHandlers', () => {
       );
       const result = await handler?.({}, {});
 
-      expect(mockProfileManager.getBestAvailableProfileWithState).not.toHaveBeenCalled();
+      expect(mockProfileManager.getBestAvailableProfile).not.toHaveBeenCalled();
       expect(result).toEqual({
         success: true,
         data: null
@@ -345,11 +326,7 @@ describe('registerQueueRoutingHandlers', () => {
         createdAt: new Date()
       };
 
-      mockProfileManager.getBestAvailableProfileWithState = vi.fn(() => ({
-        profile: mockProfile,
-        stateUpdates: {},
-        strategy: 'round-robin'
-      }));
+      mockProfileManager.getBestAvailableProfile = vi.fn(() => mockProfile);
 
       registerQueueRoutingHandlers(
         mockAgentManager as AgentManager,
@@ -362,15 +339,15 @@ describe('registerQueueRoutingHandlers', () => {
       );
       const result = await handler?.({}, { apiProfileId: 'auto' });
 
-      expect(mockProfileManager.getBestAvailableProfileWithState).toHaveBeenCalledWith(undefined);
+      expect(mockProfileManager.getBestAvailableProfile).toHaveBeenCalledWith(undefined);
       expect(result).toEqual({
         success: true,
         data: mockProfile
       });
     });
 
-    it('should return error on getBestAvailableProfileWithState failure', async () => {
-      mockProfileManager.getBestAvailableProfileWithState = vi.fn(() => {
+    it('should return error on getBestAvailableProfile failure', async () => {
+      mockProfileManager.getBestAvailableProfile = vi.fn(() => {
         throw new Error('Profile selection failed');
       });
 

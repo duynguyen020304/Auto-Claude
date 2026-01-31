@@ -432,7 +432,7 @@ export function handleRateLimit(
   }
 
   const autoSwitchSettings = profileManager.getAutoSwitchSettings();
-  const { profile: bestProfile } = profileManager.getBestAvailableProfileWithState(currentProfileId);
+  const bestProfile = profileManager.getBestAvailableProfile(currentProfileId);
 
   const win = getWindow();
   if (win) {

@@ -325,11 +325,12 @@ export async function getRotatedAPIProfileEnv(): Promise<Record<string, string>>
   // Check if rotation is enabled
   if (rotationStrategy.enabled) {
     // Use rotation logic to select best available profile
-    selectedProfile = getBestAvailableAPIProfile(
+    const selectionResult = getBestAvailableAPIProfile(
       file.profiles,
       rotationStrategy,
       undefined // No excludeProfileId - consider all profiles
     );
+    selectedProfile = selectionResult.profile;
 
     // If rotation didn't select a profile (all unavailable), fall back to active profile
     if (!selectedProfile && file.activeProfileId) {

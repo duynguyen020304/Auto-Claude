@@ -269,7 +269,7 @@ export class AgentProcessManager {
     }
 
     const currentProfileId = rateLimitDetection.profileId;
-    const { profile: bestProfile } = profileManager.getBestAvailableProfileWithState(currentProfileId);
+    const bestProfile = profileManager.getBestAvailableProfile(currentProfileId);
 
     console.log('[AgentProcess] Best available profile:', bestProfile ? {
       id: bestProfile.id,

@@ -226,6 +226,16 @@ function parseRotationStrategy(data: Record<string, unknown>): APIProfileRotatio
   if (data.version === ROTATION_STORE_VERSION) {
     const strategy = data.strategy as APIProfileRotationStrategy;
 
+    // Validate strategy field with default to 'priority' for backward compatibility
+    const validStrategies = ['priority', 'round-robin', 'least-used', 'random', 'weighted', 'time-based'];
+    if (strategy.strategy && !validStrategies.includes(strategy.strategy)) {
+      console.warn(`[APIUsageStorage] Invalid strategy "${strategy.strategy}", defaulting to 'priority'`);
+      strategy.strategy = 'priority';
+    } else if (!strategy.strategy) {
+      // Default to 'priority' for backward compatibility with existing configs
+      strategy.strategy = 'priority';
+    }
+
     // Validate strategy structure
     if (typeof strategy.enabled !== 'boolean') {
       console.warn('[APIUsageStorage] Invalid enabled field, resetting to false');
@@ -248,6 +258,47 @@ function parseRotationStrategy(data: Record<string, unknown>): APIProfileRotatio
       }
       if (typeof strategy.thresholds.rateLimitBackoff !== 'number') {
         strategy.thresholds.rateLimitBackoff = DEFAULT_ROTATION_STRATEGY.thresholds.rateLimitBackoff;
+      }
+    }
+
+    // Validate weights object if present
+    if (strategy.weights !== undefined && strategy.weights !== null) {
+      if (typeof strategy.weights !== 'object' || Array.isArray(strategy.weights)) {
+        console.warn('[APIUsageStorage] Invalid weights (must be an object), resetting to empty object');
+        strategy.weights = {};
+      } else {
+        // Validate each weight entry
+        for (const [profileId, weight] of Object.entries(strategy.weights)) {
+          if (typeof weight !== 'number' || isNaN(weight)) {
+            console.warn(`[APIUsageStorage] Invalid weight for profile ${profileId} (must be a number), removing entry`);
+            delete strategy.weights[profileId];
+          } else if (weight <= 0) {
+            console.warn(`[APIUsageStorage] Invalid weight for profile ${profileId} (must be positive), removing entry`);
+            delete strategy.weights[profileId];
+          }
+        }
+      }
+    }
+
+    // Validate rotationIndex for round-robin strategy
+    if (strategy.rotationIndex !== undefined && strategy.rotationIndex !== null) {
+      if (typeof strategy.rotationIndex !== 'number' || isNaN(strategy.rotationIndex)) {
+        console.warn('[APIUsageStorage] Invalid rotationIndex (must be a number), resetting to 0');
+        strategy.rotationIndex = 0;
+      } else if (strategy.rotationIndex < 0) {
+        console.warn('[APIUsageStorage] Invalid rotationIndex (must be non-negative), resetting to 0');
+        strategy.rotationIndex = 0;
+      }
+    }
+
+    // Validate rotationInterval for time-based strategy
+    if (strategy.rotationInterval !== undefined && strategy.rotationInterval !== null) {
+      if (typeof strategy.rotationInterval !== 'number' || isNaN(strategy.rotationInterval)) {
+        console.warn('[APIUsageStorage] Invalid rotationInterval (must be a number), resetting to 300');
+        strategy.rotationInterval = 300;
+      } else if (strategy.rotationInterval <= 0) {
+        console.warn('[APIUsageStorage] Invalid rotationInterval (must be positive), resetting to 300');
+        strategy.rotationInterval = 300;
       }
     }
 

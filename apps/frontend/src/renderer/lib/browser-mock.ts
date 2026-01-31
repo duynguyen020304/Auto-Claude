@@ -171,17 +171,17 @@ const browserMockAPI: ElectronAPI = {
     data: {
       enabled: false,
       priorityOrder: [],
-      fallbackToOAuth: false,
+      fallbackToOAuth: true,
       thresholds: {
-        maxUsagePercent: 85,
-        rateLimitBackoff: 300
+        maxUsagePercent: 90,
+        rateLimitBackoff: 60
       }
     }
   }),
 
-  updateAPIProfileRotationStrategy: async (_strategy: any) => ({
+  updateAPIProfileRotationStrategy: async (strategy: any) => ({
     success: true,
-    data: _strategy
+    data: strategy
   }),
 
   // User History API (Chat, Ideation, Roadmap, Repo)
