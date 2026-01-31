@@ -811,6 +811,8 @@ export function App() {
   };
 
   const handleExploreInInsights = async (feature: RoadmapFeature) => {
+    debugLog('[App] handleExploreInInsights called', { featureId: feature.id, featureTitle: feature.title });
+
     // Convert RoadmapFeature to RoadmapItemContext
     const roadmapContext = {
       featureId: feature.id,
@@ -821,16 +823,56 @@ export function App() {
       acceptanceCriteria: feature.acceptanceCriteria,
     };
 
+    debugLog('[App] Roadmap context created', roadmapContext);
+
     // Ensure we have a session to set context on
     const currentProjectId = activeProjectId || selectedProjectId;
-    if (!session && currentProjectId) {
+
+    if (!currentProjectId) {
+      console.error('[handleExploreInInsights] No project ID available', {
+        activeProjectId,
+        selectedProjectId
+      });
+      return;
+    }
+
+    // Create session if needed
+    if (!session) {
+      debugLog('[App] No session exists, creating new session', { projectId: currentProjectId });
       await newSession(currentProjectId);
+
+      // Verify session was actually created
+      const updatedSession = useInsightsStore.getState().session;
+      if (!updatedSession) {
+        console.error('[handleExploreInInsights] Failed to create Insights session');
+        return;
+      }
+      debugLog('[App] Session created successfully', { sessionId: updatedSession.id });
+    } else {
+      debugLog('[App] Using existing session', { sessionId: session.id });
     }
 
     // Set roadmap context in current Insights session
+    debugLog('[App] Setting roadmap context');
     exploreRoadmapItem(roadmapContext);
 
+    // Verify context was set
+    const finalSession = useInsightsStore.getState().session;
+    if (finalSession?.roadmapContext?.featureId !== feature.id) {
+      console.error('[handleExploreInInsights] Failed to set roadmap context', {
+        expectedFeatureId: feature.id,
+        actualContext: finalSession?.roadmapContext,
+        sessionId: finalSession?.id
+      });
+    } else {
+      debugLog('[App] Roadmap context set successfully', {
+        featureId: feature.id,
+        sessionId: finalSession?.id
+      });
+    }
+
     // Switch to insights view
+    debugLog('[App] Switching to insights view');
     setActiveView('insights');
   };
 

@@ -11,6 +11,7 @@ import type {
   Task,
   RoadmapItemContext,
 } from '../../shared/types';
+import { debugLog } from '../../shared/utils/debug-logger';
 
 interface ToolUsage {
   name: string;
@@ -731,16 +732,30 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
 
   exploreRoadmapItem: (roadmapContext) =>
     set((state) => {
+      debugLog('[insights-store] exploreRoadmapItem called', {
+        hasSession: !!state.session,
+        sessionId: state.session?.id,
+        roadmapContext
+      });
+
       if (!state.session) {
+        console.error('[insights-store] exploreRoadmapItem: No session found, cannot set roadmap context');
         return state;
       }
 
+      const updatedSession = {
+        ...state.session,
+        roadmapContext,
+        updatedAt: new Date()
+      };
+
+      debugLog('[insights-store] exploreRoadmapItem: Updating session with roadmap context', {
+        sessionId: updatedSession.id,
+        featureId: roadmapContext.featureId
+      });
+
       return {
-        session: {
-          ...state.session,
-          roadmapContext,
-          updatedAt: new Date()
-        }
+        session: updatedSession
       };
     }),
 
@@ -788,6 +803,22 @@ export async function loadInsightsSessions(projectId: string): Promise<void> {
 }
 
 export async function loadInsightsSession(projectId: string): Promise<void> {
+  // Check if there's already a current session for this project
+  // Don't reload if we have a session, as it might have transient state like roadmapContext
+  const currentState = useInsightsStore.getState();
+  const hasCurrentSession = !!currentState.session;
+
+  if (hasCurrentSession) {
+    debugLog('[insights-store] Skipping session reload - current session exists', {
+      sessionId: currentState.session?.id
+    });
+    // Still load the sessions list to keep sidebar up to date
+    await loadInsightsSessions(projectId);
+    return;
+  }
+
+  debugLog('[insights-store] Loading session from backend', { projectId });
+
   const result = await window.electronAPI.getInsightsSession(projectId);
   if (result.success && result.data) {
     useInsightsStore.getState().setSession(result.data);
