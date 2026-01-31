@@ -111,6 +111,46 @@ def load_project_context(project_dir: str) -> str:
     )
 
 
+def load_roadmap_item_context(project_dir: str, item_id: str) -> dict | None:
+    """Load context for a specific roadmap item.
+
+    Args:
+        project_dir: Path to the project directory
+        item_id: ID of the roadmap item to load
+
+    Returns:
+        Dictionary with roadmap item context (title, description, rationale,
+        acceptanceCriteria, dependencies, status) or None if not found.
+    """
+    roadmap_path = Path(project_dir) / ".auto-claude" / "roadmap" / "roadmap.json"
+
+    if not roadmap_path.exists():
+        return None
+
+    try:
+        with open(roadmap_path, encoding="utf-8") as f:
+            roadmap = json.load(f)
+
+        features = roadmap.get("features", [])
+
+        # Find the feature by ID
+        for feature in features:
+            if feature.get("id") == item_id:
+                return {
+                    "title": feature.get("title", ""),
+                    "description": feature.get("description", ""),
+                    "rationale": feature.get("rationale", ""),
+                    "acceptanceCriteria": feature.get("acceptanceCriteria", []),
+                    "dependencies": feature.get("dependencies", []),
+                    "status": feature.get("status", "not_started"),
+                }
+
+        return None
+
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
 def _is_binary_file(file_path: Path) -> bool:
     """Check if a file is likely binary by reading a small sample."""
     try:
