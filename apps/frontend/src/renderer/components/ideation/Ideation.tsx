@@ -1,5 +1,6 @@
 import { TabsContent } from '../ui/tabs';
 import { useTranslation } from 'react-i18next';
+import type { Idea } from '../../../shared/types';
 import { EnvConfigModal } from '../EnvConfigModal';
 import { IDEATION_TYPE_DESCRIPTIONS } from '../../../shared/constants';
 import { IdeationEmptyState } from './IdeationEmptyState';
@@ -16,9 +17,10 @@ import { ALL_IDEATION_TYPES } from './constants';
 interface IdeationProps {
   projectId: string;
   onGoToTask?: (taskId: string) => void;
+  onDiscussInChat?: (idea: Idea) => void;
 }
 
-export function Ideation({ projectId, onGoToTask }: IdeationProps) {
+export function Ideation({ projectId, onGoToTask, onDiscussInChat }: IdeationProps) {
   const { t } = useTranslation(['ideation', 'common']);
 
   // Get showArchived from shared context for cross-page sync
@@ -170,6 +172,7 @@ export function Ideation({ projectId, onGoToTask }: IdeationProps) {
                   onGoToTask={handleGoToTask}
                   onDismiss={handleDismiss}
                   onToggleSelect={toggleSelectIdea}
+                  onDiscussInChat={onDiscussInChat}
                 />
               ))}
               {activeIdeas.length === 0 && (
@@ -205,6 +208,7 @@ export function Ideation({ projectId, onGoToTask }: IdeationProps) {
                       onGoToTask={handleGoToTask}
                       onDismiss={handleDismiss}
                       onToggleSelect={toggleSelectIdea}
+                      onDiscussInChat={onDiscussInChat}
                     />
                   ))}
                 </div>

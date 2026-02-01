@@ -43,10 +43,10 @@ interface IdeaCardProps {
   onGoToTask?: (taskId: string) => void;
   onDismiss: (idea: Idea) => void;
   onToggleSelect: (ideaId: string) => void;
-  onDiscussInInsights?: (idea: Idea) => void;
+  onDiscussInChat?: (idea: Idea) => void;
 }
 
-export function IdeaCard({ idea, isSelected, onClick, onConvert, onGoToTask, onDismiss, onToggleSelect, onDiscussInInsights }: IdeaCardProps) {
+export function IdeaCard({ idea, isSelected, onClick, onConvert, onGoToTask, onDismiss, onToggleSelect, onDiscussInChat }: IdeaCardProps) {
   const { t } = useTranslation(['ideation', 'common']);
   const isDismissed = idea.status === 'dismissed';
   const isArchived = idea.status === 'archived';
@@ -128,7 +128,7 @@ export function IdeaCard({ idea, isSelected, onClick, onConvert, onGoToTask, onD
           {/* Action buttons */}
           {!isInactive && !isConverted && (
             <div className="flex items-center gap-1 ml-2">
-              {onDiscussInInsights && (
+              {onDiscussInChat && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -137,7 +137,7 @@ export function IdeaCard({ idea, isSelected, onClick, onConvert, onGoToTask, onD
                       className="h-8 w-8 p-0 text-muted-foreground hover:text-primary"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onDiscussInInsights(idea);
+                        onDiscussInChat(idea);
                       }}
                       aria-label={t('accessibility.discussInInsightsAriaLabel')}
                     >
