@@ -433,7 +433,7 @@ def load_mentioned_files(project_dir: str, mentions: list) -> str:
     return "\n\n".join(file_contexts) if file_contexts else ""
 
 
-def build_system_prompt(project_dir: str, roadmap_context: dict = None) -> str:
+def build_system_prompt(project_dir: str, roadmap_context: dict = None, ideation_context: dict = None) -> str:
     """Build the system prompt for the insights agent."""
     context = load_project_context(project_dir)
 
@@ -470,16 +470,75 @@ You are currently exploring a specific roadmap feature:
 When answering questions about this roadmap item, analyze the codebase and provide specific, actionable insights. Use the available tools (Read, Glob, Grep) to explore the codebase and ground your answers in actual code.
 """
 
+    # Build ideation-specific context if provided
+    ideation_section = ""
+    if ideation_context:
+        ideation_section = f"""
+
+## Ideation Item Context
+You are currently exploring a specific ideation idea:
+
+**Title:** {ideation_context.get('title', 'Unknown')}
+
+**Description:** {ideation_context.get('description', 'No description')}
+
+**Rationale:** {ideation_context.get('rationale', 'No rationale provided')}
+
+**Type:** {ideation_context.get('type', 'unknown')}
+
+**Category:** {ideation_context.get('category', 'Unknown')}
+
+**Current State:** {ideation_context.get('current_state', 'Not specified')}
+
+**Proposed Change:** {ideation_context.get('proposed_change', 'Not specified')}
+
+**User Benefit:** {ideation_context.get('user_benefit', 'Not specified')}
+
+**Affected Components:** {', '.join(ideation_context.get('affected_components', [])) or 'None'}
+
+**Status:** {ideation_context.get('status', 'draft').replace('_', ' ').title()}
+
+When answering questions about this ideation item, analyze the codebase and provide specific, actionable insights. Help evaluate the feasibility of this idea, identify implementation challenges, and suggest improvements or alternatives. Use the available tools (Read, Glob, Grep) to explore the codebase and ground your answers in actual code.
+"""
+
     return f"""You are an AI assistant helping developers understand and work with their codebase.
 You have access to the following project context:
 
 {context}
 {roadmap_section}
+{ideation_section}
 Your capabilities:
 1. Answer questions about the codebase structure, patterns, and architecture
 2. Suggest improvements, features, or bug fixes based on the code
 3. Help plan implementation of new features
 4. Provide code examples and explanations
+
+## Ideation Item Analysis
+When an ideation item context is provided above, you can help with:
+
+**Feasibility Assessment:**
+- Evaluate whether the proposed idea is technically feasible
+- Identify potential technical blockers or limitations
+- Assess alignment with existing architecture and patterns
+- Estimate rough implementation complexity
+
+**Implementation Planning:**
+- Suggest specific implementation approaches
+- Identify files and components that would need changes
+- Recommend design patterns or libraries to use
+- Break down the idea into actionable steps
+
+**Impact Analysis:**
+- Identify what parts of the codebase would be affected
+- Find potential conflicts with existing features
+- Assess testing implications
+- Evaluate performance considerations
+
+**Enhancement Suggestions:**
+- Propose improvements to the original idea
+- Suggest alternative approaches if needed
+- Identify related opportunities or extensions
+- Recommend best practices for the implementation
 
 ## Roadmap Item Analysis
 When a roadmap item context is provided above, you can help with:
@@ -551,6 +610,7 @@ async def run_with_sdk(
     thinking_level: str = "medium",
     mentions: list = None,
     roadmap_context: dict = None,
+    ideation_context: dict = None,
 ) -> None:
     """Run the chat using Claude SDK with streaming."""
     if not SDK_AVAILABLE:
@@ -569,7 +629,7 @@ async def run_with_sdk(
     # Ensure SDK can find the token
     ensure_claude_code_oauth_token()
 
-    system_prompt = build_system_prompt(project_dir, roadmap_context)
+    system_prompt = build_system_prompt(project_dir, roadmap_context, ideation_context)
     project_path = Path(project_dir).resolve()
 
     # Build conversation context from history
@@ -818,6 +878,11 @@ def main():
         default=None,
         help="ID of the roadmap item to provide context for",
     )
+    parser.add_argument(
+        "--ideation-item-id",
+        default=None,
+        help="ID of the ideation item to provide context for",
+    )
     args = parser.parse_args()
 
     debug_section("insights_runner", "Starting Insights Chat")
@@ -889,9 +954,30 @@ def main():
                 f"Roadmap item {args.roadmap_item_id} not found",
             )
 
+    # Load ideation item context if provided
+    ideation_context = None
+    if args.ideation_item_id:
+        debug_detailed(
+            "insights_runner",
+            "Loading ideation item context",
+            item_id=args.ideation_item_id,
+        )
+        ideation_context = load_ideation_item_context(project_dir, args.ideation_item_id)
+        if ideation_context:
+            debug_success(
+                "insights_runner",
+                "Loaded ideation item context",
+                title=ideation_context.get("title", "Unknown"),
+            )
+        else:
+            debug_error(
+                "insights_runner",
+                f"Ideation item {args.ideation_item_id} not found",
+            )
+
     # Run the async SDK function
     debug("insights_runner", "Running SDK query")
-    asyncio.run(run_with_sdk(project_dir, user_message, history, model, thinking_level, mentions, roadmap_context))
+    asyncio.run(run_with_sdk(project_dir, user_message, history, model, thinking_level, mentions, roadmap_context, ideation_context))
     debug_success("insights_runner", "Query completed")
 
 
