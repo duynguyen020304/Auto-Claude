@@ -277,6 +277,53 @@ def load_ideation_context(project_dir: str) -> dict | None:
         return None
 
 
+def load_ideation_item_context(project_dir: str, item_id: str) -> dict | None:
+    """Load context for a specific ideation item.
+
+    Args:
+        project_dir: Path to the project directory
+        item_id: ID of the ideation item to load
+
+    Returns:
+        Dictionary with complete ideation item context (title, description, rationale,
+        type, category, affected_components, screenshots, current_state, proposed_change,
+        user_benefit, status, created_at) or None if not found.
+    """
+    ideation_path = Path(project_dir) / ".auto-claude" / "ideation" / "ideation.json"
+
+    if not ideation_path.exists():
+        return None
+
+    try:
+        with open(ideation_path, encoding="utf-8") as f:
+            ideation = json.load(f)
+
+        ideas = ideation.get("ideas", [])
+
+        # Find the idea by ID
+        for idea in ideas:
+            if idea.get("id") == item_id:
+                return {
+                    "title": idea.get("title", ""),
+                    "description": idea.get("description", ""),
+                    "rationale": idea.get("rationale", ""),
+                    "type": idea.get("type", ""),
+                    "category": idea.get("category", ""),
+                    "affected_components": idea.get("affected_components", []),
+                    "screenshots": idea.get("screenshots", []),
+                    "current_state": idea.get("current_state", ""),
+                    "proposed_change": idea.get("proposed_change", ""),
+                    "user_benefit": idea.get("user_benefit", ""),
+                    "status": idea.get("status", "draft"),
+                    "created_at": idea.get("created_at", ""),
+                }
+
+        return None
+
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
 def _is_binary_file(file_path: Path) -> bool:
     """Check if a file is likely binary by reading a small sample."""
     try:
