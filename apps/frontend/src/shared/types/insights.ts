@@ -247,6 +247,7 @@ export interface InsightsSession {
   messages: InsightsChatMessage[];
   modelConfig?: InsightsModelConfig; // Per-session model configuration
   roadmapContext?: RoadmapItemContext; // Roadmap item being explored
+  ideationContext?: IdeationItemContext; // Ideation idea being explored
   createdAt: Date;
   updatedAt: Date;
 }
