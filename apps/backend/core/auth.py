@@ -66,6 +66,38 @@ SDK_ENV_VARS = [
 ]
 
 
+def get_profiles_file_path() -> str:
+    """
+    Get the path to profiles.json in the auto-claude directory.
+
+    Returns a platform-specific path:
+    - macOS/Linux: ~/.auto-claude/profiles.json
+    - Windows: %USERPROFILE%\\.auto-claude\\profiles.json
+
+    This MUST match the frontend's getProfilesFilePath() in profile-manager.ts.
+    The frontend uses app.getPath('userData') + 'auto-claude/profiles.json',
+    which resolves to the same locations on each platform.
+
+    Returns:
+        Absolute path to profiles.json file
+
+    Example:
+        >>> path = get_profiles_file_path()
+        >>> print(path)
+        /home/user/.auto-claude/profiles.json
+    """
+    # Determine home directory based on platform
+    if is_windows():
+        # Windows: use %USERPROFILE% environment variable
+        auto_claude_dir = os.path.expandvars(r"%USERPROFILE%\.auto-claude")
+    else:
+        # macOS/Linux: use ~ expansion
+        auto_claude_dir = os.path.expanduser("~/.auto-claude")
+
+    # Return path to profiles.json
+    return os.path.join(auto_claude_dir, "profiles.json")
+
+
 def _calculate_config_dir_hash(config_dir: str) -> str:
     """
     Calculate hash of config directory path for Keychain service name.
