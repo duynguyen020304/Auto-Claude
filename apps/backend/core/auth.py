@@ -2600,6 +2600,100 @@ def _select_profile_by_random(
     return selected_profile
 
 
+def _select_profile_by_weighted(
+    profiles: list[dict],
+    weights: dict | None,
+) -> dict | None:
+    """
+    Select a profile using the weighted strategy.
+
+    Selects a profile using weighted random selection. Each profile's weight
+    determines its probability of being selected - higher weight means higher
+    probability. Uses random.choices() with weights parameter for distribution.
+
+    Args:
+        profiles: List of profile dictionaries from profiles.json
+        weights: Optional dict mapping profile IDs to weight values.
+                 If None or a profile ID is missing, weight defaults to 1.
+                 Weights can be any positive number (not required to sum to 1).
+
+    Returns:
+        A randomly selected profile dict based on weights, or None if:
+        - profiles list is empty
+
+    Example:
+        >>> import random
+        >>> random.seed(42)  # For reproducible example
+        >>> profiles = [
+        ...     {"id": "profile-1", "name": "Profile 1"},
+        ...     {"id": "profile-2", "name": "Profile 2"},
+        ...     {"id": "profile-3", "name": "Profile 3"},
+        ... ]
+        >>> weights = {"profile-1": 10, "profile-2": 5, "profile-3": 1}
+        >>> # profile-1 is ~2x more likely than profile-2, ~10x more than profile-3
+        >>> profile = _select_profile_by_weighted(profiles, weights)
+        >>> print(profile["name"])  # Will vary based on weighted random selection
+        Profile 1
+
+    Note:
+        - Uses Python's random.choices() with weights parameter.
+        - Probability of selecting profile i = weight_i / sum(all_weights)
+        - Missing weights default to 1 (equal weight).
+        - Zero or negative weights are treated as weight=1.
+        - For testing purposes, you can set random.seed() to make selections reproducible.
+    """
+    if not profiles:
+        logger.debug("Weighted strategy: profiles list is empty, no profile selected")
+        return None
+
+    # Build profile list and corresponding weights for random.choices()
+    profile_ids = [p.get("id") for p in profiles if p.get("id")]
+    if not profile_ids:
+        logger.debug("Weighted strategy: no valid profile IDs found")
+        return None
+
+    # Get weight for each profile (default to 1 if not in weights dict or invalid)
+    profile_weights = []
+    for pid in profile_ids:
+        if weights and pid in weights:
+            w = weights[pid]
+            # Validate weight - must be positive number
+            if isinstance(w, (int, float)) and w > 0:
+                profile_weights.append(w)
+            else:
+                # Invalid weight - default to 1
+                logger.debug(
+                    f"Weighted strategy: invalid weight {w} for profile '{pid}', "
+                    "defaulting to weight=1"
+                )
+                profile_weights.append(1)
+        else:
+            # No weight specified - default to 1 (equal weight)
+            profile_weights.append(1)
+
+    # Use random.choices() with weights for weighted random selection
+    # k=1 returns a list with 1 element
+    selected_profiles = random.choices(profiles, weights=profile_weights, k=1)
+    selected_profile = selected_profiles[0]
+
+    if selected_profile:
+        profile_id = selected_profile.get("id", "unknown")
+        profile_name = selected_profile.get("name", profile_id)
+        profile_weight = weights.get(profile_id, 1) if weights else 1
+        total_weight = sum(profile_weights)
+
+        # Calculate percentage probability
+        probability = (profile_weight / total_weight * 100) if total_weight > 0 else 0
+
+        logger.debug(
+            f"Weighted strategy: selected profile '{profile_name}' "
+            f"(ID: {profile_id}, weight: {profile_weight}, "
+            f"probability: {probability:.1f}%, total profiles: {len(profiles)})"
+        )
+
+    return selected_profile
+
+
 def get_rotating_profile_credential() -> dict[str, str | None] | None:
     """
     Get a credential profile from the rotation pool.
@@ -2627,9 +2721,8 @@ def get_rotating_profile_credential() -> dict[str, str | None] | None:
         - all profiles are filtered out
 
     Note:
-        Implemented strategies: priority, round-robin, least-used.
-        Other strategies (random, weighted, time-based) will be added
-        in future subtasks.
+        Implemented strategies: priority, round-robin, least-used, random, weighted.
+        Time-based strategy will be added in future subtasks.
 
     Example:
         >>> cred = get_rotating_profile_credential()
@@ -2688,6 +2781,10 @@ def get_rotating_profile_credential() -> dict[str, str | None] | None:
     elif strategy_type == "random":
         # Random strategy: uniformly random profile selection
         selected_profile = _select_profile_by_random(profiles)
+    elif strategy_type == "weighted":
+        # Weighted strategy: weighted random selection using weights dict
+        weights = strategy.get("weights")
+        selected_profile = _select_profile_by_weighted(profiles, weights)
     else:
         # Other strategies not implemented yet - fall back to priority
         logger.debug(
