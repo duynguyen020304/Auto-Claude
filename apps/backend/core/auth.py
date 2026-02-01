@@ -10,8 +10,10 @@ import hashlib
 import json
 import logging
 import os
+import random
 import shutil
 import subprocess
+import time
 from typing import TYPE_CHECKING
 
 from core.platform import (
@@ -2219,33 +2221,205 @@ def validate_credential(credential: dict[str, str]) -> bool:
     return True
 
 
+def _get_rotation_strategy_file_path() -> str:
+    """
+    Get the path to api-profile-rotation.json in the auto-claude directory.
+
+    Returns a platform-specific path:
+    - macOS/Linux: ~/.auto-claude/api-profile-rotation.json
+    - Windows: %USERPROFILE%\\.auto-claude\\api-profile-rotation.json
+
+    This MUST match the frontend's getRotationStrategyFilePath() in api-usage-storage.ts.
+
+    Returns:
+        Absolute path to api-profile-rotation.json file
+
+    Example:
+        >>> path = _get_rotation_strategy_file_path()
+        >>> print(path)
+        /home/user/.auto-claude/api-profile-rotation.json
+    """
+    # Determine home directory based on platform
+    if is_windows():
+        # Windows: use %USERPROFILE% environment variable
+        auto_claude_dir = os.path.expandvars(r"%USERPROFILE%\.auto-claude")
+    else:
+        # macOS/Linux: use ~ expansion
+        auto_claude_dir = os.path.expanduser("~/.auto-claude")
+
+    # Return path to api-profile-rotation.json
+    return os.path.join(auto_claude_dir, "api-profile-rotation.json")
+
+
+def _load_rotation_strategy() -> dict | None:
+    """
+    Load api-profile-rotation.json from disk with graceful error handling.
+
+    Returns:
+        Dictionary with rotation strategy configuration, or None if file not found
+        or cannot be parsed. Expected structure:
+        - version: File format version
+        - strategy: Dict containing:
+            - enabled: bool
+            - strategy: str ('priority', 'round-robin', 'least-used', 'random', 'weighted', 'time-based')
+            - priorityOrder: List[str] (profile IDs in priority order)
+            - fallbackToOAuth: bool
+            - thresholds: Dict with maxUsagePercent and rateLimitBackoff
+            - rotationIndex: Optional[int] (for round-robin)
+            - rotationInterval: Optional[int] (for time-based, in seconds)
+            - weights: Optional[Dict[str, int]] (for weighted)
+            - timeBasedCurrentProfile: Optional[str]
+            - timeBasedLastRotationTime: Optional[str]
+            - timeBasedProfileIndex: Optional[int]
+
+    Example:
+        >>> strategy = _load_rotation_strategy()
+        >>> if strategy:
+        ...     print(f"Strategy: {strategy['strategy'].get('strategy', 'priority')}")
+        ... else:
+        ...     print("No rotation strategy configured")
+    """
+    strategy_path = _get_rotation_strategy_file_path()
+
+    try:
+        # Check if file exists before attempting to read
+        if not os.path.exists(strategy_path):
+            logger.debug(f"Rotation strategy file not found: {strategy_path}")
+            return None
+
+        # Read and parse the JSON file
+        with open(strategy_path, encoding="utf-8") as f:
+            data = json.load(f)
+
+        # Validate basic structure
+        if not isinstance(data, dict):
+            logger.warning(f"Invalid rotation strategy file structure (not a dict): {strategy_path}")
+            return None
+
+        # Ensure strategy key exists
+        if "strategy" not in data:
+            logger.warning(f"Rotation strategy file missing 'strategy' key: {strategy_path}")
+            return None
+
+        strategy = data["strategy"]
+        if not isinstance(strategy, dict):
+            logger.warning(f"Invalid strategy field (not a dict): {strategy_path}")
+            return None
+
+        logger.debug(f"Loaded rotation strategy file: {strategy_path}")
+        return data
+
+    except json.JSONDecodeError as e:
+        logger.warning(f"Failed to parse api-profile-rotation.json: {e}")
+        return None
+
+    except (IOError, OSError, PermissionError) as e:
+        logger.warning(f"Failed to read rotation strategy file: {e}")
+        return None
+
+    except Exception as e:
+        logger.warning(f"Unexpected error loading rotation strategy file: {e}")
+        return None
+
+
+def _select_profile_by_priority(
+    profiles: list[dict],
+    priority_order: list[str],
+) -> dict | None:
+    """
+    Select a profile using the priority strategy.
+
+    Iterates through the priorityOrder list and returns the first profile
+    ID that exists in the profiles list. This is the default and simplest
+    rotation strategy.
+
+    Args:
+        profiles: List of profile dictionaries from profiles.json
+        priority_order: List of profile IDs in priority order (first = highest priority)
+
+    Returns:
+        The first matching profile dict, or None if:
+        - priority_order is empty
+        - no profile IDs in priority_order exist in profiles list
+        - profiles list is empty
+
+    Example:
+        >>> profiles = [
+        ...     {"id": "profile-1", "name": "Profile 1", "baseUrl": "...", "apiKey": "..."},
+        ...     {"id": "profile-2", "name": "Profile 2", "baseUrl": "...", "apiKey": "..."},
+        ... ]
+        >>> priority_order = ["profile-2", "profile-1"]  # profile-2 has higher priority
+        >>> profile = _select_profile_by_priority(profiles, priority_order)
+        >>> print(profile["name"])
+        Profile 2
+
+    Note:
+        This strategy does NOT check:
+        - Rate limit status (no usage tracking in backend yet)
+        - Authentication status (assumes apiKey is valid)
+        - Usage thresholds (no usage tracking in backend yet)
+
+        These checks will be added when usage tracking is implemented in the backend.
+    """
+    if not priority_order:
+        logger.debug("Priority strategy: priority_order is empty, no profile selected")
+        return None
+
+    if not profiles:
+        logger.debug("Priority strategy: profiles list is empty, no profile selected")
+        return None
+
+    # Create a lookup dict for O(1) profile access by ID
+    profiles_by_id = {p["id"]: p for p in profiles if "id" in p}
+
+    # Iterate through priority order and return first match
+    for profile_id in priority_order:
+        if profile_id in profiles_by_id:
+            profile = profiles_by_id[profile_id]
+            logger.debug(
+                f"Priority strategy: selected profile '{profile.get('name', profile_id)}' "
+                f"(ID: {profile_id}, priority position: {priority_order.index(profile_id)})"
+            )
+            return profile
+
+    # No profile IDs from priority_order found in profiles list
+    logger.debug(
+        f"Priority strategy: no profiles from priority_order found in profiles list. "
+        f"priority_order={priority_order}, available_profile_ids={list(profiles_by_id.keys())}"
+    )
+    return None
+
+
 def get_rotating_profile_credential() -> dict[str, str | None] | None:
     """
     Get a credential profile from the rotation pool.
 
     This function implements automatic profile selection using the configured
-    rotation strategy from ~/.auto-claude/profiles.json. When 'auto' is selected
-    as the API profile, this function selects the best available profile based
-    on the strategy (priority, round-robin, least-used, random, weighted, time-based).
+    rotation strategy from ~/.auto-claude/api-profile-rotation.json. When 'auto'
+    is selected as the API profile, this function selects the best available
+    profile based on the strategy (priority, round-robin, least-used, random,
+    weighted, time-based).
 
     Returns:
         Dictionary with credential data including:
         - id: Credential ID
-        - type: Credential type ('oauth' or 'api_key')
+        - type: Credential type ('api_key' for API profiles)
         - name: Credential name
-        - status: Credential status ('active', 'rate_limited', 'disabled')
-        - value: Actual credential value (token or API key)
-        - last_used: Last used timestamp (ISO format string or None)
+        - status: Credential status ('active')
+        - value: Actual credential value (API key)
+        - last_used: Last used timestamp (always None for API profiles)
 
         Returns None if:
         - profiles.json is not found
         - profiles list is empty
+        - rotation strategy is not enabled
         - no available profiles match the strategy
-        - all profiles are rate-limited or disabled
+        - all profiles are filtered out
 
     Note:
-        This is a stub implementation that returns None.
-        The full implementation will be added in phase 2 of the spec.
+        Priority strategy is currently the only implemented strategy.
+        Other strategies (round-robin, least-used, random, weighted, time-based)
+        will be added in future subtasks.
 
     Example:
         >>> cred = get_rotating_profile_credential()
@@ -2255,12 +2429,75 @@ def get_rotating_profile_credential() -> dict[str, str | None] | None:
         ... else:
         ...     print("No rotation pool available, using default auth")
     """
-    # STUB: Return None to fall back to default authentication
-    # Full implementation will be added in phase 2
+    # Load profiles from profiles.json
+    profiles_data = load_profiles_file()
+    profiles = profiles_data.get("profiles", [])
+
+    if not profiles:
+        logger.debug("Rotation pool: no profiles found in profiles.json")
+        return None
+
+    # Load rotation strategy configuration
+    rotation_config = _load_rotation_strategy()
+
+    if rotation_config is None:
+        logger.debug("Rotation pool: no rotation strategy configuration found")
+        return None
+
+    strategy = rotation_config.get("strategy", {})
+
+    # Check if rotation is enabled
+    if not strategy.get("enabled", False):
+        logger.debug("Rotation pool: rotation strategy is not enabled")
+        return None
+
+    # Get the strategy type (default to 'priority')
+    strategy_type = strategy.get("strategy", "priority")
+
+    # Get priority order (used by priority strategy)
+    priority_order = strategy.get("priorityOrder", [])
+
     logger.debug(
-        "get_rotating_profile_credential() called - "
-        "returning None (full implementation in phase 2)"
+        f"Rotation pool: using '{strategy_type}' strategy with {len(profiles)} profiles"
     )
-    return None
+
+    # Select profile based on strategy type
+    selected_profile: dict | None = None
+
+    if strategy_type == "priority":
+        # Priority strategy: select first available profile from priorityOrder list
+        selected_profile = _select_profile_by_priority(profiles, priority_order)
+    else:
+        # Other strategies not implemented yet - fall back to priority
+        logger.debug(
+            f"Rotation pool: strategy '{strategy_type}' not implemented yet, "
+            "falling back to priority strategy"
+        )
+        selected_profile = _select_profile_by_priority(profiles, priority_order)
+
+    # If no profile selected, return None
+    if not selected_profile:
+        logger.debug(
+            f"Rotation pool: no profile selected using '{strategy_type}' strategy, "
+            "returning None to fall back to default auth"
+        )
+        return None
+
+    # Build and return credential dict in get_credential() format
+    credential = {
+        "id": selected_profile.get("id"),
+        "type": "api_key",
+        "name": selected_profile.get("name"),
+        "status": "active",
+        "value": selected_profile.get("apiKey"),
+        "last_used": None,
+    }
+
+    logger.info(
+        f"Rotation pool: selected profile '{credential['name']}' (ID: {credential['id']}) "
+        f"using '{strategy_type}' strategy"
+    )
+
+    return credential
 
 
