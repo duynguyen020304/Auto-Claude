@@ -196,6 +196,16 @@ export interface IdeationItemContext {
   implementationApproach?: string;
 }
 
+// Lightweight reference to an ideation idea for linking in insights messages
+export interface IdeationItemReference {
+  id: string;
+  title: string;
+  type: IdeationType;
+  status: IdeationStatus;
+  estimatedEffort: 'trivial' | 'small' | 'medium' | 'large' | 'complex';
+  externalUrl?: string;
+}
+
 // Lightweight reference to a roadmap feature for linking in insights messages
 export interface RoadmapFeatureReference {
   id: string;
