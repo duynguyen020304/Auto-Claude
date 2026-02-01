@@ -137,7 +137,8 @@ export class InsightsExecutor extends EventEmitter {
     conversationHistory: Array<{ role: string; content: string }>,
     modelConfig?: InsightsModelConfig,
     priority: SessionPriority = SessionPriority.NORMAL,
-    roadmapItemId?: string
+    roadmapItemId?: string,
+    ideationItemId?: string
   ): Promise<ProcessorResult> {
     // Check if session is already active
     if (this.isSessionActive(sessionId)) {
@@ -205,6 +206,11 @@ export class InsightsExecutor extends EventEmitter {
     // Add roadmap item ID if provided
     if (roadmapItemId) {
       args.push('--roadmap-item-id', roadmapItemId);
+    }
+
+    // Add ideation item ID if provided
+    if (ideationItemId) {
+      args.push('--ideation-item-id', ideationItemId);
     }
 
     // Spawn Python process
