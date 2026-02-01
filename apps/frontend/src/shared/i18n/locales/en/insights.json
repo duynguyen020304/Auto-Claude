@@ -76,6 +76,12 @@
       "architecture": "Architecture",
       "ux": "UX/UI",
       "dependencies": "Dependencies"
+    },
+    "status": {
+      "draft": "Draft",
+      "in_progress": "In Progress",
+      "completed": "Completed",
+      "archived": "Archived"
     }
   },
   "modelSelector": {
