@@ -44,7 +44,8 @@ import {
 import { useTaskStore } from '../stores/task-store';
 import { ChatHistorySidebar } from './ChatHistorySidebar';
 import { InsightsModelSelector } from './InsightsModelSelector';
-import type { InsightsChatMessage, InsightsModelConfig, InsightsSessionSummary } from '../../shared/types';
+import { RoadmapFeatureCard } from './RoadmapFeatureCard';
+import type { InsightsChatMessage, InsightsModelConfig, InsightsSessionSummary, RoadmapFeature } from '../../shared/types';
 import {
   TASK_CATEGORY_LABELS,
   TASK_CATEGORY_COLORS,
@@ -120,6 +121,8 @@ export function Insights({ projectId }: InsightsProps) {
   const [convertingToSpec, setConvertingToSpec] = useState(false);
   const [specCreated, setSpecCreated] = useState(false);
   const [specConversionError, setSpecConversionError] = useState<string | null>(null);
+  const [roadmapFeatures, setRoadmapFeatures] = useState<Map<string, RoadmapFeature>>(new Map());
+  const [loadingFeatures, setLoadingFeatures] = useState<Set<string>>(new Set());
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -166,13 +169,58 @@ export function Insights({ projectId }: InsightsProps) {
     textareaRef.current?.focus();
   }, []);
 
-  // Reset taskCreated and taskCreationErrors when switching sessions
+  // Reset taskCreated, taskCreationErrors, and roadmapFeatures when switching sessions
   useEffect(() => {
     setTaskCreated(new Set());
     setTaskCreationErrors(new Map());
     setSpecCreated(false);
     setSpecConversionError(null);
+    setRoadmapFeatures(new Map());
+    setLoadingFeatures(new Set());
   }, [session?.id]);
+
+  // Fetch full roadmap features when session's roadmap features change
+  const sessionRoadmapFeatures = useInsightsStore((state) => state.getRoadmapFeatures(session?.id || ''));
+
+  useEffect(() => {
+    if (!session?.id || !sessionRoadmapFeatures || sessionRoadmapFeatures.length === 0) {
+      return;
+    }
+
+    const fetchRoadmapFeatures = async () => {
+      for (const featureRef of sessionRoadmapFeatures) {
+        // Skip if we already have this feature loaded
+        if (roadmapFeatures.has(featureRef.id)) {
+          continue;
+        }
+
+        // Skip if already loading
+        if (loadingFeatures.has(featureRef.id)) {
+          continue;
+        }
+
+        // Mark as loading
+        setLoadingFeatures((prev) => new Set(prev).add(featureRef.id));
+
+        try {
+          const result = await window.electronAPI.getRoadmapFeatureDetails(projectId, featureRef.id);
+          if (result.success && result.data) {
+            setRoadmapFeatures((prev) => new Map(prev).set(featureRef.id, result.data!));
+          }
+        } catch (error) {
+          console.error(`Failed to load roadmap feature ${featureRef.id}:`, error);
+        } finally {
+          setLoadingFeatures((prev) => {
+            const next = new Set(prev);
+            next.delete(featureRef.id);
+            return next;
+          });
+        }
+      }
+    };
+
+    fetchRoadmapFeatures();
+  }, [session?.id, sessionRoadmapFeatures, projectId, loadingFeatures, roadmapFeatures]);
 
   const handleSend = () => {
     const message = inputValue.trim();
@@ -280,6 +328,33 @@ export function Insights({ projectId }: InsightsProps) {
     } finally {
       setConvertingToSpec(false);
     }
+  };
+
+  const handleConvertFeatureToSpec = async (feature: RoadmapFeature) => {
+    try {
+      const result = await window.electronAPI.convertFeatureToSpec(
+        projectId,
+        feature.id
+      );
+
+      if (result.success && result.data) {
+        addTask(result.data);
+      }
+    } catch (error) {
+      console.error('Failed to convert feature to spec:', error);
+    }
+  };
+
+  const handleViewLinkedSpec = (specId: string) => {
+    // Navigate to the spec view
+    // This will be implemented in phase-6 or can use existing navigation
+    console.log('View linked spec:', specId);
+  };
+
+  const handleExploreFeatureInChat = async (feature: RoadmapFeature) => {
+    // Create a new session with the feature context
+    // This will be implemented in phase-6
+    console.log('Explore feature in chat:', feature.id);
   };
 
   const isLoading = status.phase === 'thinking' || status.phase === 'streaming';
@@ -443,6 +518,10 @@ export function Insights({ projectId }: InsightsProps) {
                 isCreatingTask={creatingTask === message.id}
                 taskCreated={taskCreated.has(message.id)}
                 taskCreationError={taskCreationErrors.get(message.id)}
+                roadmapFeatures={message.role === 'assistant' ? Array.from(roadmapFeatures.values()) : undefined}
+                onConvertFeatureToSpec={handleConvertFeatureToSpec}
+                onViewLinkedSpec={handleViewLinkedSpec}
+                onExploreFeatureInChat={handleExploreFeatureInChat}
               />
             ))}
 
@@ -536,6 +615,10 @@ interface MessageBubbleProps {
   isCreatingTask: boolean;
   taskCreated: boolean;
   taskCreationError?: string;
+  roadmapFeatures?: RoadmapFeature[];
+  onConvertFeatureToSpec?: (feature: RoadmapFeature) => void;
+  onViewLinkedSpec?: (specId: string) => void;
+  onExploreFeatureInChat?: (feature: RoadmapFeature) => void;
 }
 
 function MessageBubble({
@@ -544,7 +627,11 @@ function MessageBubble({
   onCreateTask,
   isCreatingTask,
   taskCreated,
-  taskCreationError
+  taskCreationError,
+  roadmapFeatures,
+  onConvertFeatureToSpec,
+  onViewLinkedSpec,
+  onExploreFeatureInChat
 }: MessageBubbleProps) {
   const { t } = useTranslation(['common', 'insights']);
   const isUser = message.role === 'user';
@@ -576,6 +663,21 @@ function MessageBubble({
         {/* Tool usage history for assistant messages */}
         {!isUser && message.toolsUsed && message.toolsUsed.length > 0 && (
           <ToolUsageHistory tools={message.toolsUsed} />
+        )}
+
+        {/* Roadmap feature cards for assistant messages */}
+        {!isUser && roadmapFeatures && roadmapFeatures.length > 0 && (
+          <div className="space-y-3">
+            {roadmapFeatures.map((feature) => (
+              <RoadmapFeatureCard
+                key={feature.id}
+                feature={feature}
+                onConvertToSpec={onConvertFeatureToSpec}
+                onViewLinkedSpec={onViewLinkedSpec}
+                onExploreInChat={onExploreFeatureInChat}
+              />
+            ))}
+          </div>
         )}
 
         {/* Task suggestion card */}

@@ -122,6 +122,27 @@ export const insightsMock = {
     data: []
   }),
 
+  getRoadmapFeatureDetails: async (_projectId: string, featureId: string) => {
+    console.warn('[Browser Mock] getRoadmapFeatureDetails called for:', featureId);
+    return {
+      success: true,
+      data: {
+        id: featureId,
+        title: 'Mock Feature',
+        description: 'This is a mock feature for browser testing',
+        rationale: 'Mock rationale',
+        priority: 'should' as const,
+        complexity: 'medium' as const,
+        impact: 'high' as const,
+        phaseId: 'mock-phase',
+        dependencies: [],
+        status: 'planned' as const,
+        acceptanceCriteria: ['Mock criterion 1', 'Mock criterion 2'],
+        userStories: ['Mock user story 1', 'Mock user story 2']
+      }
+    };
+  },
+
   onInsightsStreamChunk: () => () => {},
   onInsightsStatus: () => () => {},
   onInsightsError: () => () => {},

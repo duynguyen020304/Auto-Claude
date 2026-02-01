@@ -106,6 +106,7 @@ import type {
 } from './insights';
 import type {
   Roadmap,
+  RoadmapFeature,
   RoadmapFeatureStatus,
   RoadmapGenerationStatus,
   PersistedRoadmapProgress
@@ -807,6 +808,7 @@ export interface ElectronAPI {
   updateInsightsModelConfig: (projectId: string, sessionId: string, modelConfig: InsightsModelConfig) => Promise<IPCResult>;
   cancelInsightsSession: (projectId: string, sessionId: string) => Promise<IPCResult>;
   getActiveInsightsSessions: (projectId: string) => Promise<IPCResult<InsightsSessionSummary[]>>;
+  getRoadmapFeatureDetails: (projectId: string, featureId: string) => Promise<IPCResult<RoadmapFeature>>;
 
   // Insights event listeners
   onInsightsStreamChunk: (
