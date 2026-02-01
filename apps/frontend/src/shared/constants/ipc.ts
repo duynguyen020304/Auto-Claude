@@ -481,6 +481,7 @@ export const IPC_CHANNELS = {
 
   // Insights operations
   INSIGHTS_GET_SESSION: 'insights:getSession',
+  INSIGHTS_GET_ROADMAP_FEATURE: 'insights:getRoadmapFeature',
   INSIGHTS_SEND_MESSAGE: 'insights:sendMessage',
   INSIGHTS_CLEAR_SESSION: 'insights:clearSession',
   INSIGHTS_CREATE_TASK: 'insights:createTask',
