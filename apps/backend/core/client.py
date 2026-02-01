@@ -141,6 +141,7 @@ from claude_agent_sdk.types import HookMatcher
 from core.auth import (
     configure_sdk_authentication,
     get_credential,  # Keep - needed for task metadata API profile feature
+    get_rotating_profile_credential,  # Keep - needed for auto profile rotation
     get_sdk_env_vars,
 )
 from phase_config import load_task_metadata  # Keep - needed for apiProfileId check
@@ -599,12 +600,36 @@ def create_client(
         # 'auto' triggers rotation pool selection (implemented in auth.py)
         # Specific profile IDs use direct credential lookup
         if api_profile_id == "auto":
-            # Rotation pool selection will be handled by get_rotating_profile_credential()
-            # in phase 2 - for now, skip to avoid treating 'auto' as literal credential ID
-            logger.info(
-                f"API profile 'auto' specified in task metadata - "
-                f"rotation pool selection not yet implemented, using default authentication"
-            )
+            # Rotation pool selection - get best available profile from rotation pool
+            try:
+                credential = get_rotating_profile_credential()
+                if credential:
+                    credential_value = credential.get("value")
+                    if credential_value:
+                        # Set API profile mode environment variables
+                        # configure_sdk_authentication() will detect ANTHROPIC_AUTH_TOKEN
+                        # and use API profile mode (no OAuth required)
+                        os.environ["ANTHROPIC_AUTH_TOKEN"] = credential_value
+                        logger.info(
+                            f"Using auto-selected API profile {credential.get('id')} "
+                            f"({credential.get('name', 'Unknown')}) from rotation pool"
+                        )
+                    else:
+                        logger.warning(
+                            f"Auto-selected profile has no value, "
+                            f"falling back to default authentication"
+                        )
+                else:
+                    logger.warning(
+                        f"Rotation pool selection returned None, "
+                        f"falling back to default authentication"
+                    )
+            except Exception as e:
+                logger.error(
+                    f"Failed to get rotating profile credential: {e}. "
+                    f"Using default credential.",
+                    exc_info=True
+                )
         else:
             # Specific profile requested - load from credential storage
             try:

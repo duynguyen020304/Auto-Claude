@@ -2120,3 +2120,48 @@ def validate_credential(credential: dict[str, str]) -> bool:
     return True
 
 
+def get_rotating_profile_credential() -> dict[str, str | None] | None:
+    """
+    Get a credential profile from the rotation pool.
+
+    This function implements automatic profile selection using the configured
+    rotation strategy from ~/.auto-claude/profiles.json. When 'auto' is selected
+    as the API profile, this function selects the best available profile based
+    on the strategy (priority, round-robin, least-used, random, weighted, time-based).
+
+    Returns:
+        Dictionary with credential data including:
+        - id: Credential ID
+        - type: Credential type ('oauth' or 'api_key')
+        - name: Credential name
+        - status: Credential status ('active', 'rate_limited', 'disabled')
+        - value: Actual credential value (token or API key)
+        - last_used: Last used timestamp (ISO format string or None)
+
+        Returns None if:
+        - profiles.json is not found
+        - profiles list is empty
+        - no available profiles match the strategy
+        - all profiles are rate-limited or disabled
+
+    Note:
+        This is a stub implementation that returns None.
+        The full implementation will be added in phase 2 of the spec.
+
+    Example:
+        >>> cred = get_rotating_profile_credential()
+        >>> if cred:
+        ...     print(f"Selected profile: {cred['name']}")
+        ...     token = cred['value']
+        ... else:
+        ...     print("No rotation pool available, using default auth")
+    """
+    # STUB: Return None to fall back to default authentication
+    # Full implementation will be added in phase 2
+    logger.debug(
+        "get_rotating_profile_credential() called - "
+        "returning None (full implementation in phase 2)"
+    )
+    return None
+
+
