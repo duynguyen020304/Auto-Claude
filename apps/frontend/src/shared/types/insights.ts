@@ -278,7 +278,7 @@ export interface InsightsChatStatus {
 }
 
 export interface InsightsStreamChunk {
-  type: 'text' | 'task_suggestion' | 'tool_start' | 'tool_end' | 'roadmap_feature' | 'done' | 'error';
+  type: 'text' | 'task_suggestion' | 'tool_start' | 'tool_end' | 'roadmap_feature' | 'ideation_item' | 'done' | 'error';
   content?: string;
   suggestedTask?: {
     title: string;
@@ -290,5 +290,6 @@ export interface InsightsStreamChunk {
     input?: string;  // Brief description of what's being searched/read
   };
   roadmapFeature?: RoadmapFeatureReference;  // Lightweight reference to a roadmap feature
+  ideationItem?: IdeationItemReference;  // Lightweight reference to an ideation item
   error?: string;
 }
