@@ -66,10 +66,13 @@ interface InsightsState {
   cleanupSessionState: (sessionId: string) => void;
   removeSession: (sessionId: string) => void;
   exploreRoadmapItem: (roadmapContext: RoadmapItemContext) => void;
+  addRoadmapFeature: (sessionId: string, feature: RoadmapFeature) => void;
+  clearRoadmapFeatures: (sessionId: string) => void;
 
   // Selectors
   getCurrentSessionState: () => InsightsSessionState | undefined;
   getSessionState: (sessionId: string) => InsightsSessionState | undefined;
+  getRoadmapFeatures: (sessionId: string) => RoadmapFeature[] | undefined;
 }
 
 const initialStatus: InsightsChatStatus = {
@@ -789,6 +792,39 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       };
     }),
 
+  /**
+   * Adds a roadmap feature to the specified session's feature list.
+   * If the session doesn't have any features yet, creates a new array.
+   *
+   * @param sessionId - The ID of the session to add the feature to
+   * @param feature - The roadmap feature to add
+   */
+  addRoadmapFeature: (sessionId: string, feature: RoadmapFeature) =>
+    set((state) => {
+      const existingFeatures = state.sessionRoadmapFeatures.get(sessionId) || [];
+      const newSessionRoadmapFeatures = new Map(state.sessionRoadmapFeatures);
+      newSessionRoadmapFeatures.set(sessionId, [...existingFeatures, feature]);
+
+      return {
+        sessionRoadmapFeatures: newSessionRoadmapFeatures
+      };
+    }),
+
+  /**
+   * Clears all roadmap features for the specified session.
+   *
+   * @param sessionId - The ID of the session to clear features for
+   */
+  clearRoadmapFeatures: (sessionId: string) =>
+    set((state) => {
+      const newSessionRoadmapFeatures = new Map(state.sessionRoadmapFeatures);
+      newSessionRoadmapFeatures.delete(sessionId);
+
+      return {
+        sessionRoadmapFeatures: newSessionRoadmapFeatures
+      };
+    }),
+
   // Selectors
   /**
    * Gets the state for the currently active session.
@@ -811,6 +847,17 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
    */
   getSessionState: (sessionId: string) => {
     return _get().sessionStates.get(sessionId);
+  },
+
+  /**
+   * Gets the roadmap features for a specific session by ID.
+   * Returns undefined if the session has no features.
+   *
+   * @param sessionId - The ID of the session to retrieve roadmap features for
+   * @returns The session's roadmap features, or undefined if no features exist for that session
+   */
+  getRoadmapFeatures: (sessionId: string) => {
+    return _get().sessionRoadmapFeatures.get(sessionId);
   }
 }));
 
