@@ -103,6 +103,7 @@ export function Insights({ projectId }: InsightsProps) {
   const currentTool = useInsightsStore((state) => state.currentTool);
   const isLoadingSessions = useInsightsStore((state) => state.isLoadingSessions);
   const addTask = useTaskStore((state) => state.addTask);
+  const selectTask = useTaskStore((state) => state.selectTask);
   const abortControllers = useInsightsStore((state) => state.abortControllers);
   const sessionStates = useInsightsStore((state) => state.sessionStates);
 
@@ -346,15 +347,38 @@ export function Insights({ projectId }: InsightsProps) {
   };
 
   const handleViewLinkedSpec = (specId: string) => {
-    // Navigate to the spec view
-    // This will be implemented in phase-6 or can use existing navigation
-    console.log('View linked spec:', specId);
+    // Navigate to the spec view by selecting the task
+    selectTask(specId);
   };
 
   const handleExploreFeatureInChat = async (feature: RoadmapFeature) => {
-    // Create a new session with the feature context
-    // This will be implemented in phase-6
-    console.log('Explore feature in chat:', feature.id);
+    // Create a new session and send initial message with feature context
+    await newSession(projectId);
+
+    // Build a comprehensive context message for the feature
+    const contextMessage = `I'd like to explore the roadmap feature "${feature.title}".
+
+**Description:** ${feature.description}
+
+**Rationale:** ${feature.rationale}
+
+**Priority:** ${feature.priority}
+**Complexity:** ${feature.complexity}
+**Impact:** ${feature.impact}
+
+**User Stories:**
+${feature.userStories.map((story, i) => `${i + 1}. ${story}`).join('\n')}
+
+**Acceptance Criteria:**
+${feature.acceptanceCriteria.map((criterion, i) => `${i + 1}. ${criterion}`).join('\n')}
+
+${feature.dependencies?.length ? `**Dependencies:**\n${feature.dependencies.map((dep, i) => `${i + 1}. ${dep}`).join('\n')}\n` : ''}
+
+Can you help me understand this feature better?`;
+
+    // Send the context message to the new session
+    sendMessage(projectId, contextMessage);
+    setIsUserAtBottom(true); // Resume auto-scroll
   };
 
   const isLoading = status.phase === 'thinking' || status.phase === 'streaming';
