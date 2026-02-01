@@ -517,6 +517,8 @@ Can you help me understand this idea better and how to implement it?`;
               <p className="text-sm text-muted-foreground">
                 {session?.roadmapContext
                   ? t('insights:insights.exploringRoadmapItem')
+                  : session?.ideationContext
+                  ? t('insights:insights.exploringIdeationItem')
                   : t('insights:insights.subtitle')
                 }
               </p>
