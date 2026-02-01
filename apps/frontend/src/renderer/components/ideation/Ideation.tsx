@@ -18,9 +18,10 @@ interface IdeationProps {
   projectId: string;
   onGoToTask?: (taskId: string) => void;
   onDiscussInChat?: (idea: Idea) => void;
+  onSwitchToInsights?: () => void;
 }
 
-export function Ideation({ projectId, onGoToTask, onDiscussInChat }: IdeationProps) {
+export function Ideation({ projectId, onGoToTask, onDiscussInChat, onSwitchToInsights }: IdeationProps) {
   const { t } = useTranslation(['ideation', 'common']);
 
   // Get showArchived from shared context for cross-page sync
@@ -67,12 +68,16 @@ export function Ideation({ projectId, onGoToTask, onDiscussInChat }: IdeationPro
     toggleTypeToAdd,
     handleConvertToTask,
     handleGoToTask,
+    handleDiscussInChat: hookHandleDiscussInChat,
     handleDismiss,
     toggleIdeationType,
     toggleSelectIdea,
     clearSelection,
     getIdeasByType
-  } = useIdeation(projectId, { onGoToTask, showArchived });
+  } = useIdeation(projectId, { onGoToTask, onSwitchToInsights, showArchived });
+
+  // Use hook's handler if available, otherwise fall back to external prop
+  const handleDiscussInChat = onDiscussInChat || hookHandleDiscussInChat;
 
   // Show generation progress with streaming ideas (use isGenerating flag for reliable state)
   if (isGenerating) {
@@ -172,7 +177,7 @@ export function Ideation({ projectId, onGoToTask, onDiscussInChat }: IdeationPro
                   onGoToTask={handleGoToTask}
                   onDismiss={handleDismiss}
                   onToggleSelect={toggleSelectIdea}
-                  onDiscussInChat={onDiscussInChat}
+                  onDiscussInChat={handleDiscussInChat}
                 />
               ))}
               {activeIdeas.length === 0 && (
@@ -208,7 +213,7 @@ export function Ideation({ projectId, onGoToTask, onDiscussInChat }: IdeationPro
                       onGoToTask={handleGoToTask}
                       onDismiss={handleDismiss}
                       onToggleSelect={toggleSelectIdea}
-                      onDiscussInChat={onDiscussInChat}
+                      onDiscussInChat={handleDiscussInChat}
                     />
                   ))}
                 </div>
