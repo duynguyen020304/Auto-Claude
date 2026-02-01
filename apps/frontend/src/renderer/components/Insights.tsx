@@ -123,6 +123,9 @@ export function Insights({ projectId }: InsightsProps) {
   const [convertingToSpec, setConvertingToSpec] = useState(false);
   const [specCreated, setSpecCreated] = useState(false);
   const [specConversionError, setSpecConversionError] = useState<string | null>(null);
+  const [convertingIdeationToSpec, setConvertingIdeationToSpec] = useState(false);
+  const [ideationSpecCreated, setIdeationSpecCreated] = useState(false);
+  const [ideationConversionError, setIdeationConversionError] = useState<string | null>(null);
   const [roadmapFeatures, setRoadmapFeatures] = useState<Map<string, RoadmapFeature>>(new Map());
   const [loadingFeatures, setLoadingFeatures] = useState<Set<string>>(new Set());
   const [ideationItems, setIdeationItems] = useState<Map<string, Idea>>(new Map());
@@ -179,6 +182,8 @@ export function Insights({ projectId }: InsightsProps) {
     setTaskCreationErrors(new Map());
     setSpecCreated(false);
     setSpecConversionError(null);
+    setIdeationSpecCreated(false);
+    setIdeationConversionError(null);
     setRoadmapFeatures(new Map());
     setLoadingFeatures(new Set());
     setIdeationItems(new Map());
@@ -390,6 +395,32 @@ export function Insights({ projectId }: InsightsProps) {
     }
   };
 
+  const handleConvertIdeationContextToSpec = async () => {
+    if (!session?.ideationContext) return;
+
+    setIdeationConversionError(null);
+    setConvertingIdeationToSpec(true);
+
+    try {
+      const result = await window.electronAPI.convertIdeaToTask(
+        projectId,
+        session.ideationContext.ideaId
+      );
+
+      if (result.success && result.data) {
+        setIdeationSpecCreated(true);
+        // Add the new task to the store to update kanban board state
+        addTask(result.data);
+      } else {
+        setIdeationConversionError(t('errors.taskCreationFailed'));
+      }
+    } catch (error) {
+      setIdeationConversionError(t('errors.taskCreationFailed'));
+    } finally {
+      setConvertingIdeationToSpec(false);
+    }
+  };
+
   const handleConvertFeatureToSpec = async (feature: RoadmapFeature) => {
     try {
       const result = await window.electronAPI.convertFeatureToSpec(
@@ -554,6 +585,35 @@ Can you help me understand this idea better and how to implement it?`;
                 )}
               </Button>
             )}
+            {session?.ideationContext && (
+              <Button
+                size="sm"
+                onClick={handleConvertIdeationContextToSpec}
+                disabled={convertingIdeationToSpec || ideationSpecCreated}
+                variant={ideationConversionError ? "destructive" : "default"}
+              >
+                {convertingIdeationToSpec ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {t('insights:insights.convertingToSpec')}
+                  </>
+                ) : ideationSpecCreated ? (
+                  <>
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                    {t('insights:insights.specCreated')}
+                  </>
+                ) : ideationConversionError ? (
+                  <>
+                    {t('insights:insights.convertToSpec')}
+                  </>
+                ) : (
+                  <>
+                    <Zap className="mr-2 h-4 w-4" />
+                    {t('insights:insights.convertToSpec')}
+                  </>
+                )}
+              </Button>
+            )}
             <InsightsModelSelector
               currentConfig={session?.modelConfig}
               onConfigChange={handleModelConfigChange}
@@ -575,6 +635,14 @@ Can you help me understand this idea better and how to implement it?`;
           <div className="mx-6 mt-4 flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
             <AlertCircle className="h-4 w-4 shrink-0" />
             <span>{specConversionError}</span>
+          </div>
+        )}
+
+        {/* Ideation conversion error message */}
+        {ideationConversionError && (
+          <div className="mx-6 mt-4 flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{ideationConversionError}</span>
           </div>
         )}
 
