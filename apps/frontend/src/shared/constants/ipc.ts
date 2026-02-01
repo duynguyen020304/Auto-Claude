@@ -495,6 +495,8 @@ export const IPC_CHANNELS = {
   INSIGHTS_UPDATE_MODEL_CONFIG: 'insights:updateModelConfig',
   INSIGHTS_CANCEL_SESSION: 'insights:cancelSession',
   INSIGHTS_GET_ACTIVE_SESSIONS: 'insights:getActiveSessions',
+  INSIGHTS_GET_IDEATION_ITEM: 'insights:getIdeationItem',
+  INSIGHTS_CREATE_SPEC_FROM_IDEATION: 'insights:createSpecFromIdeation',
 
   // Insights events (main -> renderer)
   INSIGHTS_STREAM_CHUNK: 'insights:streamChunk',
