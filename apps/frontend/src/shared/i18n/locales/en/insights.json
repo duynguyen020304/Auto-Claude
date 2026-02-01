@@ -64,7 +64,19 @@
     "exploringIdeationItem": "Exploring Ideation Item",
     "convertToSpec": "Convert to Spec",
     "convertingToSpec": "Converting...",
-    "specCreated": "Spec Created"
+    "specCreated": "Spec Created",
+    "ideationTypes": {
+      "code_improvements": "Code Improvements",
+      "performance": "Performance",
+      "security": "Security",
+      "features": "Features",
+      "refactoring": "Refactoring",
+      "documentation": "Documentation",
+      "testing": "Testing",
+      "architecture": "Architecture",
+      "ux": "UX/UI",
+      "dependencies": "Dependencies"
+    }
   },
   "modelSelector": {
     "agentProfile": "Agent Profile",
