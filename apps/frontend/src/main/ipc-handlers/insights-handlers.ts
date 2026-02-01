@@ -17,6 +17,7 @@ import type {
   InsightsSessionSummary,
   InsightsModelConfig,
   RoadmapItemContext,
+  RoadmapFeature,
   Task,
   TaskMetadata,
   AppSettings,
@@ -78,6 +79,62 @@ export function registerInsightsHandlers(getMainWindow: () => BrowserWindow | nu
 
       const session = insightsService.loadSession(projectId, project.path);
       return { success: true, data: session };
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.INSIGHTS_GET_ROADMAP_FEATURE,
+    async (_, projectId: string, featureId: string): Promise<IPCResult<RoadmapFeature>> => {
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: "Project not found" };
+      }
+
+      const roadmapPath = path.join(
+        project.path,
+        AUTO_BUILD_PATHS.ROADMAP_DIR,
+        AUTO_BUILD_PATHS.ROADMAP_FILE
+      );
+
+      if (!existsSync(roadmapPath)) {
+        return { success: false, error: "Roadmap not found" };
+      }
+
+      try {
+        const content = readFileSync(roadmapPath, "utf-8");
+        const rawRoadmap = JSON.parse(content);
+
+        // Find the feature by ID
+        const rawFeature = rawRoadmap.features?.find((f: { id: string }) => f.id === featureId);
+        if (!rawFeature) {
+          return { success: false, error: "Feature not found" };
+        }
+
+        // Transform snake_case to camelCase for frontend
+        const feature: RoadmapFeature = {
+          id: rawFeature.id,
+          title: rawFeature.title,
+          description: rawFeature.description,
+          rationale: rawFeature.rationale || "",
+          priority: rawFeature.priority || "should",
+          complexity: rawFeature.complexity || "medium",
+          impact: rawFeature.impact || "medium",
+          phaseId: rawFeature.phase_id,
+          dependencies: rawFeature.dependencies || [],
+          status: rawFeature.status || "under_review",
+          acceptanceCriteria: rawFeature.acceptance_criteria || [],
+          userStories: rawFeature.user_stories || [],
+          linkedSpecId: rawFeature.linked_spec_id,
+          competitorInsightIds: (rawFeature.competitor_insight_ids as string[]) || undefined,
+        };
+
+        return { success: true, data: feature };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Failed to get feature details",
+        };
+      }
     }
   );
 
