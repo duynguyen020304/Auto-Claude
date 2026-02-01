@@ -525,6 +525,173 @@ Generated at: ${new Date().toISOString()}
     }
   );
 
+  ipcMain.handle(
+    IPC_CHANNELS.INSIGHTS_CREATE_SPEC_FROM_IDEATION,
+    async (
+      _,
+      projectId: string,
+      ideationContext: IdeationItemContext,
+      chatContext?: string // Additional context gathered from chat
+    ): Promise<IPCResult<Task>> => {
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: "Project not found" };
+      }
+
+      if (!project.autoBuildPath) {
+        return { success: false, error: "Auto Claude not initialized for this project" };
+      }
+
+      try {
+        // Generate a unique spec ID based on existing specs
+        const specsBaseDir = getSpecsDir(project.autoBuildPath);
+        const specsDir = path.join(project.path, specsBaseDir);
+
+        // Find next available spec number
+        let specNumber = 1;
+        if (existsSync(specsDir)) {
+          const existingDirs = readdirSync(specsDir, { withFileTypes: true })
+            .filter((d) => d.isDirectory())
+            .map((d) => d.name);
+
+          const existingNumbers = existingDirs
+            .map((name) => {
+              const match = name.match(/^(\d+)/);
+              return match ? parseInt(match[1], 10) : 0;
+            })
+            .filter((n) => n > 0);
+
+          if (existingNumbers.length > 0) {
+            specNumber = Math.max(...existingNumbers) + 1;
+          }
+        }
+
+        // Create spec ID with zero-padded number and slugified title
+        const slugifiedTitle = ideationContext.title
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "")
+          .substring(0, 50);
+        const specId = `${String(specNumber).padStart(3, "0")}-${slugifiedTitle}`;
+
+        // Create spec directory
+        const specDir = path.join(specsDir, specId);
+        mkdirSync(specDir, { recursive: true });
+
+        // Build description with rationale and chat context
+        const descriptionParts: string[] = [ideationContext.description];
+        if (ideationContext.rationale) {
+          descriptionParts.push(`\n\n**Rationale:**\n${ideationContext.rationale}`);
+        }
+        if (chatContext) {
+          descriptionParts.push(`\n\n**Additional Context from Chat:**\n${chatContext}`);
+        }
+
+        // Build metadata with source type indicating it came from ideation exploration
+        const taskMetadata: TaskMetadata = {
+          sourceType: "ideation",
+          ideaId: ideationContext.ideaId,
+        };
+
+        // Create initial implementation_plan.json
+        const now = new Date().toISOString();
+        const implementationPlan = {
+          feature: ideationContext.title,
+          description: descriptionParts.join("\n"),
+          created_at: now,
+          updated_at: now,
+          status: "pending",
+          phases: [],
+        };
+
+        const planPath = path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
+        writeFileSync(planPath, JSON.stringify(implementationPlan, null, 2), "utf-8");
+
+        // Create spec.md with pre-filled ideation data
+        const specContent = `# Specification: ${ideationContext.title}
+
+## Overview
+
+${ideationContext.description}
+
+${ideationContext.rationale ? `\n## Rationale\n\n${ideationContext.rationale}` : ""}
+
+${ideationContext.type ? `\n## Type\n\n${ideationContext.type}` : ""}
+
+${
+  ideationContext.affectedFiles && ideationContext.affectedFiles.length > 0
+    ? `
+## Affected Files
+
+${ideationContext.affectedFiles.map((f) => `- ${f}`).join("\n")}
+`
+    : ""
+}
+
+${
+  ideationContext.existingPatterns && ideationContext.existingPatterns.length > 0
+    ? `
+## Existing Patterns
+
+${ideationContext.existingPatterns.map((p) => `- ${p}`).join("\n")}
+`
+    : ""
+}
+
+${
+  ideationContext.buildsUpon && ideationContext.buildsUpon.length > 0
+    ? `
+## Builds Upon
+
+${ideationContext.buildsUpon.map((b) => `- ${b}`).join("\n")}
+`
+    : ""
+}
+
+${ideationContext.implementationApproach ? `\n## Implementation Approach\n\n${ideationContext.implementationApproach}` : ""}
+
+${chatContext ? `\n## Additional Context\n\n${chatContext}` : ""}
+
+## Source
+
+Created from ideation item: ${ideationContext.ideaId}
+Type: ${ideationContext.type}
+Estimated Effort: ${ideationContext.estimatedEffort}
+Generated at: ${new Date().toISOString()}
+`;
+
+        const specPath = path.join(specDir, "spec.md");
+        writeFileSync(specPath, specContent, "utf-8");
+
+        // Save task metadata
+        const metadataPath = path.join(specDir, "task_metadata.json");
+        writeFileSync(metadataPath, JSON.stringify(taskMetadata, null, 2), "utf-8");
+
+        // Create the task object
+        const task: Task = {
+          id: specId,
+          specId: specId,
+          projectId,
+          title: ideationContext.title,
+          description: descriptionParts.join("\n"),
+          status: "backlog",
+          subtasks: [],
+          logs: [],
+          metadata: taskMetadata,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        return { success: true, data: task };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Failed to create spec from ideation",
+        };
+      }
+    }
+  );
+
   // List all sessions for a project
   ipcMain.handle(
     IPC_CHANNELS.INSIGHTS_LIST_SESSIONS,
