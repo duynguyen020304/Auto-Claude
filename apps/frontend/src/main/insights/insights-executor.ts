@@ -243,6 +243,8 @@ export class InsightsExecutor extends EventEmitter {
             });
           } else if (line.startsWith('__ROADMAP_FEATURE__:')) {
             this.handleRoadmapFeature(sessionId, line);
+          } else if (line.startsWith('__IDEATION_ITEM__:')) {
+            this.handleIdeationItem(sessionId, line);
           } else if (line.startsWith('__TOOL_START__:')) {
             this.handleToolStart(sessionId, line, toolsUsed);
           } else if (line.startsWith('__TOOL_END__:')) {
@@ -421,6 +423,29 @@ export class InsightsExecutor extends EventEmitter {
       } as InsightsStreamChunk);
     } catch {
       // Ignore parse errors for roadmap feature markers
+    }
+  }
+
+  /**
+   * Handle ideation item marker
+   */
+  private handleIdeationItem(sessionId: string, line: string): void {
+    try {
+      const itemJson = line.substring('__IDEATION_ITEM__:'.length);
+      const itemData = JSON.parse(itemJson);
+      this.emit('stream-chunk', sessionId, {
+        type: 'ideation_item',
+        ideationItem: {
+          id: itemData.id,
+          title: itemData.title,
+          type: itemData.type,
+          status: itemData.status || 'draft',
+          estimatedEffort: itemData.estimatedEffort || 'small',
+          externalUrl: itemData.externalUrl
+        }
+      } as InsightsStreamChunk);
+    } catch {
+      // Ignore parse errors for ideation item markers
     }
   }
 
