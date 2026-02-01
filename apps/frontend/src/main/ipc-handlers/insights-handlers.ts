@@ -17,6 +17,7 @@ import type {
   InsightsSessionSummary,
   InsightsModelConfig,
   RoadmapItemContext,
+  IdeationItemContext,
   RoadmapFeature,
   Task,
   TaskMetadata,
@@ -133,6 +134,59 @@ export function registerInsightsHandlers(getMainWindow: () => BrowserWindow | nu
         return {
           success: false,
           error: error instanceof Error ? error.message : "Failed to get feature details",
+        };
+      }
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.INSIGHTS_GET_IDEATION_ITEM,
+    async (_, projectId: string, ideaId: string): Promise<IPCResult<IdeationItemContext>> => {
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: "Project not found" };
+      }
+
+      const ideationPath = path.join(
+        project.path,
+        AUTO_BUILD_PATHS.IDEATION_DIR,
+        AUTO_BUILD_PATHS.IDEATION_FILE
+      );
+
+      if (!existsSync(ideationPath)) {
+        return { success: false, error: "Ideation not found" };
+      }
+
+      try {
+        const content = readFileSync(ideationPath, "utf-8");
+        const ideation = JSON.parse(content);
+
+        // Find the idea by ID
+        const rawIdea = ideation.ideas?.find((i: { id: string }) => i.id === ideaId);
+        if (!rawIdea) {
+          return { success: false, error: "Ideation item not found" };
+        }
+
+        // Transform to IdeationItemContext format
+        const idea: IdeationItemContext = {
+          ideaId: rawIdea.id,
+          title: rawIdea.title,
+          description: rawIdea.description,
+          rationale: rawIdea.rationale || "",
+          type: rawIdea.type,
+          status: rawIdea.status,
+          estimatedEffort: rawIdea.estimatedEffort || "medium",
+          affectedFiles: rawIdea.affectedFiles || [],
+          existingPatterns: rawIdea.existingPatterns || [],
+          buildsUpon: rawIdea.buildsUpon || [],
+          implementationApproach: rawIdea.implementationApproach,
+        };
+
+        return { success: true, data: idea };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Failed to get ideation item details",
         };
       }
     }
