@@ -78,6 +78,16 @@ export const insightsMock = {
     return { success: true };
   },
 
+  updateInsightsSession: async (_projectId: string, sessionId: string, updates: unknown) => {
+    const session = mockInsightsSessions.find(s => s.id === sessionId);
+    if (session) {
+      Object.assign(session, updates);
+      console.warn('[Browser Mock] Session updated:', sessionId, updates);
+      return { success: true, data: session as any };
+    }
+    return { success: false, error: 'Session not found' };
+  },
+
   updateInsightsModelConfig: async (_projectId: string, _sessionId: string, _modelConfig: unknown) => {
     console.warn('[Browser Mock] updateInsightsModelConfig called');
     return { success: true };
@@ -111,6 +121,27 @@ export const insightsMock = {
     success: true,
     data: []
   }),
+
+  getRoadmapFeatureDetails: async (_projectId: string, featureId: string) => {
+    console.warn('[Browser Mock] getRoadmapFeatureDetails called for:', featureId);
+    return {
+      success: true,
+      data: {
+        id: featureId,
+        title: 'Mock Feature',
+        description: 'This is a mock feature for browser testing',
+        rationale: 'Mock rationale',
+        priority: 'should' as const,
+        complexity: 'medium' as const,
+        impact: 'high' as const,
+        phaseId: 'mock-phase',
+        dependencies: [],
+        status: 'planned' as const,
+        acceptanceCriteria: ['Mock criterion 1', 'Mock criterion 2'],
+        userStories: ['Mock user story 1', 'Mock user story 2']
+      }
+    };
+  },
 
   onInsightsStreamChunk: () => () => {},
   onInsightsStatus: () => () => {},

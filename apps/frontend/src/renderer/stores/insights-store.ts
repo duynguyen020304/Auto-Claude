@@ -9,7 +9,11 @@ import type {
   InsightsModelConfig,
   TaskMetadata,
   Task,
+  RoadmapItemContext,
+  RoadmapFeatureReference,
+  RoadmapFeature,
 } from '../../shared/types';
+import { debugLog } from '../../shared/utils/debug-logger';
 
 interface ToolUsage {
   name: string;
@@ -31,6 +35,7 @@ interface InsightsState {
   session: InsightsSession | null;
   sessions: InsightsSessionSummary[]; // List of all sessions
   sessionStates: Map<string, InsightsSessionState>; // Per-session streaming state
+  sessionRoadmapFeatures: Map<string, RoadmapFeatureReference[]>; // sessionId -> roadmap features for exploration
   isLoadingSessions: boolean;
   abortControllers: Map<string, AbortController>; // sessionId -> AbortController mapping for active generations
 
@@ -61,10 +66,14 @@ interface InsightsState {
   abortGeneration: (sessionId: string) => void;
   cleanupSessionState: (sessionId: string) => void;
   removeSession: (sessionId: string) => void;
+  exploreRoadmapItem: (roadmapContext: RoadmapItemContext) => void;
+  addRoadmapFeature: (sessionId: string, feature: RoadmapFeatureReference) => void;
+  clearRoadmapFeatures: (sessionId: string) => void;
 
   // Selectors
   getCurrentSessionState: () => InsightsSessionState | undefined;
   getSessionState: (sessionId: string) => InsightsSessionState | undefined;
+  getRoadmapFeatures: (sessionId: string) => RoadmapFeatureReference[] | undefined;
 }
 
 const initialStatus: InsightsChatStatus = {
@@ -94,6 +103,7 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
   session: null,
   sessions: [],
   sessionStates: new Map<string, InsightsSessionState>(),
+  sessionRoadmapFeatures: new Map<string, RoadmapFeatureReference[]>(),
   isLoadingSessions: false,
   abortControllers: new Map<string, AbortController>(),
   status: initialStatus,
@@ -186,10 +196,20 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
         }
       }
 
+      // Clean up sessionRoadmapFeatures: remove entries for deleted sessions
+      const newSessionRoadmapFeatures = new Map<string, RoadmapFeatureReference[]>();
+      for (const [sessionId, features] of state.sessionRoadmapFeatures.entries()) {
+        // Keep roadmap features if session still exists or is the current session
+        if (currentSessionIds.has(sessionId) || sessionId === state.currentSessionId) {
+          newSessionRoadmapFeatures.set(sessionId, features);
+        }
+      }
+
       return {
         sessions,
         sessionStates: newSessionStates,
-        abortControllers: newAbortControllers
+        abortControllers: newAbortControllers,
+        sessionRoadmapFeatures: newSessionRoadmapFeatures
       };
     }),
 
@@ -580,6 +600,7 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       session: null,
       currentSessionId: null,
       sessionStates: new Map<string, InsightsSessionState>(),
+      sessionRoadmapFeatures: new Map<string, RoadmapFeatureReference[]>(),
       abortControllers: new Map<string, AbortController>(),
       status: initialStatus,
       pendingMessage: '',
@@ -708,6 +729,11 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       newSessionStates.delete(sessionId);
       updates.sessionStates = newSessionStates;
 
+      // Remove from sessionRoadmapFeatures
+      const newSessionRoadmapFeatures = new Map(state.sessionRoadmapFeatures);
+      newSessionRoadmapFeatures.delete(sessionId);
+      updates.sessionRoadmapFeatures = newSessionRoadmapFeatures;
+
       // Remove from abortControllers
       const newAbortControllers = new Map(state.abortControllers);
       newAbortControllers.delete(sessionId);
@@ -725,6 +751,79 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       }
 
       return updates;
+    }),
+
+  exploreRoadmapItem: (roadmapContext) =>
+    set((state) => {
+      debugLog('[insights-store] exploreRoadmapItem called', {
+        hasSession: !!state.session,
+        sessionId: state.session?.id,
+        roadmapContext
+      });
+
+      if (!state.session) {
+        console.error('[insights-store] exploreRoadmapItem: No session found, cannot set roadmap context');
+        return state;
+      }
+
+      const updatedSession = {
+        ...state.session,
+        roadmapContext,
+        updatedAt: new Date()
+      };
+
+      debugLog('[insights-store] exploreRoadmapItem: Updating session with roadmap context', {
+        sessionId: updatedSession.id,
+        featureId: roadmapContext.featureId
+      });
+
+      // Persist the updated session to disk so the backend can see the roadmap context
+      if (typeof window !== 'undefined' && window.electronAPI?.updateInsightsSession) {
+        window.electronAPI.updateInsightsSession(
+          updatedSession.projectId,
+          updatedSession.id,
+          { roadmapContext, updatedAt: updatedSession.updatedAt }
+        ).catch((err: unknown) => {
+          console.error('[insights-store] Failed to persist roadmap context to disk:', err);
+        });
+      }
+
+      return {
+        session: updatedSession
+      };
+    }),
+
+  /**
+   * Adds a roadmap feature to the specified session's feature list.
+   * If the session doesn't have any features yet, creates a new array.
+   *
+   * @param sessionId - The ID of the session to add the feature to
+   * @param feature - The roadmap feature reference to add
+   */
+  addRoadmapFeature: (sessionId: string, feature: RoadmapFeatureReference) =>
+    set((state) => {
+      const existingFeatures = state.sessionRoadmapFeatures.get(sessionId) || [];
+      const newSessionRoadmapFeatures = new Map(state.sessionRoadmapFeatures);
+      newSessionRoadmapFeatures.set(sessionId, [...existingFeatures, feature]);
+
+      return {
+        sessionRoadmapFeatures: newSessionRoadmapFeatures
+      };
+    }),
+
+  /**
+   * Clears all roadmap features for the specified session.
+   *
+   * @param sessionId - The ID of the session to clear features for
+   */
+  clearRoadmapFeatures: (sessionId: string) =>
+    set((state) => {
+      const newSessionRoadmapFeatures = new Map(state.sessionRoadmapFeatures);
+      newSessionRoadmapFeatures.delete(sessionId);
+
+      return {
+        sessionRoadmapFeatures: newSessionRoadmapFeatures
+      };
     }),
 
   // Selectors
@@ -749,7 +848,18 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
    */
   getSessionState: (sessionId: string) => {
     return _get().sessionStates.get(sessionId);
-  }
+  },
+
+  /**
+   * Gets the roadmap features for a specific session by ID.
+   * Returns undefined if the session has no features.
+   *
+   * @param sessionId - The ID of the session to retrieve roadmap features for
+   * @returns The session's roadmap features, or undefined if no features exist for that session
+   */
+  getRoadmapFeatures: (sessionId: string) => {
+    return _get().sessionRoadmapFeatures.get(sessionId);
+  },
 }));
 
 // Helper functions
@@ -771,6 +881,22 @@ export async function loadInsightsSessions(projectId: string): Promise<void> {
 }
 
 export async function loadInsightsSession(projectId: string): Promise<void> {
+  // Check if there's already a current session for this project
+  // Don't reload if we have a session, as it might have transient state like roadmapContext
+  const currentState = useInsightsStore.getState();
+  const hasCurrentSession = !!currentState.session;
+
+  if (hasCurrentSession) {
+    debugLog('[insights-store] Skipping session reload - current session exists', {
+      sessionId: currentState.session?.id
+    });
+    // Still load the sessions list to keep sidebar up to date
+    await loadInsightsSessions(projectId);
+    return;
+  }
+
+  debugLog('[insights-store] Loading session from backend', { projectId });
+
   const result = await window.electronAPI.getInsightsSession(projectId);
   if (result.success && result.data) {
     useInsightsStore.getState().setSession(result.data);
@@ -857,6 +983,77 @@ export async function newSession(projectId: string): Promise<void> {
     // Reload sessions list
     await loadInsightsSessions(projectId);
   }
+}
+
+/**
+ * Create a new Insights session with roadmap feature context pre-loaded.
+ * This is used when clicking "Explore in Insights" from the Roadmap view.
+ */
+export async function newSessionWithRoadmapContext(
+  projectId: string,
+  feature: RoadmapFeature
+): Promise<void> {
+  // Create new session
+  const result = await window.electronAPI.newInsightsSession(projectId);
+  if (!result.success || !result.data) {
+    return;
+  }
+
+  // Set the new session as current
+  useInsightsStore.getState().setSession(result.data);
+  await loadInsightsSessions(projectId);
+
+  // Build comprehensive context message
+  const contextParts: string[] = [];
+
+  contextParts.push(`# Exploring Roadmap Feature: ${feature.title}\n`);
+  contextParts.push(`**Description:** ${feature.description}\n`);
+
+  if (feature.rationale) {
+    contextParts.push(`**Rationale:** ${feature.rationale}\n`);
+  }
+
+  contextParts.push(
+    `**Priority:** ${feature.priority} | **Complexity:** ${feature.complexity} | **Impact:** ${feature.impact}\n`
+  );
+
+  if (feature.userStories && feature.userStories.length > 0) {
+    contextParts.push(`**User Stories:**`);
+    feature.userStories.forEach((story, i) => {
+      contextParts.push(`${i + 1}. ${story}`);
+    });
+    contextParts.push('');
+  }
+
+  if (feature.acceptanceCriteria && feature.acceptanceCriteria.length > 0) {
+    contextParts.push(`**Acceptance Criteria:**`);
+    feature.acceptanceCriteria.forEach((criterion, i) => {
+      contextParts.push(`${i + 1}. ${criterion}`);
+    });
+    contextParts.push('');
+  }
+
+  if (feature.dependencies && feature.dependencies.length > 0) {
+    contextParts.push(`**Dependencies:** ${feature.dependencies.join(', ')}\n`);
+  }
+
+  contextParts.push(`---\n`);
+  contextParts.push(
+    `I'm exploring this roadmap feature. Can you help me understand:\n`
+  );
+  contextParts.push(
+    `- What would implementing this feature involve?\n`
+  );
+  contextParts.push(
+    `- Are there any technical considerations or challenges?\n`
+  );
+  contextParts.push(
+    `- How does this fit with the existing codebase architecture?\n`
+  );
+
+  // Send the context message
+  const contextMessage = contextParts.join('\n');
+  await sendMessage(projectId, contextMessage);
 }
 
 export async function switchSession(projectId: string, sessionId: string): Promise<void> {
@@ -1170,6 +1367,12 @@ export function setupInsightsListeners(): () => void {
           });
           // Finalize the message with task suggestion
           store.finalizeStreamingMessage(chunk.suggestedTask, targetSessionId);
+          break;
+        case 'roadmap_feature':
+          if (chunk.roadmapFeature) {
+            // Add the roadmap feature to the session
+            store.addRoadmapFeature(targetSessionId, chunk.roadmapFeature);
+          }
           break;
         case 'done':
           // Clear current tool

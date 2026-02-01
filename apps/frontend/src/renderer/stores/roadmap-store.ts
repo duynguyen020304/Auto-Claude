@@ -405,6 +405,14 @@ export async function stopRoadmap(projectId: string): Promise<boolean> {
 }
 
 // Selectors
+export function getFeatureById(
+  roadmap: Roadmap | null,
+  featureId: string
+): RoadmapFeature | undefined {
+  if (!roadmap) return undefined;
+  return roadmap.features.find((f) => f.id === featureId);
+}
+
 export function getFeaturesByPhase(
   roadmap: Roadmap | null,
   phaseId: string

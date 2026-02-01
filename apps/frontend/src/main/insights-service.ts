@@ -225,13 +225,16 @@ export class InsightsService extends EventEmitter {
 
     try {
       // Execute insights query
+      const roadmapItemId = session.roadmapContext?.featureId;
       const result = await this.executor.execute(
         session.id,
         targetProjectId,
         targetProjectPath,
         targetMessage,
         conversationHistory,
-        configToUse
+        configToUse,
+        undefined, // priority - use default
+        roadmapItemId
       );
 
       // Add assistant message to session
@@ -261,6 +264,17 @@ export class InsightsService extends EventEmitter {
    */
   updateSessionModelConfig(projectPath: string, sessionId: string, modelConfig: InsightsModelConfig): boolean {
     return this.sessionManager.updateSessionModelConfig(projectPath, sessionId, modelConfig);
+  }
+
+  /**
+   * Update specific fields of a session
+   * @param projectPath - Path to the project
+   * @param sessionId - ID of the session to update
+   * @param updates - Partial session data to merge
+   * @returns true if session was updated, false if session was not found
+   */
+  updateSession(projectPath: string, sessionId: string, updates: Partial<InsightsSession>): boolean {
+    return this.sessionManager.updateSession(projectPath, sessionId, updates);
   }
 
   /**

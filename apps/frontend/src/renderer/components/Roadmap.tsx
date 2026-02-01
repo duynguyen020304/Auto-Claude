@@ -13,7 +13,7 @@ import { getCompetitorInsightsForFeature } from './roadmap/utils';
 import type { RoadmapFeature } from '../../shared/types';
 import type { RoadmapProps } from './roadmap/types';
 
-export function Roadmap({ projectId, onGoToTask }: RoadmapProps) {
+export function Roadmap({ projectId, onGoToTask, onExploreInInsights }: RoadmapProps) {
   // State management
   const [selectedFeature, setSelectedFeature] = useState<RoadmapFeature | null>(null);
   const [activeTab, setActiveTab] = useState('kanban');
@@ -113,6 +113,7 @@ export function Roadmap({ projectId, onGoToTask }: RoadmapProps) {
           onFeatureSelect={setSelectedFeature}
           onConvertToSpec={handleConvertToSpec}
           onGoToTask={handleGoToTask}
+          onExploreInInsights={onExploreInInsights}
           onSave={saveRoadmap}
         />
       </div>
@@ -124,6 +125,7 @@ export function Roadmap({ projectId, onGoToTask }: RoadmapProps) {
           onClose={() => setSelectedFeature(null)}
           onConvertToSpec={handleConvertToSpec}
           onGoToTask={handleGoToTask}
+          onExploreInInsights={onExploreInInsights}
           onDelete={deleteFeature}
           competitorInsights={getCompetitorInsightsForFeature(selectedFeature, competitorAnalysis)}
         />

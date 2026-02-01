@@ -10,6 +10,7 @@ import type {
   InsightsSessionSummary,
   InsightsModelConfig,
   ActiveSession,
+  RoadmapFeature,
 } from '../../../shared/types';
 
 // Mock setup in hoisted phase
@@ -205,6 +206,12 @@ describe('insights IPC handlers', () => {
 
     it('should register handler for INSIGHTS_GET_ACTIVE_SESSIONS', () => {
       const handler = getHandler(IPC_CHANNELS.INSIGHTS_GET_ACTIVE_SESSIONS);
+      expect(handler).toBeDefined();
+      expect(typeof handler).toBe('function');
+    });
+
+    it('should register handler for INSIGHTS_GET_ROADMAP_FEATURE', () => {
+      const handler = getHandler(IPC_CHANNELS.INSIGHTS_GET_ROADMAP_FEATURE);
       expect(handler).toBeDefined();
       expect(typeof handler).toBe('function');
     });
@@ -475,6 +482,49 @@ describe('insights IPC handlers', () => {
       expect(mockInsightsService.switchSession).toHaveBeenCalledWith('project-1', '/tmp/project', 'session-2');
       expect(result.success).toBe(true);
       expect(result.data).toEqual(mockSession);
+    });
+
+    describe('INSIGHTS_GET_ROADMAP_FEATURE', () => {
+      it('should return error when project not found', async () => {
+        mockProjectStore.getProject.mockReturnValue(undefined);
+
+        const handler = getHandler(IPC_CHANNELS.INSIGHTS_GET_ROADMAP_FEATURE);
+        const result = await handler!({}, 'project-1', 'feature-1');
+
+        expect(result).toEqual({
+          success: false,
+          error: 'Project not found',
+        });
+      });
+
+      it('should return feature not found error when roadmap has empty features array', async () => {
+        mockProjectStore.getProject.mockReturnValue({
+          id: 'project-1',
+          path: '/tmp/project',
+          autoBuildPath: '.auto-claude',
+        });
+
+        const handler = getHandler(IPC_CHANNELS.INSIGHTS_GET_ROADMAP_FEATURE);
+        const result = await handler!({}, 'project-1', 'feature-1');
+
+        // The default mock returns an empty object {}, so features will be undefined
+        expect(result.success).toBe(false);
+        expect(result.error).toBeDefined();
+      });
+
+      it('should return error when feature ID does not exist in roadmap', async () => {
+        mockProjectStore.getProject.mockReturnValue({
+          id: 'project-1',
+          path: '/tmp/project',
+          autoBuildPath: '.auto-claude',
+        });
+
+        const handler = getHandler(IPC_CHANNELS.INSIGHTS_GET_ROADMAP_FEATURE);
+        const result = await handler!({}, 'project-1', 'nonexistent-feature');
+
+        expect(result.success).toBe(false);
+        expect(result.error).toBeDefined();
+      });
     });
   });
 

@@ -87,7 +87,8 @@
     "competitorInsight": "Thông tin Đối thủ",
     "competitorInsightTooltip": "Tính năng này giải quyết điểm đau của đối thủ",
     "goToTask": "Đi đến Tác vụ",
-    "build": "Xây Dựng"
+    "build": "Xây Dựng",
+    "exploreInInsights": "Khám phá"
   },
   "phaseCard": {
     "progress": "Tiến độ",

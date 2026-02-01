@@ -5,6 +5,8 @@ import type {
   InsightsChatStatus,
   InsightsStreamChunk,
   InsightsModelConfig,
+  RoadmapItemContext,
+  RoadmapFeature,
   Task,
   TaskMetadata,
   IPCResult
@@ -25,14 +27,21 @@ export interface InsightsAPI {
     description: string,
     metadata?: TaskMetadata
   ) => Promise<IPCResult<Task>>;
+  createSpecFromRoadmap: (
+    projectId: string,
+    roadmapContext: RoadmapItemContext,
+    chatContext?: string
+  ) => Promise<IPCResult<Task>>;
   listInsightsSessions: (projectId: string) => Promise<IPCResult<InsightsSessionSummary[]>>;
   newInsightsSession: (projectId: string) => Promise<IPCResult<InsightsSession>>;
   switchInsightsSession: (projectId: string, sessionId: string) => Promise<IPCResult<InsightsSession | null>>;
   deleteInsightsSession: (projectId: string, sessionId: string) => Promise<IPCResult>;
   renameInsightsSession: (projectId: string, sessionId: string, newTitle: string) => Promise<IPCResult>;
+  updateInsightsSession: (projectId: string, sessionId: string, updates: Partial<InsightsSession>) => Promise<IPCResult<InsightsSession | null>>;
   updateInsightsModelConfig: (projectId: string, sessionId: string, modelConfig: InsightsModelConfig) => Promise<IPCResult>;
   cancelInsightsSession: (projectId: string, sessionId: string) => Promise<IPCResult>;
   getActiveInsightsSessions: (projectId: string) => Promise<IPCResult<InsightsSessionSummary[]>>;
+  getRoadmapFeatureDetails: (projectId: string, featureId: string) => Promise<IPCResult<RoadmapFeature>>;
 
   // Event Listeners
   onInsightsStreamChunk: (
@@ -71,6 +80,13 @@ export const createInsightsAPI = (): InsightsAPI => ({
   ): Promise<IPCResult<Task>> =>
     invokeIpc(IPC_CHANNELS.INSIGHTS_CREATE_TASK, projectId, title, description, metadata),
 
+  createSpecFromRoadmap: (
+    projectId: string,
+    roadmapContext: RoadmapItemContext,
+    chatContext?: string
+  ): Promise<IPCResult<Task>> =>
+    invokeIpc(IPC_CHANNELS.INSIGHTS_CREATE_SPEC_FROM_ROADMAP, projectId, roadmapContext, chatContext),
+
   listInsightsSessions: (projectId: string): Promise<IPCResult<InsightsSessionSummary[]>> =>
     invokeIpc(IPC_CHANNELS.INSIGHTS_LIST_SESSIONS, projectId),
 
@@ -86,6 +102,9 @@ export const createInsightsAPI = (): InsightsAPI => ({
   renameInsightsSession: (projectId: string, sessionId: string, newTitle: string): Promise<IPCResult> =>
     invokeIpc(IPC_CHANNELS.INSIGHTS_RENAME_SESSION, projectId, sessionId, newTitle),
 
+  updateInsightsSession: (projectId: string, sessionId: string, updates: Partial<InsightsSession>): Promise<IPCResult<InsightsSession | null>> =>
+    invokeIpc(IPC_CHANNELS.INSIGHTS_UPDATE_SESSION, projectId, sessionId, updates),
+
   updateInsightsModelConfig: (projectId: string, sessionId: string, modelConfig: InsightsModelConfig): Promise<IPCResult> =>
     invokeIpc(IPC_CHANNELS.INSIGHTS_UPDATE_MODEL_CONFIG, projectId, sessionId, modelConfig),
 
@@ -94,6 +113,9 @@ export const createInsightsAPI = (): InsightsAPI => ({
 
   getActiveInsightsSessions: (projectId: string): Promise<IPCResult<InsightsSessionSummary[]>> =>
     invokeIpc(IPC_CHANNELS.INSIGHTS_GET_ACTIVE_SESSIONS, projectId),
+
+  getRoadmapFeatureDetails: (projectId: string, featureId: string): Promise<IPCResult<RoadmapFeature>> =>
+    invokeIpc(IPC_CHANNELS.INSIGHTS_GET_ROADMAP_FEATURE, projectId, featureId),
 
   // Event Listeners
   onInsightsStreamChunk: (

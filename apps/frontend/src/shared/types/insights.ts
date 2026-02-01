@@ -166,6 +166,31 @@ export interface InsightsModelConfig {
   thinkingLevel: ThinkingLevel;
 }
 
+// Roadmap item context for exploring roadmap features in Insights Chat
+export interface RoadmapItemContext {
+  featureId: string;
+  title: string;
+  description: string;
+  rationale: string;
+  priority: 'must' | 'should' | 'could' | 'wont';
+  complexity: 'low' | 'medium' | 'high';
+  impact: 'low' | 'medium' | 'high';
+  dependencies: string[];
+  acceptanceCriteria: string[];
+  userStories: string[];
+  status: 'under_review' | 'planned' | 'in_progress' | 'done';
+}
+
+// Lightweight reference to a roadmap feature for linking in insights messages
+export interface RoadmapFeatureReference {
+  id: string;
+  title: string;
+  status: 'under_review' | 'planned' | 'in_progress' | 'done';
+  priority: 'must' | 'should' | 'could' | 'wont';
+  phaseId?: string;
+  externalUrl?: string;
+}
+
 export type InsightsChatRole = 'user' | 'assistant';
 
 // Tool usage record for showing what tools the AI used
@@ -196,6 +221,7 @@ export interface InsightsSession {
   title?: string; // Auto-generated from first message or user-set
   messages: InsightsChatMessage[];
   modelConfig?: InsightsModelConfig; // Per-session model configuration
+  roadmapContext?: RoadmapItemContext; // Roadmap item being explored
   createdAt: Date;
   updatedAt: Date;
 }
@@ -207,6 +233,7 @@ export interface InsightsSessionSummary {
   title: string;
   messageCount: number;
   modelConfig?: InsightsModelConfig; // For displaying model indicator in sidebar
+  roadmapContext?: RoadmapItemContext; // Roadmap item being explored
   createdAt: Date;
   updatedAt: Date;
 }
@@ -225,7 +252,7 @@ export interface InsightsChatStatus {
 }
 
 export interface InsightsStreamChunk {
-  type: 'text' | 'task_suggestion' | 'tool_start' | 'tool_end' | 'done' | 'error';
+  type: 'text' | 'task_suggestion' | 'tool_start' | 'tool_end' | 'roadmap_feature' | 'done' | 'error';
   content?: string;
   suggestedTask?: {
     title: string;
@@ -236,5 +263,6 @@ export interface InsightsStreamChunk {
     name: string;
     input?: string;  // Brief description of what's being searched/read
   };
+  roadmapFeature?: RoadmapFeatureReference;  // Lightweight reference to a roadmap feature
   error?: string;
 }

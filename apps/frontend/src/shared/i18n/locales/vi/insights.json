@@ -59,7 +59,11 @@
     "toolsUsed": "{{count}} công cụ đã được dùng",
     "readingFile": "Đang đọc tệp",
     "searchingFiles": "Đang tìm kiếm tệp",
-    "searchingCode": "Đang tìm kiếm mã"
+    "searchingCode": "Đang tìm kiếm mã",
+    "exploringRoadmapItem": "Khám phá Tính năng Roadmap",
+    "convertToSpec": "Chuyển thành Spec",
+    "convertingToSpec": "Đang chuyển...",
+    "specCreated": "Đã Tạo Spec"
   },
   "modelSelector": {
     "agentProfile": "Hồ sơ Agent",

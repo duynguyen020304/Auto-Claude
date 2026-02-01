@@ -87,7 +87,8 @@
     "competitorInsight": "Aperçu Concurrent",
     "competitorInsightTooltip": "Cette fonctionnalité adresse les points de douleur des concurrents",
     "goToTask": "Aller à la Tâche",
-    "build": "Construire"
+    "build": "Construire",
+    "exploreInInsights": "Explorer"
   },
   "phaseCard": {
     "progress": "Progrès",

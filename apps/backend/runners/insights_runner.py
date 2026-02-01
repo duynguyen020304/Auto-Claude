@@ -111,6 +111,108 @@ def load_project_context(project_dir: str) -> str:
     )
 
 
+def load_roadmap_context(project_dir: str) -> dict | None:
+    """Load roadmap context for the AI.
+
+    Args:
+        project_dir: Path to the project directory
+
+    Returns:
+        Dictionary with roadmap summary (features, count, status breakdown)
+        or None if roadmap not found.
+    """
+    roadmap_path = Path(project_dir) / ".auto-claude" / "roadmap" / "roadmap.json"
+
+    if not roadmap_path.exists():
+        return None
+
+    try:
+        with open(roadmap_path, encoding="utf-8") as f:
+            roadmap = json.load(f)
+
+        features = roadmap.get("features", [])
+
+        # Build status breakdown
+        status_counts = {}
+        for feature in features:
+            status = feature.get("status", "not_started")
+            status_counts[status] = status_counts.get(status, 0) + 1
+
+        # Get priority breakdown
+        priority_counts = {}
+        for feature in features:
+            priority = feature.get("priority", "should")
+            priority_counts[priority] = priority_counts.get(priority, 0) + 1
+
+        # Summarize features
+        feature_summary = [
+            {
+                "id": f.get("id", ""),
+                "title": f.get("title", ""),
+                "status": f.get("status", ""),
+                "priority": f.get("priority", "should"),
+                "complexity": f.get("complexity", "medium"),
+            }
+            for f in features
+        ]
+
+        return {
+            "total_features": len(features),
+            "status_breakdown": status_counts,
+            "priority_breakdown": priority_counts,
+            "features": feature_summary,
+            "description": roadmap.get("description", ""),
+        }
+
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def load_roadmap_item_context(project_dir: str, item_id: str) -> dict | None:
+    """Load context for a specific roadmap item.
+
+    Args:
+        project_dir: Path to the project directory
+        item_id: ID of the roadmap item to load
+
+    Returns:
+        Dictionary with complete roadmap item context (title, description, rationale,
+        priority, complexity, impact, dependencies, acceptanceCriteria, userStories,
+        status) or None if not found.
+    """
+    roadmap_path = Path(project_dir) / ".auto-claude" / "roadmap" / "roadmap.json"
+
+    if not roadmap_path.exists():
+        return None
+
+    try:
+        with open(roadmap_path, encoding="utf-8") as f:
+            roadmap = json.load(f)
+
+        features = roadmap.get("features", [])
+
+        # Find the feature by ID
+        for feature in features:
+            if feature.get("id") == item_id:
+                return {
+                    "title": feature.get("title", ""),
+                    "description": feature.get("description", ""),
+                    "rationale": feature.get("rationale", ""),
+                    "priority": feature.get("priority", "should"),
+                    "complexity": feature.get("complexity", "medium"),
+                    "impact": feature.get("impact", "medium"),
+                    "dependencies": feature.get("dependencies", []),
+                    "acceptanceCriteria": feature.get("acceptanceCriteria", []),
+                    "userStories": feature.get("userStories", []),
+                    "status": feature.get("status", "not_started"),
+                }
+
+        return None
+
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
 def _is_binary_file(file_path: Path) -> bool:
     """Check if a file is likely binary by reading a small sample."""
     try:
@@ -220,27 +322,111 @@ def load_mentioned_files(project_dir: str, mentions: list) -> str:
     return "\n\n".join(file_contexts) if file_contexts else ""
 
 
-def build_system_prompt(project_dir: str) -> str:
+def build_system_prompt(project_dir: str, roadmap_context: dict = None) -> str:
     """Build the system prompt for the insights agent."""
     context = load_project_context(project_dir)
+
+    # Build roadmap-specific context if provided
+    roadmap_section = ""
+    if roadmap_context:
+        roadmap_section = f"""
+
+## Roadmap Item Context
+You are currently exploring a specific roadmap feature:
+
+**Title:** {roadmap_context.get('title', 'Unknown')}
+
+**Description:** {roadmap_context.get('description', 'No description')}
+
+**Rationale:** {roadmap_context.get('rationale', 'No rationale provided')}
+
+**Priority:** {roadmap_context.get('priority', 'should').capitalize()}
+
+**Complexity:** {roadmap_context.get('complexity', 'medium').capitalize()}
+
+**Impact:** {roadmap_context.get('impact', 'medium').capitalize()}
+
+**User Stories:**
+{chr(10).join(f"- {us}" for us in roadmap_context.get('userStories', [])) if roadmap_context.get('userStories') else 'None specified'}
+
+**Acceptance Criteria:**
+{chr(10).join(f"- {ac}" for ac in roadmap_context.get('acceptanceCriteria', []))}
+
+**Dependencies:** {', '.join(roadmap_context.get('dependencies', [])) or 'None'}
+
+**Status:** {roadmap_context.get('status', 'not_started').replace('_', ' ').title()}
+
+When answering questions about this roadmap item, analyze the codebase and provide specific, actionable insights. Use the available tools (Read, Glob, Grep) to explore the codebase and ground your answers in actual code.
+"""
 
     return f"""You are an AI assistant helping developers understand and work with their codebase.
 You have access to the following project context:
 
 {context}
-
+{roadmap_section}
 Your capabilities:
 1. Answer questions about the codebase structure, patterns, and architecture
 2. Suggest improvements, features, or bug fixes based on the code
 3. Help plan implementation of new features
 4. Provide code examples and explanations
 
+## Roadmap Item Analysis
+When a roadmap item context is provided above, you can help with:
+
+**Scope Estimation:**
+- Analyze the feature description and acceptance criteria
+- Estimate effort based on actual codebase complexity
+- Identify components, services, and modules involved
+- Provide a complexity rating: trivial, small, medium, large, or complex
+
+**Impact Analysis:**
+- Identify what might break or change
+- Find existing code that conflicts with the feature
+- Detect potential side effects on other features
+- List tests that may need updating
+
+**Dependency Mapping:**
+- Find code that depends on files/modules the feature touches
+- Identify upstream dependencies (what this feature needs)
+- Identify downstream consumers (what depends on this feature)
+- Map integration points between services
+
+**Affected Files Detection:**
+- List specific files that likely need modification
+- Group files by service/component
+- Explain why each file is relevant
+- Prioritize files by importance/complexity
+
+**Complexity Estimation:**
+- Assess technical complexity (architecture changes, new technologies)
+- Assess implementation complexity (amount of code, testing needs)
+- Provide time estimates with rationale
+- Identify potential risks or blockers
+
+Use the Read, Glob, and Grep tools to explore the codebase and provide specific, evidence-based answers. Always explain your reasoning and cite the files you examined.
+
+## Task Suggestions
 When the user asks you to create a task, wants to turn the conversation into a task, or when you believe creating a task would be helpful, output a task suggestion in this exact format on a SINGLE LINE:
 __TASK_SUGGESTION__:{{"title": "Task title here", "description": "Detailed description of what the task involves", "metadata": {{"category": "feature", "complexity": "medium", "impact": "medium"}}}}
 
 Valid categories: feature, bug_fix, refactoring, documentation, security, performance, ui_ux, infrastructure, testing
 Valid complexity: trivial, small, medium, large, complex
 Valid impact: low, medium, high, critical
+
+## Roadmap Feature References
+When discussing roadmap items or features, output a roadmap feature reference in this exact format on a SINGLE LINE:
+__ROADMAP_FEATURE__:{{"id": "feature-id", "title": "Feature Title", "action": "view|explore|implement"}}
+
+Use this when:
+- Referencing a specific roadmap item by ID or title
+- Suggesting the user explore a particular feature
+- Recommending implementation of a roadmap item
+- Linking analysis back to a roadmap context
+
+Valid actions:
+- "view" - Suggest viewing the feature details
+- "explore" - Suggest exploring the feature in insights chat
+- "implement" - Suggest implementing/creating a task for the feature
 
 Be conversational and helpful. Focus on providing actionable insights and clear explanations.
 Keep responses concise but informative."""
@@ -253,6 +439,7 @@ async def run_with_sdk(
     model: str = "sonnet",  # Shorthand - resolved via API Profile if configured
     thinking_level: str = "medium",
     mentions: list = None,
+    roadmap_context: dict = None,
 ) -> None:
     """Run the chat using Claude SDK with streaming."""
     if not SDK_AVAILABLE:
@@ -271,7 +458,7 @@ async def run_with_sdk(
     # Ensure SDK can find the token
     ensure_claude_code_oauth_token()
 
-    system_prompt = build_system_prompt(project_dir)
+    system_prompt = build_system_prompt(project_dir, roadmap_context)
     project_path = Path(project_dir).resolve()
 
     # Build conversation context from history
@@ -515,6 +702,11 @@ def main():
         default="[]",
         help='JSON array of file mentions to include in context (e.g., \'[{"filePath": "src/App.tsx", "lineStart": 10, "lineEnd": 20}]\')',
     )
+    parser.add_argument(
+        "--roadmap-item-id",
+        default=None,
+        help="ID of the roadmap item to provide context for",
+    )
     args = parser.parse_args()
 
     debug_section("insights_runner", "Starting Insights Chat")
@@ -565,9 +757,30 @@ def main():
         debug_error("insights_runner", f"Failed to parse mentions: {e}")
         mentions = []
 
+    # Load roadmap item context if provided
+    roadmap_context = None
+    if args.roadmap_item_id:
+        debug_detailed(
+            "insights_runner",
+            "Loading roadmap item context",
+            item_id=args.roadmap_item_id,
+        )
+        roadmap_context = load_roadmap_item_context(project_dir, args.roadmap_item_id)
+        if roadmap_context:
+            debug_success(
+                "insights_runner",
+                "Loaded roadmap item context",
+                title=roadmap_context.get("title", "Unknown"),
+            )
+        else:
+            debug_error(
+                "insights_runner",
+                f"Roadmap item {args.roadmap_item_id} not found",
+            )
+
     # Run the async SDK function
     debug("insights_runner", "Running SDK query")
-    asyncio.run(run_with_sdk(project_dir, user_message, history, model, thinking_level, mentions))
+    asyncio.run(run_with_sdk(project_dir, user_message, history, model, thinking_level, mentions, roadmap_context))
     debug_success("insights_runner", "Query completed")
 
 

@@ -24,6 +24,7 @@ export function RoadmapTabs({
   onFeatureSelect,
   onConvertToSpec,
   onGoToTask,
+  onExploreInInsights,
   onSave,
 }: RoadmapTabsProps) {
   const { t } = useTranslation('roadmap');
@@ -44,6 +45,7 @@ export function RoadmapTabs({
           onFeatureClick={onFeatureSelect}
           onConvertToSpec={onConvertToSpec}
           onGoToTask={onGoToTask}
+          onExploreInInsights={onExploreInInsights}
           onSave={onSave}
         />
       </TabsContent>
@@ -60,6 +62,7 @@ export function RoadmapTabs({
               onFeatureSelect={onFeatureSelect}
               onConvertToSpec={onConvertToSpec}
               onGoToTask={onGoToTask}
+              onExploreInInsights={onExploreInInsights}
             />
           ))}
         </div>
@@ -75,6 +78,7 @@ export function RoadmapTabs({
               onClick={() => onFeatureSelect(feature)}
               onConvertToSpec={onConvertToSpec}
               onGoToTask={onGoToTask}
+              onExploreInInsights={onExploreInInsights}
               hasCompetitorInsight={hasCompetitorInsight(feature)}
             />
           ))}

@@ -16,6 +16,8 @@ import type {
   InsightsSession,
   InsightsSessionSummary,
   InsightsModelConfig,
+  RoadmapItemContext,
+  RoadmapFeature,
   Task,
   TaskMetadata,
   AppSettings,
@@ -77,6 +79,62 @@ export function registerInsightsHandlers(getMainWindow: () => BrowserWindow | nu
 
       const session = insightsService.loadSession(projectId, project.path);
       return { success: true, data: session };
+    }
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.INSIGHTS_GET_ROADMAP_FEATURE,
+    async (_, projectId: string, featureId: string): Promise<IPCResult<RoadmapFeature>> => {
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: "Project not found" };
+      }
+
+      const roadmapPath = path.join(
+        project.path,
+        AUTO_BUILD_PATHS.ROADMAP_DIR,
+        AUTO_BUILD_PATHS.ROADMAP_FILE
+      );
+
+      if (!existsSync(roadmapPath)) {
+        return { success: false, error: "Roadmap not found" };
+      }
+
+      try {
+        const content = readFileSync(roadmapPath, "utf-8");
+        const rawRoadmap = JSON.parse(content);
+
+        // Find the feature by ID
+        const rawFeature = rawRoadmap.features?.find((f: { id: string }) => f.id === featureId);
+        if (!rawFeature) {
+          return { success: false, error: "Feature not found" };
+        }
+
+        // Transform snake_case to camelCase for frontend
+        const feature: RoadmapFeature = {
+          id: rawFeature.id,
+          title: rawFeature.title,
+          description: rawFeature.description,
+          rationale: rawFeature.rationale || "",
+          priority: rawFeature.priority || "should",
+          complexity: rawFeature.complexity || "medium",
+          impact: rawFeature.impact || "medium",
+          phaseId: rawFeature.phase_id,
+          dependencies: rawFeature.dependencies || [],
+          status: rawFeature.status || "under_review",
+          acceptanceCriteria: rawFeature.acceptance_criteria || [],
+          userStories: rawFeature.user_stories || [],
+          linkedSpecId: rawFeature.linked_spec_id,
+          competitorInsightIds: (rawFeature.competitor_insight_ids as string[]) || undefined,
+        };
+
+        return { success: true, data: feature };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Failed to get feature details",
+        };
+      }
     }
   );
 
@@ -262,6 +320,157 @@ export function registerInsightsHandlers(getMainWindow: () => BrowserWindow | nu
     }
   );
 
+  ipcMain.handle(
+    IPC_CHANNELS.INSIGHTS_CREATE_SPEC_FROM_ROADMAP,
+    async (
+      _,
+      projectId: string,
+      roadmapContext: RoadmapItemContext,
+      chatContext?: string // Additional context gathered from chat
+    ): Promise<IPCResult<Task>> => {
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: "Project not found" };
+      }
+
+      if (!project.autoBuildPath) {
+        return { success: false, error: "Auto Claude not initialized for this project" };
+      }
+
+      try {
+        // Generate a unique spec ID based on existing specs
+        const specsBaseDir = getSpecsDir(project.autoBuildPath);
+        const specsDir = path.join(project.path, specsBaseDir);
+
+        // Find next available spec number
+        let specNumber = 1;
+        if (existsSync(specsDir)) {
+          const existingDirs = readdirSync(specsDir, { withFileTypes: true })
+            .filter((d) => d.isDirectory())
+            .map((d) => d.name);
+
+          const existingNumbers = existingDirs
+            .map((name) => {
+              const match = name.match(/^(\d+)/);
+              return match ? parseInt(match[1], 10) : 0;
+            })
+            .filter((n) => n > 0);
+
+          if (existingNumbers.length > 0) {
+            specNumber = Math.max(...existingNumbers) + 1;
+          }
+        }
+
+        // Create spec ID with zero-padded number and slugified title
+        const slugifiedTitle = roadmapContext.title
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "")
+          .substring(0, 50);
+        const specId = `${String(specNumber).padStart(3, "0")}-${slugifiedTitle}`;
+
+        // Create spec directory
+        const specDir = path.join(specsDir, specId);
+        mkdirSync(specDir, { recursive: true });
+
+        // Build description with rationale and chat context
+        const descriptionParts: string[] = [roadmapContext.description];
+        if (roadmapContext.rationale) {
+          descriptionParts.push(`\n\n**Rationale:**\n${roadmapContext.rationale}`);
+        }
+        if (chatContext) {
+          descriptionParts.push(`\n\n**Additional Context from Chat:**\n${chatContext}`);
+        }
+
+        // Build metadata with source type indicating it came from roadmap exploration
+        const taskMetadata: TaskMetadata = {
+          sourceType: "roadmap",
+          featureId: roadmapContext.featureId,
+        };
+
+        // Create initial implementation_plan.json
+        const now = new Date().toISOString();
+        const implementationPlan = {
+          feature: roadmapContext.title,
+          description: descriptionParts.join("\n"),
+          created_at: now,
+          updated_at: now,
+          status: "pending",
+          phases: [],
+        };
+
+        const planPath = path.join(specDir, AUTO_BUILD_PATHS.IMPLEMENTATION_PLAN);
+        writeFileSync(planPath, JSON.stringify(implementationPlan, null, 2), "utf-8");
+
+        // Create spec.md with pre-filled roadmap data
+        const specContent = `# Specification: ${roadmapContext.title}
+
+## Overview
+
+${roadmapContext.description}
+
+${roadmapContext.rationale ? `\n## Rationale\n\n${roadmapContext.rationale}` : ""}
+
+${
+  roadmapContext.acceptanceCriteria && roadmapContext.acceptanceCriteria.length > 0
+    ? `
+## Acceptance Criteria
+
+${roadmapContext.acceptanceCriteria.map((c, i) => `${i + 1}. ${c}`).join("\n")}
+`
+    : ""
+}
+
+${
+  roadmapContext.dependencies && roadmapContext.dependencies.length > 0
+    ? `
+## Dependencies
+
+${roadmapContext.dependencies.map((d) => `- ${d}`).join("\n")}
+`
+    : ""
+}
+
+${chatContext ? `\n## Additional Context\n\n${chatContext}` : ""}
+
+## Source
+
+Created from roadmap feature: ${roadmapContext.featureId}
+Generated at: ${new Date().toISOString()}
+`;
+
+        const specPath = path.join(specDir, "spec.md");
+        writeFileSync(specPath, specContent, "utf-8");
+
+        // Save task metadata
+        const metadataPath = path.join(specDir, "task_metadata.json");
+        writeFileSync(metadataPath, JSON.stringify(taskMetadata, null, 2), "utf-8");
+
+        // Create the task object
+        const task: Task = {
+          id: specId,
+          specId: specId,
+          projectId,
+          title: roadmapContext.title,
+          description: descriptionParts.join("\n"),
+          status: "backlog",
+          subtasks: [],
+          logs: [],
+          metadata: taskMetadata,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+
+        return { success: true, data: task };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Failed to create spec from roadmap",
+        };
+      }
+    }
+  );
+
   // List all sessions for a project
   ipcMain.handle(
     IPC_CHANNELS.INSIGHTS_LIST_SESSIONS,
@@ -335,6 +544,25 @@ export function registerInsightsHandlers(getMainWindow: () => BrowserWindow | nu
         return { success: true };
       }
       return { success: false, error: "Failed to rename session" };
+    }
+  );
+
+  // Update session fields
+  ipcMain.handle(
+    IPC_CHANNELS.INSIGHTS_UPDATE_SESSION,
+    async (_, projectId: string, sessionId: string, updates: Partial<InsightsSession>): Promise<IPCResult<InsightsSession | null>> => {
+      const project = projectStore.getProject(projectId);
+      if (!project) {
+        return { success: false, error: "Project not found" };
+      }
+
+      const success = insightsService.updateSession(project.path, sessionId, updates);
+      if (success) {
+        // Load and return the updated session
+        const updatedSession = insightsService.loadSession(projectId, project.path);
+        return { success: true, data: updatedSession };
+      }
+      return { success: false, error: "Failed to update session" };
     }
   );
 

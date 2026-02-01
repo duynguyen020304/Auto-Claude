@@ -59,6 +59,7 @@ import { useTaskStore, loadTasks } from './stores/task-store';
 import { useSettingsStore, loadSettings, loadProfiles, saveSettings } from './stores/settings-store';
 import { useClaudeProfileStore, loadClaudeProfiles } from './stores/claude-profile-store';
 import { useTerminalStore, restoreTerminalSessions } from './stores/terminal-store';
+import { useInsightsStore, newSession, sendMessage } from './stores/insights-store';
 import { initializeGitHubListeners } from './stores/github';
 import { initDownloadProgressListener } from './stores/download-store';
 import { GlobalDownloadIndicator } from './components/GlobalDownloadIndicator';
@@ -66,7 +67,7 @@ import { useIpcListeners } from './hooks/useIpc';
 import { useGlobalTerminalListeners } from './hooks/useGlobalTerminalListeners';
 import { useTerminalProfileChange } from './hooks/useTerminalProfileChange';
 import { COLOR_THEMES, UI_SCALE_MIN, UI_SCALE_MAX, UI_SCALE_DEFAULT } from '../shared/constants';
-import type { Task, Project, ColorTheme } from '../shared/types';
+import type { Task, Project, ColorTheme, RoadmapFeature } from '../shared/types';
 import { ProjectTabBar } from './components/ProjectTabBar';
 import { AddProjectModal } from './components/AddProjectModal';
 import { ViewStateProvider } from './contexts/ViewStateContext';
@@ -127,6 +128,10 @@ export function App() {
   const tasks = useTaskStore((state) => state.tasks);
   const settings = useSettingsStore((state) => state.settings);
   const settingsLoading = useSettingsStore((state) => state.isLoading);
+
+  // Insights store for roadmap exploration
+  const session = useInsightsStore((state) => state.session);
+  const exploreRoadmapItem = useInsightsStore((state) => state.exploreRoadmapItem);
 
   // API Profile state
   const profiles = useSettingsStore((state) => state.profiles);
@@ -805,6 +810,83 @@ export function App() {
     }
   };
 
+  const handleExploreInInsights = async (feature: RoadmapFeature) => {
+    debugLog('[App] handleExploreInInsights called', { featureId: feature.id, featureTitle: feature.title });
+
+    // Convert RoadmapFeature to RoadmapItemContext with all fields
+    const roadmapContext = {
+      featureId: feature.id,
+      title: feature.title,
+      description: feature.description,
+      rationale: feature.rationale,
+      priority: feature.priority,
+      complexity: feature.complexity,
+      impact: feature.impact,
+      dependencies: feature.dependencies,
+      acceptanceCriteria: feature.acceptanceCriteria,
+      userStories: feature.userStories,
+      status: feature.status,
+    };
+
+    debugLog('[App] Roadmap context created', roadmapContext);
+
+    // Ensure we have a session to set context on
+    const currentProjectId = activeProjectId || selectedProjectId;
+
+    if (!currentProjectId) {
+      console.error('[handleExploreInInsights] No project ID available', {
+        activeProjectId,
+        selectedProjectId
+      });
+      return;
+    }
+
+    // Create session if needed
+    if (!session) {
+      debugLog('[App] No session exists, creating new session', { projectId: currentProjectId });
+      await newSession(currentProjectId);
+
+      // Verify session was actually created
+      const updatedSession = useInsightsStore.getState().session;
+      if (!updatedSession) {
+        console.error('[handleExploreInInsights] Failed to create Insights session');
+        return;
+      }
+      debugLog('[App] Session created successfully', { sessionId: updatedSession.id });
+    } else {
+      debugLog('[App] Using existing session', { sessionId: session.id });
+    }
+
+    // Set roadmap context in current Insights session
+    debugLog('[App] Setting roadmap context');
+    exploreRoadmapItem(roadmapContext);
+
+    // Verify context was set
+    const finalSession = useInsightsStore.getState().session;
+    if (finalSession?.roadmapContext?.featureId !== feature.id) {
+      console.error('[handleExploreInInsights] Failed to set roadmap context', {
+        expectedFeatureId: feature.id,
+        actualContext: finalSession?.roadmapContext,
+        sessionId: finalSession?.id
+      });
+    } else {
+      debugLog('[App] Roadmap context set successfully', {
+        featureId: feature.id,
+        sessionId: finalSession?.id
+      });
+    }
+
+    // Switch to insights view
+    debugLog('[App] Switching to insights view');
+    setActiveView('insights');
+
+    // Automatically start the exploration conversation with a helpful prompt
+    // This triggers the AI to proactively help the user understand the roadmap item
+    debugLog('[App] Sending automatic exploration prompt');
+    const explorationPrompt = `Help me explore this roadmap feature: "${feature.title}". What's the scope, what files are affected, and what should I know before starting implementation?`;
+    sendMessage(currentProjectId, explorationPrompt);
+  };
+
   return (
     <ViewStateProvider>
       <TooltipProvider>
@@ -875,7 +957,11 @@ export function App() {
                   />
                 </div>
                 {activeView === 'roadmap' && (activeProjectId || selectedProjectId) && (
-                  <Roadmap projectId={activeProjectId || selectedProjectId!} onGoToTask={handleGoToTask} />
+                  <Roadmap
+                    projectId={activeProjectId || selectedProjectId!}
+                    onGoToTask={handleGoToTask}
+                    onExploreInInsights={handleExploreInInsights}
+                  />
                 )}
                 {activeView === 'context' && (activeProjectId || selectedProjectId) && (
                   <Context projectId={activeProjectId || selectedProjectId!} />

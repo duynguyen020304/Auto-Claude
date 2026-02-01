@@ -136,7 +136,8 @@ export class InsightsExecutor extends EventEmitter {
     message: string,
     conversationHistory: Array<{ role: string; content: string }>,
     modelConfig?: InsightsModelConfig,
-    priority: SessionPriority = SessionPriority.NORMAL
+    priority: SessionPriority = SessionPriority.NORMAL,
+    roadmapItemId?: string
   ): Promise<ProcessorResult> {
     // Check if session is already active
     if (this.isSessionActive(sessionId)) {
@@ -201,6 +202,11 @@ export class InsightsExecutor extends EventEmitter {
       args.push('--thinking-level', modelConfig.thinkingLevel);
     }
 
+    // Add roadmap item ID if provided
+    if (roadmapItemId) {
+      args.push('--roadmap-item-id', roadmapItemId);
+    }
+
     // Spawn Python process
     const proc = spawn(this.config.getPythonPath(), args, {
       cwd: autoBuildSource,
@@ -229,6 +235,8 @@ export class InsightsExecutor extends EventEmitter {
             this.handleTaskSuggestion(sessionId, line, (task) => {
               suggestedTask = task;
             });
+          } else if (line.startsWith('__ROADMAP_FEATURE__:')) {
+            this.handleRoadmapFeature(sessionId, line);
           } else if (line.startsWith('__TOOL_START__:')) {
             this.handleToolStart(sessionId, line, toolsUsed);
           } else if (line.startsWith('__TOOL_END__:')) {
@@ -383,6 +391,30 @@ export class InsightsExecutor extends EventEmitter {
       } as InsightsStreamChunk);
     } catch {
       // Ignore parse errors for tool markers
+    }
+  }
+
+  /**
+   * Handle roadmap feature marker
+   */
+  private handleRoadmapFeature(sessionId: string, line: string): void {
+    try {
+      const featureJson = line.substring('__ROADMAP_FEATURE__:'.length);
+      const featureData = JSON.parse(featureJson);
+      this.emit('stream-chunk', sessionId, {
+        type: 'roadmap_feature',
+        roadmapFeature: {
+          id: featureData.id,
+          title: featureData.title,
+          status: featureData.status || 'planned',
+          priority: featureData.priority || 'should',
+          phaseId: featureData.phaseId,
+          externalUrl: featureData.externalUrl,
+          action: featureData.action
+        }
+      } as InsightsStreamChunk);
+    } catch {
+      // Ignore parse errors for roadmap feature markers
     }
   }
 

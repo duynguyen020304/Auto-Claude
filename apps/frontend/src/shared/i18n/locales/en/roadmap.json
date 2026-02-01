@@ -87,7 +87,8 @@
     "competitorInsight": "Competitor Insight",
     "competitorInsightTooltip": "This feature addresses competitor pain points",
     "goToTask": "Go to Task",
-    "build": "Build"
+    "build": "Build",
+    "exploreInInsights": "Explore"
   },
   "phaseCard": {
     "progress": "Progress",
