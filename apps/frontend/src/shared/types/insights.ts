@@ -238,6 +238,8 @@ export interface InsightsChatMessage {
   };
   // Tools used during this response (assistant messages only)
   toolsUsed?: InsightsToolUsage[];
+  // Ideation items referenced in this message
+  ideationItems?: IdeationItemReference[];
 }
 
 export interface InsightsSession {
