@@ -10,6 +10,7 @@ import type {
   TaskMetadata,
   Task,
   RoadmapItemContext,
+  RoadmapFeature,
 } from '../../shared/types';
 import { debugLog } from '../../shared/utils/debug-logger';
 
@@ -33,6 +34,7 @@ interface InsightsState {
   session: InsightsSession | null;
   sessions: InsightsSessionSummary[]; // List of all sessions
   sessionStates: Map<string, InsightsSessionState>; // Per-session streaming state
+  sessionRoadmapFeatures: Map<string, RoadmapFeature[]>; // sessionId -> roadmap features for exploration
   isLoadingSessions: boolean;
   abortControllers: Map<string, AbortController>; // sessionId -> AbortController mapping for active generations
 
@@ -97,6 +99,7 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
   session: null,
   sessions: [],
   sessionStates: new Map<string, InsightsSessionState>(),
+  sessionRoadmapFeatures: new Map<string, RoadmapFeature[]>(),
   isLoadingSessions: false,
   abortControllers: new Map<string, AbortController>(),
   status: initialStatus,
@@ -189,10 +192,20 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
         }
       }
 
+      // Clean up sessionRoadmapFeatures: remove entries for deleted sessions
+      const newSessionRoadmapFeatures = new Map<string, RoadmapFeature[]>();
+      for (const [sessionId, features] of state.sessionRoadmapFeatures.entries()) {
+        // Keep roadmap features if session still exists or is the current session
+        if (currentSessionIds.has(sessionId) || sessionId === state.currentSessionId) {
+          newSessionRoadmapFeatures.set(sessionId, features);
+        }
+      }
+
       return {
         sessions,
         sessionStates: newSessionStates,
-        abortControllers: newAbortControllers
+        abortControllers: newAbortControllers,
+        sessionRoadmapFeatures: newSessionRoadmapFeatures
       };
     }),
 
@@ -583,6 +596,7 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       session: null,
       currentSessionId: null,
       sessionStates: new Map<string, InsightsSessionState>(),
+      sessionRoadmapFeatures: new Map<string, RoadmapFeature[]>(),
       abortControllers: new Map<string, AbortController>(),
       status: initialStatus,
       pendingMessage: '',
@@ -710,6 +724,11 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       const newSessionStates = new Map(state.sessionStates);
       newSessionStates.delete(sessionId);
       updates.sessionStates = newSessionStates;
+
+      // Remove from sessionRoadmapFeatures
+      const newSessionRoadmapFeatures = new Map(state.sessionRoadmapFeatures);
+      newSessionRoadmapFeatures.delete(sessionId);
+      updates.sessionRoadmapFeatures = newSessionRoadmapFeatures;
 
       // Remove from abortControllers
       const newAbortControllers = new Map(state.abortControllers);
