@@ -406,6 +406,10 @@ export class InsightsExecutor extends EventEmitter {
         roadmapFeature: {
           id: featureData.id,
           title: featureData.title,
+          status: featureData.status || 'planned',
+          priority: featureData.priority || 'should',
+          phaseId: featureData.phaseId,
+          externalUrl: featureData.externalUrl,
           action: featureData.action
         }
       } as InsightsStreamChunk);

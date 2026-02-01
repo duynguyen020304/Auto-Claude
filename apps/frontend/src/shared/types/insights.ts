@@ -263,10 +263,6 @@ export interface InsightsStreamChunk {
     name: string;
     input?: string;  // Brief description of what's being searched/read
   };
-  roadmapFeature?: {
-    id: string;
-    title: string;
-    action: 'view' | 'explore' | 'implement';
-  };
+  roadmapFeature?: RoadmapFeatureReference;  // Lightweight reference to a roadmap feature
   error?: string;
 }

@@ -10,7 +10,7 @@ import type {
   TaskMetadata,
   Task,
   RoadmapItemContext,
-  RoadmapFeature,
+  RoadmapFeatureReference,
 } from '../../shared/types';
 import { debugLog } from '../../shared/utils/debug-logger';
 
@@ -34,7 +34,7 @@ interface InsightsState {
   session: InsightsSession | null;
   sessions: InsightsSessionSummary[]; // List of all sessions
   sessionStates: Map<string, InsightsSessionState>; // Per-session streaming state
-  sessionRoadmapFeatures: Map<string, RoadmapFeature[]>; // sessionId -> roadmap features for exploration
+  sessionRoadmapFeatures: Map<string, RoadmapFeatureReference[]>; // sessionId -> roadmap features for exploration
   isLoadingSessions: boolean;
   abortControllers: Map<string, AbortController>; // sessionId -> AbortController mapping for active generations
 
@@ -66,13 +66,13 @@ interface InsightsState {
   cleanupSessionState: (sessionId: string) => void;
   removeSession: (sessionId: string) => void;
   exploreRoadmapItem: (roadmapContext: RoadmapItemContext) => void;
-  addRoadmapFeature: (sessionId: string, feature: RoadmapFeature) => void;
+  addRoadmapFeature: (sessionId: string, feature: RoadmapFeatureReference) => void;
   clearRoadmapFeatures: (sessionId: string) => void;
 
   // Selectors
   getCurrentSessionState: () => InsightsSessionState | undefined;
   getSessionState: (sessionId: string) => InsightsSessionState | undefined;
-  getRoadmapFeatures: (sessionId: string) => RoadmapFeature[] | undefined;
+  getRoadmapFeatures: (sessionId: string) => RoadmapFeatureReference[] | undefined;
 }
 
 const initialStatus: InsightsChatStatus = {
@@ -102,7 +102,7 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
   session: null,
   sessions: [],
   sessionStates: new Map<string, InsightsSessionState>(),
-  sessionRoadmapFeatures: new Map<string, RoadmapFeature[]>(),
+  sessionRoadmapFeatures: new Map<string, RoadmapFeatureReference[]>(),
   isLoadingSessions: false,
   abortControllers: new Map<string, AbortController>(),
   status: initialStatus,
@@ -196,7 +196,7 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       }
 
       // Clean up sessionRoadmapFeatures: remove entries for deleted sessions
-      const newSessionRoadmapFeatures = new Map<string, RoadmapFeature[]>();
+      const newSessionRoadmapFeatures = new Map<string, RoadmapFeatureReference[]>();
       for (const [sessionId, features] of state.sessionRoadmapFeatures.entries()) {
         // Keep roadmap features if session still exists or is the current session
         if (currentSessionIds.has(sessionId) || sessionId === state.currentSessionId) {
@@ -599,7 +599,7 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       session: null,
       currentSessionId: null,
       sessionStates: new Map<string, InsightsSessionState>(),
-      sessionRoadmapFeatures: new Map<string, RoadmapFeature[]>(),
+      sessionRoadmapFeatures: new Map<string, RoadmapFeatureReference[]>(),
       abortControllers: new Map<string, AbortController>(),
       status: initialStatus,
       pendingMessage: '',
@@ -797,9 +797,9 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
    * If the session doesn't have any features yet, creates a new array.
    *
    * @param sessionId - The ID of the session to add the feature to
-   * @param feature - The roadmap feature to add
+   * @param feature - The roadmap feature reference to add
    */
-  addRoadmapFeature: (sessionId: string, feature: RoadmapFeature) =>
+  addRoadmapFeature: (sessionId: string, feature: RoadmapFeatureReference) =>
     set((state) => {
       const existingFeatures = state.sessionRoadmapFeatures.get(sessionId) || [];
       const newSessionRoadmapFeatures = new Map(state.sessionRoadmapFeatures);
@@ -858,7 +858,7 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
    */
   getRoadmapFeatures: (sessionId: string) => {
     return _get().sessionRoadmapFeatures.get(sessionId);
-  }
+  },
 }));
 
 // Helper functions
@@ -1295,6 +1295,12 @@ export function setupInsightsListeners(): () => void {
           });
           // Finalize the message with task suggestion
           store.finalizeStreamingMessage(chunk.suggestedTask, targetSessionId);
+          break;
+        case 'roadmap_feature':
+          if (chunk.roadmapFeature) {
+            // Add the roadmap feature to the session
+            store.addRoadmapFeature(targetSessionId, chunk.roadmapFeature);
+          }
           break;
         case 'done':
           // Clear current tool
