@@ -64,5 +64,19 @@
     "custom": "Personnaliser...",
     "chooseModelThinking": "Choisir le modèle & niveau de réflexion",
     "balanced": "Équilibré"
+  },
+  "roadmap": {
+    "featureCard": {
+      "exploreInChat": "Explorer dans la discussion Insights",
+      "viewLinkedSpec": "Voir la spec liée",
+      "viewSpec": "Voir la Spec",
+      "convertToSpec": "Convertir en Spec",
+      "complexity": "Complexité",
+      "impact": "Impact",
+      "userStories": "User Stories",
+      "acceptanceCriteria": "Critères d'acceptation",
+      "dependencies": "Dépendances",
+      "rationale": "Raison"
+    }
   }
 }

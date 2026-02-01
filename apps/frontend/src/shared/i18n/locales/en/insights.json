@@ -70,5 +70,19 @@
     "custom": "Custom...",
     "chooseModelThinking": "Choose model & thinking level",
     "balanced": "Balanced"
+  },
+  "roadmap": {
+    "featureCard": {
+      "exploreInChat": "Explore in Insights chat",
+      "viewLinkedSpec": "View linked spec",
+      "viewSpec": "View Spec",
+      "convertToSpec": "Convert to Spec",
+      "complexity": "Complexity",
+      "impact": "Impact",
+      "userStories": "User Stories",
+      "acceptanceCriteria": "Acceptance Criteria",
+      "dependencies": "Dependencies",
+      "rationale": "Rationale"
+    }
   }
 }

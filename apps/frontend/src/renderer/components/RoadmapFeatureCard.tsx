@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ChevronDown,
@@ -72,6 +72,7 @@ interface CollapsibleSectionProps {
 function CollapsibleSection({ title, icon, items, defaultOpen = false }: CollapsibleSectionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const hasContent = items && items.length > 0;
+  const contentId = useId();
 
   if (!hasContent) {
     return null;
@@ -81,8 +82,10 @@ function CollapsibleSection({ title, icon, items, defaultOpen = false }: Collaps
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <CollapsibleTrigger asChild>
         <button
-          className="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full text-left py-1"
+          type="button"
+          className="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full text-left py-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
           aria-expanded={isOpen}
+          aria-controls={contentId}
         >
           {isOpen ? (
             <ChevronDown className="h-3 w-3" aria-hidden="true" />
@@ -91,12 +94,12 @@ function CollapsibleSection({ title, icon, items, defaultOpen = false }: Collaps
           )}
           {icon}
           <span>{title}</span>
-          <span className="ml-auto text-[10px] text-muted-foreground/70">
+          <span className="ml-auto text-[10px] text-muted-foreground/70" aria-live="polite">
             {items.length}
           </span>
         </button>
       </CollapsibleTrigger>
-      <CollapsibleContent className="pt-1.5">
+      <CollapsibleContent id={contentId} className="pt-1.5">
         <ul className="space-y-1 pl-5">
           {items.map((item, index) => (
             <li
@@ -120,6 +123,7 @@ export function RoadmapFeatureCard({
   className
 }: RoadmapFeatureCardProps) {
   const { t } = useTranslation(['insights', 'common']);
+  const rationaleContentId = useId();
 
   const complexityValue = COMPLEXITY_IMPACT_VALUE[feature.complexity] || 1;
   const impactValue = COMPLEXITY_IMPACT_VALUE[feature.impact] || 1;
@@ -239,20 +243,20 @@ export function RoadmapFeatureCard({
 
         {/* Rationale */}
         {feature.rationale && (
-          <Collapsible
-            defaultOpen={false}
-          >
+          <Collapsible defaultOpen={false}>
             <CollapsibleTrigger asChild>
               <button
-                className="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full text-left py-1"
+                type="button"
+                className="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full text-left py-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
                 aria-expanded="false"
+                aria-controls={rationaleContentId}
               >
                 <ChevronRight className="h-3 w-3" aria-hidden="true" />
                 <Lightbulb className="h-3 w-3" aria-hidden="true" />
                 <span>{t('insights:roadmap.featureCard.rationale')}</span>
               </button>
             </CollapsibleTrigger>
-            <CollapsibleContent className="pt-1.5 pl-5">
+            <CollapsibleContent id={rationaleContentId} className="pt-1.5 pl-5">
               <p className="text-xs text-muted-foreground leading-relaxed">
                 {feature.rationale}
               </p>
