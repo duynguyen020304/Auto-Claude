@@ -111,6 +111,63 @@ def load_project_context(project_dir: str) -> str:
     )
 
 
+def load_roadmap_context(project_dir: str) -> dict | None:
+    """Load roadmap context for the AI.
+
+    Args:
+        project_dir: Path to the project directory
+
+    Returns:
+        Dictionary with roadmap summary (features, count, status breakdown)
+        or None if roadmap not found.
+    """
+    roadmap_path = Path(project_dir) / ".auto-claude" / "roadmap" / "roadmap.json"
+
+    if not roadmap_path.exists():
+        return None
+
+    try:
+        with open(roadmap_path, encoding="utf-8") as f:
+            roadmap = json.load(f)
+
+        features = roadmap.get("features", [])
+
+        # Build status breakdown
+        status_counts = {}
+        for feature in features:
+            status = feature.get("status", "not_started")
+            status_counts[status] = status_counts.get(status, 0) + 1
+
+        # Get priority breakdown
+        priority_counts = {}
+        for feature in features:
+            priority = feature.get("priority", "should")
+            priority_counts[priority] = priority_counts.get(priority, 0) + 1
+
+        # Summarize features
+        feature_summary = [
+            {
+                "id": f.get("id", ""),
+                "title": f.get("title", ""),
+                "status": f.get("status", ""),
+                "priority": f.get("priority", "should"),
+                "complexity": f.get("complexity", "medium"),
+            }
+            for f in features
+        ]
+
+        return {
+            "total_features": len(features),
+            "status_breakdown": status_counts,
+            "priority_breakdown": priority_counts,
+            "features": feature_summary,
+            "description": roadmap.get("description", ""),
+        }
+
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
 def load_roadmap_item_context(project_dir: str, item_id: str) -> dict | None:
     """Load context for a specific roadmap item.
 
