@@ -11,6 +11,7 @@ import type {
   Task,
   RoadmapItemContext,
   RoadmapFeatureReference,
+  RoadmapFeature,
 } from '../../shared/types';
 import { debugLog } from '../../shared/utils/debug-logger';
 
@@ -982,6 +983,77 @@ export async function newSession(projectId: string): Promise<void> {
     // Reload sessions list
     await loadInsightsSessions(projectId);
   }
+}
+
+/**
+ * Create a new Insights session with roadmap feature context pre-loaded.
+ * This is used when clicking "Explore in Insights" from the Roadmap view.
+ */
+export async function newSessionWithRoadmapContext(
+  projectId: string,
+  feature: RoadmapFeature
+): Promise<void> {
+  // Create new session
+  const result = await window.electronAPI.newInsightsSession(projectId);
+  if (!result.success || !result.data) {
+    return;
+  }
+
+  // Set the new session as current
+  useInsightsStore.getState().setSession(result.data);
+  await loadInsightsSessions(projectId);
+
+  // Build comprehensive context message
+  const contextParts: string[] = [];
+
+  contextParts.push(`# Exploring Roadmap Feature: ${feature.title}\n`);
+  contextParts.push(`**Description:** ${feature.description}\n`);
+
+  if (feature.rationale) {
+    contextParts.push(`**Rationale:** ${feature.rationale}\n`);
+  }
+
+  contextParts.push(
+    `**Priority:** ${feature.priority} | **Complexity:** ${feature.complexity} | **Impact:** ${feature.impact}\n`
+  );
+
+  if (feature.userStories && feature.userStories.length > 0) {
+    contextParts.push(`**User Stories:**`);
+    feature.userStories.forEach((story, i) => {
+      contextParts.push(`${i + 1}. ${story}`);
+    });
+    contextParts.push('');
+  }
+
+  if (feature.acceptanceCriteria && feature.acceptanceCriteria.length > 0) {
+    contextParts.push(`**Acceptance Criteria:**`);
+    feature.acceptanceCriteria.forEach((criterion, i) => {
+      contextParts.push(`${i + 1}. ${criterion}`);
+    });
+    contextParts.push('');
+  }
+
+  if (feature.dependencies && feature.dependencies.length > 0) {
+    contextParts.push(`**Dependencies:** ${feature.dependencies.join(', ')}\n`);
+  }
+
+  contextParts.push(`---\n`);
+  contextParts.push(
+    `I'm exploring this roadmap feature. Can you help me understand:\n`
+  );
+  contextParts.push(
+    `- What would implementing this feature involve?\n`
+  );
+  contextParts.push(
+    `- Are there any technical considerations or challenges?\n`
+  );
+  contextParts.push(
+    `- How does this fit with the existing codebase architecture?\n`
+  );
+
+  // Send the context message
+  const contextMessage = contextParts.join('\n');
+  await sendMessage(projectId, contextMessage);
 }
 
 export async function switchSession(projectId: string, sessionId: string): Promise<void> {
