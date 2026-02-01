@@ -45,7 +45,8 @@ import { useTaskStore } from '../stores/task-store';
 import { ChatHistorySidebar } from './ChatHistorySidebar';
 import { InsightsModelSelector } from './InsightsModelSelector';
 import { RoadmapFeatureCard } from './RoadmapFeatureCard';
-import type { InsightsChatMessage, InsightsModelConfig, InsightsSessionSummary, RoadmapFeature } from '../../shared/types';
+import { IdeationItemCard } from './IdeationItemCard';
+import type { InsightsChatMessage, InsightsModelConfig, InsightsSessionSummary, RoadmapFeature, Idea } from '../../shared/types';
 import {
   TASK_CATEGORY_LABELS,
   TASK_CATEGORY_COLORS,
@@ -124,6 +125,8 @@ export function Insights({ projectId }: InsightsProps) {
   const [specConversionError, setSpecConversionError] = useState<string | null>(null);
   const [roadmapFeatures, setRoadmapFeatures] = useState<Map<string, RoadmapFeature>>(new Map());
   const [loadingFeatures, setLoadingFeatures] = useState<Set<string>>(new Set());
+  const [ideationItems, setIdeationItems] = useState<Map<string, Idea>>(new Map());
+  const [loadingIdeationItems, setLoadingIdeationItems] = useState<Set<string>>(new Set());
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -178,6 +181,8 @@ export function Insights({ projectId }: InsightsProps) {
     setSpecConversionError(null);
     setRoadmapFeatures(new Map());
     setLoadingFeatures(new Set());
+    setIdeationItems(new Map());
+    setLoadingIdeationItems(new Set());
   }, [session?.id]);
 
   // Fetch full roadmap features when session's roadmap features change
@@ -222,6 +227,60 @@ export function Insights({ projectId }: InsightsProps) {
 
     fetchRoadmapFeatures();
   }, [session?.id, sessionRoadmapFeatures, projectId, loadingFeatures, roadmapFeatures]);
+
+  // Fetch ideation items when session's ideation items change
+  const sessionIdeationItems = useInsightsStore((state) => state.getIdeationItems(session?.id || ''));
+
+  useEffect(() => {
+    if (!session?.id || !sessionIdeationItems || sessionIdeationItems.length === 0) {
+      return;
+    }
+
+    const fetchIdeationItems = async () => {
+      // Get the full ideation session to access all ideas
+      try {
+        const result = await window.electronAPI.getIdeation(projectId);
+        if (result.success && result.data) {
+          const ideationSession = result.data;
+
+          for (const itemRef of sessionIdeationItems) {
+            // Skip if we already have this item loaded
+            if (ideationItems.has(itemRef.id)) {
+              continue;
+            }
+
+            // Skip if already loading
+            if (loadingIdeationItems.has(itemRef.id)) {
+              continue;
+            }
+
+            // Mark as loading
+            setLoadingIdeationItems((prev) => new Set(prev).add(itemRef.id));
+
+            try {
+              // Find the idea in the ideation session
+              const idea = ideationSession.ideas.find((i) => i.id === itemRef.id);
+              if (idea) {
+                setIdeationItems((prev) => new Map(prev).set(itemRef.id, idea));
+              }
+            } catch (error) {
+              console.error(`Failed to load ideation item ${itemRef.id}:`, error);
+            } finally {
+              setLoadingIdeationItems((prev) => {
+                const next = new Set(prev);
+                next.delete(itemRef.id);
+                return next;
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load ideation session:', error);
+      }
+    };
+
+    fetchIdeationItems();
+  }, [session?.id, sessionIdeationItems, projectId, loadingIdeationItems, ideationItems]);
 
   const handleSend = () => {
     const message = inputValue.trim();
@@ -379,6 +438,39 @@ Can you help me understand this feature better?`;
     // Send the context message to the new session
     sendMessage(projectId, contextMessage);
     setIsUserAtBottom(true); // Resume auto-scroll
+  };
+
+  const handleExploreIdeationItemInChat = async (idea: Idea) => {
+    // Create a new session and send initial message with ideation item context
+    await newSession(projectId);
+
+    // Build a comprehensive context message for the ideation item
+    const contextMessage = `I'd like to explore the ${idea.type} idea "${idea.title}".
+
+**Description:** ${idea.description}
+
+**Rationale:** ${idea.rationale}
+
+Can you help me understand this idea better and how to implement it?`;
+
+    // Send the context message to the new session
+    sendMessage(projectId, contextMessage);
+    setIsUserAtBottom(true); // Resume auto-scroll
+  };
+
+  const handleConvertIdeationToSpec = async (idea: Idea) => {
+    try {
+      const result = await window.electronAPI.convertIdeaToTask(
+        projectId,
+        idea.id
+      );
+
+      if (result.success && result.data) {
+        addTask(result.data);
+      }
+    } catch (error) {
+      console.error('Failed to convert ideation item to spec:', error);
+    }
   };
 
   const isLoading = status.phase === 'thinking' || status.phase === 'streaming';
@@ -546,6 +638,9 @@ Can you help me understand this feature better?`;
                 onConvertFeatureToSpec={handleConvertFeatureToSpec}
                 onViewLinkedSpec={handleViewLinkedSpec}
                 onExploreFeatureInChat={handleExploreFeatureInChat}
+                ideationItems={message.role === 'assistant' ? Array.from(ideationItems.values()) : undefined}
+                onConvertIdeationToSpec={handleConvertIdeationToSpec}
+                onExploreIdeationItemInChat={handleExploreIdeationItemInChat}
               />
             ))}
 
@@ -643,6 +738,9 @@ interface MessageBubbleProps {
   onConvertFeatureToSpec?: (feature: RoadmapFeature) => void;
   onViewLinkedSpec?: (specId: string) => void;
   onExploreFeatureInChat?: (feature: RoadmapFeature) => void;
+  ideationItems?: Idea[];
+  onConvertIdeationToSpec?: (idea: Idea) => void;
+  onExploreIdeationItemInChat?: (idea: Idea) => void;
 }
 
 function MessageBubble({
@@ -655,7 +753,10 @@ function MessageBubble({
   roadmapFeatures,
   onConvertFeatureToSpec,
   onViewLinkedSpec,
-  onExploreFeatureInChat
+  onExploreFeatureInChat,
+  ideationItems,
+  onConvertIdeationToSpec,
+  onExploreIdeationItemInChat
 }: MessageBubbleProps) {
   const { t } = useTranslation(['common', 'insights']);
   const isUser = message.role === 'user';
@@ -699,6 +800,21 @@ function MessageBubble({
                 onConvertToSpec={onConvertFeatureToSpec}
                 onViewLinkedSpec={onViewLinkedSpec}
                 onExploreInChat={onExploreFeatureInChat}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Ideation item cards for assistant messages */}
+        {!isUser && ideationItems && ideationItems.length > 0 && (
+          <div className="space-y-3">
+            {ideationItems.map((idea) => (
+              <IdeationItemCard
+                key={idea.id}
+                idea={idea}
+                onConvertToSpec={onConvertIdeationToSpec}
+                onViewLinkedSpec={onViewLinkedSpec}
+                onExploreInChat={onExploreIdeationItemInChat}
               />
             ))}
           </div>
