@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { ExternalLink, Play, X } from 'lucide-react';
+import { ExternalLink, Play, X, MessageCircle } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Card } from '../ui/card';
@@ -43,9 +43,10 @@ interface IdeaCardProps {
   onGoToTask?: (taskId: string) => void;
   onDismiss: (idea: Idea) => void;
   onToggleSelect: (ideaId: string) => void;
+  onDiscussInInsights?: (idea: Idea) => void;
 }
 
-export function IdeaCard({ idea, isSelected, onClick, onConvert, onGoToTask, onDismiss, onToggleSelect }: IdeaCardProps) {
+export function IdeaCard({ idea, isSelected, onClick, onConvert, onGoToTask, onDismiss, onToggleSelect, onDiscussInInsights }: IdeaCardProps) {
   const { t } = useTranslation(['ideation', 'common']);
   const isDismissed = idea.status === 'dismissed';
   const isArchived = idea.status === 'archived';
@@ -127,6 +128,25 @@ export function IdeaCard({ idea, isSelected, onClick, onConvert, onGoToTask, onD
           {/* Action buttons */}
           {!isInactive && !isConverted && (
             <div className="flex items-center gap-1 ml-2">
+              {onDiscussInInsights && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-primary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDiscussInInsights(idea);
+                      }}
+                      aria-label={t('accessibility.discussInInsightsAriaLabel')}
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t('accessibility.discussInInsightsAriaLabel')}</TooltipContent>
+                </Tooltip>
+              )}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button

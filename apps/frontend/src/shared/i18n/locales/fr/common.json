@@ -48,6 +48,7 @@
     "selectIdeaAriaLabel": "Sélectionner l'idée : {{title}}",
     "convertToTaskAriaLabel": "Convertir en tâche",
     "goToTaskAriaLabel": "Aller à la tâche",
+    "discussInInsightsAriaLabel": "Discuter dans le chat Insights",
     "reAuthenticateProfileAriaLabel": "Ré-authentifier le profil",
     "hideTokenEntryAriaLabel": "Masquer la saisie du jeton",
     "enterTokenManuallyAriaLabel": "Saisir le jeton manuellement",

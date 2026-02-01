@@ -48,6 +48,7 @@
     "selectIdeaAriaLabel": "Select idea: {{title}}",
     "convertToTaskAriaLabel": "Convert to task",
     "goToTaskAriaLabel": "Go to task",
+    "discussInInsightsAriaLabel": "Discuss in Insights Chat",
     "reAuthenticateProfileAriaLabel": "Re-authenticate profile",
     "hideTokenEntryAriaLabel": "Hide token entry",
     "enterTokenManuallyAriaLabel": "Enter token manually",
