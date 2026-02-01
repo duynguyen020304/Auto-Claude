@@ -2546,6 +2546,60 @@ def _select_profile_by_least_used(
     return selected_profile
 
 
+def _select_profile_by_random(
+    profiles: list[dict],
+) -> dict | None:
+    """
+    Select a profile using the random strategy.
+
+    Selects a profile uniformly at random from the list. This strategy
+    provides equal probability for all profiles, making it suitable for
+    load distribution when there's no preference ordering.
+
+    Args:
+        profiles: List of profile dictionaries from profiles.json
+
+    Returns:
+        A randomly selected profile dict, or None if:
+        - profiles list is empty
+
+    Example:
+        >>> import random
+        >>> random.seed(42)  # For reproducible example
+        >>> profiles = [
+        ...     {"id": "profile-1", "name": "Profile 1"},
+        ...     {"id": "profile-2", "name": "Profile 2"},
+        ...     {"id": "profile-3", "name": "Profile 3"},
+        ... ]
+        >>> profile = _select_profile_by_random(profiles)
+        >>> print(profile["name"])  # Will vary based on random selection
+        Profile 2
+
+    Note:
+        - Uses Python's random.choice() which provides uniform distribution.
+        - Each profile has equal probability: 1/N where N is the number of profiles.
+        - For testing purposes, you can set random.seed() to make selections reproducible.
+        - The random module is already imported at the top of auth.py.
+    """
+    if not profiles:
+        logger.debug("Random strategy: profiles list is empty, no profile selected")
+        return None
+
+    # Use random.choice() for uniform random selection
+    selected_profile = random.choice(profiles)
+
+    if selected_profile:
+        profile_id = selected_profile.get("id", "unknown")
+        profile_name = selected_profile.get("name", profile_id)
+
+        logger.debug(
+            f"Random strategy: selected profile '{profile_name}' "
+            f"(ID: {profile_id}, total profiles: {len(profiles)})"
+        )
+
+    return selected_profile
+
+
 def get_rotating_profile_credential() -> dict[str, str | None] | None:
     """
     Get a credential profile from the rotation pool.
@@ -2631,6 +2685,9 @@ def get_rotating_profile_credential() -> dict[str, str | None] | None:
         # Least-used strategy: select profile with lowest usage score
         usage_data = strategy.get("usageData")
         selected_profile = _select_profile_by_least_used(profiles, usage_data)
+    elif strategy_type == "random":
+        # Random strategy: uniformly random profile selection
+        selected_profile = _select_profile_by_random(profiles)
     else:
         # Other strategies not implemented yet - fall back to priority
         logger.debug(
