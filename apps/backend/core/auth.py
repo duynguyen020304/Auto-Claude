@@ -98,6 +98,73 @@ def get_profiles_file_path() -> str:
     return os.path.join(auto_claude_dir, "profiles.json")
 
 
+def load_profiles_file() -> dict:
+    """
+    Load profiles.json from disk with graceful error handling.
+
+    This function mirrors the frontend's loadProfilesFile() in profile-manager.ts.
+    It reads the profiles.json file from the auto-claude directory and returns
+    the parsed data. If the file doesn't exist or cannot be parsed, it returns
+    a default empty profiles structure.
+
+    Returns:
+        Dictionary with keys:
+        - profiles: List of profile dictionaries (default: empty list)
+        - activeProfileId: ID of the active profile (default: None)
+        - version: File format version (default: 1)
+
+    Example:
+        >>> profiles = load_profiles_file()
+        >>> print(profiles.get('profiles', []))
+        []
+        >>> print(profiles.get('activeProfileId'))
+        None
+
+    Note:
+        This function handles all errors gracefully and returns a valid default
+        structure. This allows the application to continue running even if
+        profiles.json is missing, corrupted, or inaccessible.
+    """
+    profiles_path = get_profiles_file_path()
+
+    try:
+        # Check if file exists before attempting to read
+        if not os.path.exists(profiles_path):
+            logger.debug(f"Profiles file not found: {profiles_path}")
+            return {"profiles": [], "activeProfileId": None, "version": 1}
+
+        # Read and parse the JSON file
+        with open(profiles_path, encoding="utf-8") as f:
+            data = json.load(f)
+
+        # Validate basic structure (has expected keys)
+        if not isinstance(data, dict):
+            logger.warning(f"Invalid profiles file structure (not a dict): {profiles_path}")
+            return {"profiles": [], "activeProfileId": None, "version": 1}
+
+        # Ensure required keys exist with defaults
+        result = {
+            "profiles": data.get("profiles", []),
+            "activeProfileId": data.get("activeProfileId"),
+            "version": data.get("version", 1),
+        }
+
+        logger.debug(f"Loaded profiles file: {profiles_path}")
+        return result
+
+    except json.JSONDecodeError as e:
+        logger.warning(f"Failed to parse profiles.json: {e}")
+        return {"profiles": [], "activeProfileId": None, "version": 1}
+
+    except (IOError, OSError, PermissionError) as e:
+        logger.warning(f"Failed to read profiles file: {e}")
+        return {"profiles": [], "activeProfileId": None, "version": 1}
+
+    except Exception as e:
+        logger.warning(f"Unexpected error loading profiles file: {e}")
+        return {"profiles": [], "activeProfileId": None, "version": 1}
+
+
 def _calculate_config_dir_hash(config_dir: str) -> str:
     """
     Calculate hash of config directory path for Keychain service name.
