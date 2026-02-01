@@ -62,6 +62,7 @@ export function RoadmapTabs({
               onFeatureSelect={onFeatureSelect}
               onConvertToSpec={onConvertToSpec}
               onGoToTask={onGoToTask}
+              onExploreInInsights={onExploreInInsights}
             />
           ))}
         </div>
@@ -77,6 +78,7 @@ export function RoadmapTabs({
               onClick={() => onFeatureSelect(feature)}
               onConvertToSpec={onConvertToSpec}
               onGoToTask={onGoToTask}
+              onExploreInInsights={onExploreInInsights}
               hasCompetitorInsight={hasCompetitorInsight(feature)}
             />
           ))}

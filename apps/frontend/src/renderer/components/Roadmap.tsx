@@ -125,6 +125,7 @@ export function Roadmap({ projectId, onGoToTask, onExploreInInsights }: RoadmapP
           onClose={() => setSelectedFeature(null)}
           onConvertToSpec={handleConvertToSpec}
           onGoToTask={handleGoToTask}
+          onExploreInInsights={onExploreInInsights}
           onDelete={deleteFeature}
           competitorInsights={getCompetitorInsightsForFeature(selectedFeature, competitorAnalysis)}
         />

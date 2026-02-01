@@ -11,6 +11,7 @@ import {
   ExternalLink,
   TrendingUp,
   Trash2,
+  Sparkles,
 } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -29,6 +30,7 @@ export function FeatureDetailPanel({
   onClose,
   onConvertToSpec,
   onGoToTask,
+  onExploreInInsights,
   onDelete,
   competitorInsights = [],
 }: FeatureDetailPanelProps) {
@@ -214,23 +216,31 @@ export function FeatureDetailPanel({
       </ScrollArea>
 
       {/* Actions */}
-      {feature.linkedSpecId ? (
-        <div className="shrink-0 p-4 border-t border-border">
+      <div className="shrink-0 p-4 border-t border-border space-y-2">
+        {onExploreInInsights && (
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => onExploreInInsights(feature)}
+          >
+            <Sparkles className="h-4 w-4 mr-2" />
+            {t('roadmap:featureCard.exploreInInsights')}
+          </Button>
+        )}
+        {feature.linkedSpecId ? (
           <Button className="w-full" onClick={() => onGoToTask(feature.linkedSpecId!)}>
             <ExternalLink className="h-4 w-4 mr-2" />
             {t('roadmap:featureDetailPanel.goToTask')}
           </Button>
-        </div>
-      ) : (
-        feature.status !== 'done' && (
-          <div className="shrink-0 p-4 border-t border-border">
+        ) : (
+          feature.status !== 'done' && (
             <Button className="w-full" onClick={() => onConvertToSpec(feature)}>
               <Zap className="h-4 w-4 mr-2" />
               {t('roadmap:featureDetailPanel.convertToSpec')}
             </Button>
-          </div>
-        )
-      )}
+          )
+        )}
+      </div>
 
       {/* Delete Confirmation */}
       {showDeleteConfirm && (

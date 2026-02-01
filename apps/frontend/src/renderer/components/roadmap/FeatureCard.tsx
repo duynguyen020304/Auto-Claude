@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { ExternalLink, Play, TrendingUp } from 'lucide-react';
+import { ExternalLink, Play, TrendingUp, Sparkles } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
@@ -17,6 +17,7 @@ export function FeatureCard({
   onClick,
   onConvertToSpec,
   onGoToTask,
+  onExploreInInsights,
   hasCompetitorInsight = false,
 }: FeatureCardProps) {
   const { t } = useTranslation('roadmap');
@@ -55,33 +56,53 @@ export function FeatureCard({
           <h3 className="font-medium">{feature.title}</h3>
           <p className="text-sm text-muted-foreground line-clamp-2">{feature.description}</p>
         </div>
-        {feature.linkedSpecId ? (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onGoToTask(feature.linkedSpecId!);
-            }}
-          >
-            <ExternalLink className="h-3 w-3 mr-1" />
-            {t('featureCard.goToTask')}
-          </Button>
-        ) : (
-          feature.status !== 'done' && (
+        <div className="flex items-center gap-1">
+          {onExploreInInsights && feature.status !== 'done' && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onExploreInInsights(feature);
+                  }}
+                >
+                  <Sparkles className="h-3 w-3" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t('featureCard.exploreInInsights')}</TooltipContent>
+            </Tooltip>
+          )}
+          {feature.linkedSpecId ? (
             <Button
               variant="outline"
               size="sm"
               onClick={(e) => {
                 e.stopPropagation();
-                onConvertToSpec(feature);
+                onGoToTask(feature.linkedSpecId!);
               }}
             >
-              <Play className="h-3 w-3 mr-1" />
-              {t('featureCard.build')}
+              <ExternalLink className="h-3 w-3 mr-1" />
+              {t('featureCard.goToTask')}
             </Button>
-          )
-        )}
+          ) : (
+            feature.status !== 'done' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onConvertToSpec(feature);
+                }}
+              >
+                <Play className="h-3 w-3 mr-1" />
+                {t('featureCard.build')}
+              </Button>
+            )
+          )}
+        </div>
       </div>
     </Card>
   );

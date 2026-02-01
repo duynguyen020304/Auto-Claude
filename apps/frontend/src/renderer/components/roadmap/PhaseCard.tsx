@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { CheckCircle2, Circle, ExternalLink, Play, TrendingUp } from 'lucide-react';
+import { CheckCircle2, Circle, ExternalLink, Play, TrendingUp, Sparkles } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
@@ -14,6 +14,7 @@ export function PhaseCard({
   onFeatureSelect,
   onConvertToSpec,
   onGoToTask,
+  onExploreInInsights,
 }: PhaseCardProps) {
   const { t } = useTranslation('roadmap');
   const completedCount = features.filter((f) => f.status === 'done').length;
@@ -106,35 +107,51 @@ export function PhaseCard({
                   <TrendingUp className="h-3 w-3 text-primary flex-shrink-0" />
                 )}
               </div>
-              {feature.status === 'done' ? (
-                <CheckCircle2 className="h-4 w-4 text-success flex-shrink-0" />
-              ) : feature.linkedSpecId ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 px-2"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onGoToTask(feature.linkedSpecId!);
-                  }}
-                >
-                  <ExternalLink className="h-3 w-3 mr-1" />
-                  {t('phaseCard.viewTask')}
-                </Button>
-              ) : (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 px-2 flex-shrink-0"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onConvertToSpec(feature);
-                  }}
-                >
-                  <Play className="h-3 w-3 mr-1" />
-                  {t('phaseCard.build')}
-                </Button>
-              )}
+              <div className="flex items-center gap-1 flex-shrink-0">
+                {onExploreInInsights && feature.status !== 'done' && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onExploreInInsights(feature);
+                    }}
+                    title={t('featureCard.exploreInInsights')}
+                  >
+                    <Sparkles className="h-3 w-3" />
+                  </Button>
+                )}
+                {feature.status === 'done' ? (
+                  <CheckCircle2 className="h-4 w-4 text-success" />
+                ) : feature.linkedSpecId ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onGoToTask(feature.linkedSpecId!);
+                    }}
+                  >
+                    <ExternalLink className="h-3 w-3 mr-1" />
+                    {t('phaseCard.viewTask')}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onConvertToSpec(feature);
+                    }}
+                  >
+                    <Play className="h-3 w-3 mr-1" />
+                    {t('phaseCard.build')}
+                  </Button>
+                )}
+              </div>
             </div>
           ))}
           {features.length > 5 && (
