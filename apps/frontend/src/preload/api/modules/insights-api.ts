@@ -6,6 +6,7 @@ import type {
   InsightsStreamChunk,
   InsightsModelConfig,
   RoadmapItemContext,
+  RoadmapFeature,
   Task,
   TaskMetadata,
   IPCResult
@@ -40,6 +41,7 @@ export interface InsightsAPI {
   updateInsightsModelConfig: (projectId: string, sessionId: string, modelConfig: InsightsModelConfig) => Promise<IPCResult>;
   cancelInsightsSession: (projectId: string, sessionId: string) => Promise<IPCResult>;
   getActiveInsightsSessions: (projectId: string) => Promise<IPCResult<InsightsSessionSummary[]>>;
+  getRoadmapFeatureDetails: (projectId: string, featureId: string) => Promise<IPCResult<RoadmapFeature>>;
 
   // Event Listeners
   onInsightsStreamChunk: (
@@ -111,6 +113,9 @@ export const createInsightsAPI = (): InsightsAPI => ({
 
   getActiveInsightsSessions: (projectId: string): Promise<IPCResult<InsightsSessionSummary[]>> =>
     invokeIpc(IPC_CHANNELS.INSIGHTS_GET_ACTIVE_SESSIONS, projectId),
+
+  getRoadmapFeatureDetails: (projectId: string, featureId: string): Promise<IPCResult<RoadmapFeature>> =>
+    invokeIpc(IPC_CHANNELS.INSIGHTS_GET_ROADMAP_FEATURE, projectId, featureId),
 
   // Event Listeners
   onInsightsStreamChunk: (
