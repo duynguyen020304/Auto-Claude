@@ -82,6 +82,13 @@
       "in_progress": "In Progress",
       "completed": "Completed",
       "archived": "Archived"
+    },
+    "effort": {
+      "trivial": "Trivial",
+      "small": "Small",
+      "medium": "Medium",
+      "large": "Large",
+      "significant": "Significant"
     }
   },
   "modelSelector": {
