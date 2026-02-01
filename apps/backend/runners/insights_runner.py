@@ -413,6 +413,21 @@ Valid categories: feature, bug_fix, refactoring, documentation, security, perfor
 Valid complexity: trivial, small, medium, large, complex
 Valid impact: low, medium, high, critical
 
+## Roadmap Feature References
+When discussing roadmap items or features, output a roadmap feature reference in this exact format on a SINGLE LINE:
+__ROADMAP_FEATURE__:{{"id": "feature-id", "title": "Feature Title", "action": "view|explore|implement"}}
+
+Use this when:
+- Referencing a specific roadmap item by ID or title
+- Suggesting the user explore a particular feature
+- Recommending implementation of a roadmap item
+- Linking analysis back to a roadmap context
+
+Valid actions:
+- "view" - Suggest viewing the feature details
+- "explore" - Suggest exploring the feature in insights chat
+- "implement" - Suggest implementing/creating a task for the feature
+
 Be conversational and helpful. Focus on providing actionable insights and clear explanations.
 Keep responses concise but informative."""
 

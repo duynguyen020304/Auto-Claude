@@ -242,7 +242,7 @@ export interface InsightsChatStatus {
 }
 
 export interface InsightsStreamChunk {
-  type: 'text' | 'task_suggestion' | 'tool_start' | 'tool_end' | 'done' | 'error';
+  type: 'text' | 'task_suggestion' | 'tool_start' | 'tool_end' | 'roadmap_feature' | 'done' | 'error';
   content?: string;
   suggestedTask?: {
     title: string;
@@ -252,6 +252,11 @@ export interface InsightsStreamChunk {
   tool?: {
     name: string;
     input?: string;  // Brief description of what's being searched/read
+  };
+  roadmapFeature?: {
+    id: string;
+    title: string;
+    action: 'view' | 'explore' | 'implement';
   };
   error?: string;
 }

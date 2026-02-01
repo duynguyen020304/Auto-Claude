@@ -235,6 +235,8 @@ export class InsightsExecutor extends EventEmitter {
             this.handleTaskSuggestion(sessionId, line, (task) => {
               suggestedTask = task;
             });
+          } else if (line.startsWith('__ROADMAP_FEATURE__:')) {
+            this.handleRoadmapFeature(sessionId, line);
           } else if (line.startsWith('__TOOL_START__:')) {
             this.handleToolStart(sessionId, line, toolsUsed);
           } else if (line.startsWith('__TOOL_END__:')) {
@@ -389,6 +391,26 @@ export class InsightsExecutor extends EventEmitter {
       } as InsightsStreamChunk);
     } catch {
       // Ignore parse errors for tool markers
+    }
+  }
+
+  /**
+   * Handle roadmap feature marker
+   */
+  private handleRoadmapFeature(sessionId: string, line: string): void {
+    try {
+      const featureJson = line.substring('__ROADMAP_FEATURE__:'.length);
+      const featureData = JSON.parse(featureJson);
+      this.emit('stream-chunk', sessionId, {
+        type: 'roadmap_feature',
+        roadmapFeature: {
+          id: featureData.id,
+          title: featureData.title,
+          action: featureData.action
+        }
+      } as InsightsStreamChunk);
+    } catch {
+      // Ignore parse errors for roadmap feature markers
     }
   }
 
