@@ -2454,6 +2454,98 @@ def _select_profile_by_round_robin(
     return selected_profile
 
 
+def _select_profile_by_least_used(
+    profiles: list[dict],
+    usage_data: dict | None,
+) -> dict | None:
+    """
+    Select a profile using the least-used strategy.
+
+    Calculates a usage score for each profile (requestCount + tokenUsage)
+    and returns the profile with the lowest score. This strategy distributes
+    load across profiles by preferring those with minimal usage.
+
+    Args:
+        profiles: List of profile dictionaries from profiles.json
+        usage_data: Optional dict mapping profile IDs to usage stats.
+                    Each usage dict should have 'requestCount' and 'tokenUsage'.
+                    If None, all profiles are treated as having equal usage (score=0).
+
+    Returns:
+        The profile dict with the lowest usage score, or None if:
+        - profiles list is empty
+
+    Example:
+        >>> profiles = [
+        ...     {"id": "profile-1", "name": "Profile 1"},
+        ...     {"id": "profile-2", "name": "Profile 2"},
+        ... ]
+        >>> usage = {"profile-1": {"requestCount": 100, "tokenUsage": 50000}}
+        >>> profile = _select_profile_by_least_used(profiles, usage)
+        >>> print(profile["name"])
+        Profile 2
+
+    Note:
+        - Usage data is tracked by the frontend and stored in the rotation
+          strategy state file. The backend reads this data but does not
+          modify it (usage updates happen in the frontend).
+        - If usage data is missing for a profile, its score defaults to 0.
+        - If multiple profiles have the same score, the first one is selected.
+        - Token usage is weighted equally with request count (1 token = 1 request).
+    """
+    if not profiles:
+        logger.debug("Least-used strategy: profiles list is empty, no profile selected")
+        return None
+
+    # Default usage data to empty dict if not provided
+    usage_by_profile = usage_data if usage_data is not None else {}
+
+    # Track the profile with minimum usage score
+    min_score = float('inf')
+    selected_profile = None
+
+    for profile in profiles:
+        profile_id = profile.get("id", "unknown")
+        profile_name = profile.get("name", profile_id)
+
+        # Get usage stats for this profile (default to 0 if not found)
+        profile_usage = usage_by_profile.get(profile_id, {})
+        request_count = profile_usage.get("requestCount", 0)
+        token_usage = profile_usage.get("tokenUsage", 0)
+
+        # Calculate usage score: requests + tokens
+        # Note: token usage may be large, but this is intentional - profiles
+        # with heavy token consumption should be deprioritized
+        score = request_count + token_usage
+
+        # Track minimum score profile
+        if score < min_score:
+            min_score = score
+            selected_profile = profile
+
+    if selected_profile:
+        profile_id = selected_profile.get("id", "unknown")
+        profile_name = selected_profile.get("name", profile_id)
+
+        logger.debug(
+            f"Least-used strategy: selected profile '{profile_name}' "
+            f"(ID: {profile_id}, score: {min_score})"
+        )
+
+        # Log all scores for debugging (only if more than one profile)
+        if len(profiles) > 1:
+            scores_str = ", ".join(
+                f"{p.get('id', 'unknown')}={usage_by_profile.get(p.get('id', 'unknown'), {}).get('requestCount', 0) + usage_by_profile.get(p.get('id', 'unknown'), {}).get('tokenUsage', 0)}"
+                for p in profiles
+            )
+            logger.debug(f"Least-used strategy: all profile scores: {scores_str}")
+    else:
+        # This shouldn't happen since we check profiles list at the start
+        logger.debug("Least-used strategy: unexpected error, no profile selected")
+
+    return selected_profile
+
+
 def get_rotating_profile_credential() -> dict[str, str | None] | None:
     """
     Get a credential profile from the rotation pool.
@@ -2481,9 +2573,9 @@ def get_rotating_profile_credential() -> dict[str, str | None] | None:
         - all profiles are filtered out
 
     Note:
-        Priority strategy is currently the only implemented strategy.
-        Other strategies (round-robin, least-used, random, weighted, time-based)
-        will be added in future subtasks.
+        Implemented strategies: priority, round-robin, least-used.
+        Other strategies (random, weighted, time-based) will be added
+        in future subtasks.
 
     Example:
         >>> cred = get_rotating_profile_credential()
@@ -2535,6 +2627,10 @@ def get_rotating_profile_credential() -> dict[str, str | None] | None:
         # Round-robin strategy: cycle through profiles using rotationIndex
         rotation_index = strategy.get("rotationIndex")
         selected_profile = _select_profile_by_round_robin(profiles, rotation_index)
+    elif strategy_type == "least-used":
+        # Least-used strategy: select profile with lowest usage score
+        usage_data = strategy.get("usageData")
+        selected_profile = _select_profile_by_least_used(profiles, usage_data)
     else:
         # Other strategies not implemented yet - fall back to priority
         logger.debug(
