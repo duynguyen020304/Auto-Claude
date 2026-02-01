@@ -62,6 +62,8 @@
     "searchingCode": "Searching code",
     "exploringRoadmapItem": "Exploring Roadmap Feature",
     "exploringIdeationItem": "Exploring Ideation Item",
+    "convertIdeationToTask": "Convert to Task",
+    "discussInChat": "Discuss in Chat",
     "convertToSpec": "Convert to Spec",
     "convertingToSpec": "Converting...",
     "specCreated": "Spec Created",
