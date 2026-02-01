@@ -492,8 +492,9 @@
             "command": "cd apps/frontend && npm test -- insights-store.test.ts 2>&1 | tail -5",
             "expected": "passed"
           },
-          "status": "pending",
-          "notes": "Test: roadmap_feature chunks update sessionRoadmapFeatures correctly, clearRoadmapFeatures works, multiple features per session"
+          "status": "completed",
+          "notes": "Added comprehensive tests for addRoadmapFeature action, clearRoadmapFeatures action, and getRoadmapFeatures selector. Tests verify features are properly isolated per session, including: adding single/multiple features, keeping features separate for different sessions, returning undefined for sessions with no features, and selective clearing of features.",
+          "updated_at": "2026-02-01T19:46:01.000000+00:00"
         },
         {
           "id": "subtask-7-3",
@@ -700,7 +701,7 @@
   "qa_signoff": null,
   "status": "in_progress",
   "planStatus": "in_progress",
-  "updated_at": "2026-02-01T13:40:20.779Z",
+  "updated_at": "2026-02-01T13:44:24.518Z",
   "last_updated": "2026-02-01T13:39:23.748744+00:00",
   "recoveryNote": "Task recovered from stuck state at 2026-02-01T12:48:44.209Z"
 }
