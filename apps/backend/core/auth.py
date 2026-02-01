@@ -2390,6 +2390,70 @@ def _select_profile_by_priority(
     return None
 
 
+def _select_profile_by_round_robin(
+    profiles: list[dict],
+    rotation_index: int | None,
+) -> dict | None:
+    """
+    Select a profile using the round-robin strategy.
+
+    Cycles through profiles sequentially using rotationIndex state.
+    Each call increments the index and wraps around to 0 when exceeding
+    the list length.
+
+    Args:
+        profiles: List of profile dictionaries from profiles.json
+        rotation_index: Current rotation index from strategy state (defaults to 0 if None)
+
+    Returns:
+        The profile dict at the calculated index, or None if:
+        - profiles list is empty
+
+    Example:
+        >>> profiles = [
+        ...     {"id": "profile-1", "name": "Profile 1", "baseUrl": "...", "apiKey": "..."},
+        ...     {"id": "profile-2", "name": "Profile 2", "baseUrl": "...", "apiKey": "..."},
+        ...     {"id": "profile-3", "name": "Profile 3", "baseUrl": "...", "apiKey": "..."},
+        ... ]
+        >>> # First call with rotationIndex=0: selects profile-2 (index 1)
+        >>> profile = _select_profile_by_round_robin(profiles, 0)
+        >>> # Next call with rotationIndex=1: selects profile-3 (index 2)
+        >>> profile = _select_profile_by_round_robin(profiles, 1)
+        >>> # Next call with rotationIndex=2: selects profile-1 (index 0, wraps around)
+        >>> profile = _select_profile_by_round_robin(profiles, 2)
+
+    Note:
+        - This strategy does NOT check rate limit status, authentication status,
+          or usage thresholds. These checks will be added when usage tracking
+          is implemented in the backend.
+        - State persistence (writing updated rotationIndex back to the file)
+          is optional for initial implementation. The frontend manages the
+          rotation state in api-profile-rotation.json.
+    """
+    if not profiles:
+        logger.debug("Round-robin strategy: profiles list is empty, no profile selected")
+        return None
+
+    # Get current rotation index (default to 0)
+    current_index = rotation_index if rotation_index is not None else 0
+
+    # Calculate next index (circular - wraps around to 0)
+    next_index = (current_index + 1) % len(profiles)
+
+    # Get the profile at the calculated index
+    selected_profile = profiles[next_index]
+
+    profile_id = selected_profile.get("id", "unknown")
+    profile_name = selected_profile.get("name", profile_id)
+
+    logger.debug(
+        f"Round-robin strategy: selected profile '{profile_name}' "
+        f"(ID: {profile_id}, index: {next_index}/{len(profiles)})"
+    )
+
+    return selected_profile
+
+
 def get_rotating_profile_credential() -> dict[str, str | None] | None:
     """
     Get a credential profile from the rotation pool.
@@ -2467,6 +2531,10 @@ def get_rotating_profile_credential() -> dict[str, str | None] | None:
     if strategy_type == "priority":
         # Priority strategy: select first available profile from priorityOrder list
         selected_profile = _select_profile_by_priority(profiles, priority_order)
+    elif strategy_type == "round-robin":
+        # Round-robin strategy: cycle through profiles using rotationIndex
+        rotation_index = strategy.get("rotationIndex")
+        selected_profile = _select_profile_by_round_robin(profiles, rotation_index)
     else:
         # Other strategies not implemented yet - fall back to priority
         logger.debug(
