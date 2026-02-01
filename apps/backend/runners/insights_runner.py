@@ -598,6 +598,21 @@ Valid actions:
 - "explore" - Suggest exploring the feature in insights chat
 - "implement" - Suggest implementing/creating a task for the feature
 
+## Ideation Item References
+When discussing ideation items or ideas, output an ideation item reference in this exact format on a SINGLE LINE:
+__IDEATION_ITEM__:{{"id": "idea-id", "title": "Idea Title", "action": "view|explore|implement"}}
+
+Use this when:
+- Referencing a specific ideation item by ID or title
+- Suggesting the user explore a particular idea
+- Recommending implementation of an ideation item
+- Linking analysis back to an ideation context
+
+Valid actions:
+- "view" - Suggest viewing the idea details
+- "explore" - Suggest exploring the idea in insights chat
+- "implement" - Suggest implementing/creating a task for the idea
+
 Be conversational and helpful. Focus on providing actionable insights and clear explanations.
 Keep responses concise but informative."""
 
