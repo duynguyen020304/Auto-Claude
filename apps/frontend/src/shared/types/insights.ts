@@ -181,6 +181,21 @@ export interface RoadmapItemContext {
   status: 'under_review' | 'planned' | 'in_progress' | 'done';
 }
 
+// Ideation item context for exploring ideation ideas in Insights Chat
+export interface IdeationItemContext {
+  ideaId: string;
+  title: string;
+  description: string;
+  rationale: string;
+  type: IdeationType;
+  status: IdeationStatus;
+  estimatedEffort: 'trivial' | 'small' | 'medium' | 'large' | 'complex';
+  affectedFiles: string[];
+  existingPatterns: string[];
+  buildsUpon: string[];
+  implementationApproach?: string;
+}
+
 // Lightweight reference to a roadmap feature for linking in insights messages
 export interface RoadmapFeatureReference {
   id: string;
