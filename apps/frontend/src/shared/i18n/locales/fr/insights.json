@@ -3,11 +3,17 @@
     "title": "Historique des discussions",
     "noConversations": "Aucune discussion pour le moment",
     "deleteWarning": "Cela supprimera définitivement cette conversation et tous ses messages. Cette action ne peut pas être annulée.",
+    "deleteTitle": "Supprimer la conversation ?",
     "messageCount": "{{count}} message",
     "messageCount_plural": "{{count}} messages",
     "searchPlaceholder": "Rechercher des discussions...",
     "renameConversation": "Renommer la conversation",
-    "conversationName": "Nom de la conversation"
+    "conversationName": "Nom de la conversation",
+    "rename": "Renommer",
+    "delete": "Supprimer",
+    "today": "Aujourd'hui",
+    "yesterday": "Hier",
+    "daysAgo": "Il y a {{count}} jours"
   },
   "search": {
     "placeholder": "Poser des questions sur votre base de code...",
@@ -56,9 +62,36 @@
     "searchingCode": "Recherche de code",
     "exploringRoadmapItem": "Exploration de fonctionnalité Roadmap",
     "exploringIdeationItem": "Exploration d'élément d'idéation",
+    "convertIdeationToTask": "Convertir en tâche",
+    "discussInChat": "Discuter dans le chat",
     "convertToSpec": "Convertir en Spec",
     "convertingToSpec": "Conversion...",
-    "specCreated": "Spec créée"
+    "specCreated": "Spec créée",
+    "ideationTypes": {
+      "code_improvements": "Améliorations du code",
+      "performance": "Performance",
+      "security": "Sécurité",
+      "features": "Fonctionnalités",
+      "refactoring": "Refactoring",
+      "documentation": "Documentation",
+      "testing": "Tests",
+      "architecture": "Architecture",
+      "ux": "UX/UI",
+      "dependencies": "Dépendances"
+    },
+    "status": {
+      "draft": "Brouillon",
+      "in_progress": "En cours",
+      "completed": "Terminé",
+      "archived": "Archivé"
+    },
+    "effort": {
+      "trivial": "Trivial",
+      "small": "Petit",
+      "medium": "Moyen",
+      "large": "Grand",
+      "significant": "Significatif"
+    }
   },
   "modelSelector": {
     "agentProfile": "Profil d'agent",
