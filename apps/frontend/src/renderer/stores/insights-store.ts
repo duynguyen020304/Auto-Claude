@@ -12,6 +12,7 @@ import type {
   RoadmapItemContext,
   RoadmapFeatureReference,
   RoadmapFeature,
+  IdeationItemReference,
 } from '../../shared/types';
 import { debugLog } from '../../shared/utils/debug-logger';
 
@@ -36,6 +37,7 @@ interface InsightsState {
   sessions: InsightsSessionSummary[]; // List of all sessions
   sessionStates: Map<string, InsightsSessionState>; // Per-session streaming state
   sessionRoadmapFeatures: Map<string, RoadmapFeatureReference[]>; // sessionId -> roadmap features for exploration
+  sessionIdeationItems: Map<string, IdeationItemReference[]>; // sessionId -> ideation items for exploration
   isLoadingSessions: boolean;
   abortControllers: Map<string, AbortController>; // sessionId -> AbortController mapping for active generations
 
@@ -69,11 +71,14 @@ interface InsightsState {
   exploreRoadmapItem: (roadmapContext: RoadmapItemContext) => void;
   addRoadmapFeature: (sessionId: string, feature: RoadmapFeatureReference) => void;
   clearRoadmapFeatures: (sessionId: string) => void;
+  addIdeationItem: (sessionId: string, item: IdeationItemReference) => void;
+  clearIdeationItems: (sessionId: string) => void;
 
   // Selectors
   getCurrentSessionState: () => InsightsSessionState | undefined;
   getSessionState: (sessionId: string) => InsightsSessionState | undefined;
   getRoadmapFeatures: (sessionId: string) => RoadmapFeatureReference[] | undefined;
+  getIdeationItems: (sessionId: string) => IdeationItemReference[] | undefined;
 }
 
 const initialStatus: InsightsChatStatus = {
@@ -104,6 +109,7 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
   sessions: [],
   sessionStates: new Map<string, InsightsSessionState>(),
   sessionRoadmapFeatures: new Map<string, RoadmapFeatureReference[]>(),
+  sessionIdeationItems: new Map<string, IdeationItemReference[]>(),
   isLoadingSessions: false,
   abortControllers: new Map<string, AbortController>(),
   status: initialStatus,
@@ -205,11 +211,21 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
         }
       }
 
+      // Clean up sessionIdeationItems: remove entries for deleted sessions
+      const newSessionIdeationItems = new Map<string, IdeationItemReference[]>();
+      for (const [sessionId, items] of state.sessionIdeationItems.entries()) {
+        // Keep ideation items if session still exists or is the current session
+        if (currentSessionIds.has(sessionId) || sessionId === state.currentSessionId) {
+          newSessionIdeationItems.set(sessionId, items);
+        }
+      }
+
       return {
         sessions,
         sessionStates: newSessionStates,
         abortControllers: newAbortControllers,
-        sessionRoadmapFeatures: newSessionRoadmapFeatures
+        sessionRoadmapFeatures: newSessionRoadmapFeatures,
+        sessionIdeationItems: newSessionIdeationItems
       };
     }),
 
@@ -601,6 +617,7 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       currentSessionId: null,
       sessionStates: new Map<string, InsightsSessionState>(),
       sessionRoadmapFeatures: new Map<string, RoadmapFeatureReference[]>(),
+      sessionIdeationItems: new Map<string, IdeationItemReference[]>(),
       abortControllers: new Map<string, AbortController>(),
       status: initialStatus,
       pendingMessage: '',
@@ -734,6 +751,11 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       newSessionRoadmapFeatures.delete(sessionId);
       updates.sessionRoadmapFeatures = newSessionRoadmapFeatures;
 
+      // Remove from sessionIdeationItems
+      const newSessionIdeationItems = new Map(state.sessionIdeationItems);
+      newSessionIdeationItems.delete(sessionId);
+      updates.sessionIdeationItems = newSessionIdeationItems;
+
       // Remove from abortControllers
       const newAbortControllers = new Map(state.abortControllers);
       newAbortControllers.delete(sessionId);
@@ -826,6 +848,39 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       };
     }),
 
+  /**
+   * Adds an ideation item to the specified session's item list.
+   * If the session doesn't have any items yet, creates a new array.
+   *
+   * @param sessionId - The ID of the session to add the item to
+   * @param item - The ideation item reference to add
+   */
+  addIdeationItem: (sessionId: string, item: IdeationItemReference) =>
+    set((state) => {
+      const existingItems = state.sessionIdeationItems.get(sessionId) || [];
+      const newSessionIdeationItems = new Map(state.sessionIdeationItems);
+      newSessionIdeationItems.set(sessionId, [...existingItems, item]);
+
+      return {
+        sessionIdeationItems: newSessionIdeationItems
+      };
+    }),
+
+  /**
+   * Clears all ideation items for the specified session.
+   *
+   * @param sessionId - The ID of the session to clear items for
+   */
+  clearIdeationItems: (sessionId: string) =>
+    set((state) => {
+      const newSessionIdeationItems = new Map(state.sessionIdeationItems);
+      newSessionIdeationItems.delete(sessionId);
+
+      return {
+        sessionIdeationItems: newSessionIdeationItems
+      };
+    }),
+
   // Selectors
   /**
    * Gets the state for the currently active session.
@@ -859,6 +914,17 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
    */
   getRoadmapFeatures: (sessionId: string) => {
     return _get().sessionRoadmapFeatures.get(sessionId);
+  },
+
+  /**
+   * Gets the ideation items for a specific session by ID.
+   * Returns undefined if the session has no items.
+   *
+   * @param sessionId - The ID of the session to retrieve ideation items for
+   * @returns The session's ideation items, or undefined if no items exist for that session
+   */
+  getIdeationItems: (sessionId: string) => {
+    return _get().sessionIdeationItems.get(sessionId);
   },
 }));
 
