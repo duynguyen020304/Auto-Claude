@@ -1482,6 +1482,12 @@ export function setupInsightsListeners(): () => void {
             store.addRoadmapFeature(targetSessionId, chunk.roadmapFeature);
           }
           break;
+        case 'ideation_item':
+          if (chunk.ideationItem) {
+            // Add the ideation item to the session
+            store.addIdeationItem(targetSessionId, chunk.ideationItem);
+          }
+          break;
         case 'done':
           // Clear current tool
           useInsightsStore.setState((state) => {
