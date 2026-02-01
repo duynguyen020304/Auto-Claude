@@ -213,6 +213,70 @@ def load_roadmap_item_context(project_dir: str, item_id: str) -> dict | None:
         return None
 
 
+def load_ideation_context(project_dir: str) -> dict | None:
+    """Load ideation context for the AI.
+
+    Args:
+        project_dir: Path to the project directory
+
+    Returns:
+        Dictionary with ideation summary (ideas, count, type breakdown)
+        or None if ideation not found.
+    """
+    ideation_path = Path(project_dir) / ".auto-claude" / "ideation" / "ideation.json"
+
+    if not ideation_path.exists():
+        return None
+
+    try:
+        with open(ideation_path, encoding="utf-8") as f:
+            ideation = json.load(f)
+
+        ideas = ideation.get("ideas", [])
+
+        # Build type breakdown
+        type_counts = {}
+        for idea in ideas:
+            idea_type = idea.get("type", "unknown")
+            type_counts[idea_type] = type_counts.get(idea_type, 0) + 1
+
+        # Build status breakdown
+        status_counts = {}
+        for idea in ideas:
+            status = idea.get("status", "draft")
+            status_counts[status] = status_counts.get(status, 0) + 1
+
+        # Build effort breakdown
+        effort_counts = {}
+        for idea in ideas:
+            effort = idea.get("estimated_effort", "medium")
+            effort_counts[effort] = effort_counts.get(effort, 0) + 1
+
+        # Summarize ideas
+        idea_summary = [
+            {
+                "id": i.get("id", ""),
+                "type": i.get("type", ""),
+                "title": i.get("title", ""),
+                "status": i.get("status", "draft"),
+                "estimated_effort": i.get("estimated_effort", "medium"),
+            }
+            for i in ideas
+        ]
+
+        return {
+            "total_ideas": len(ideas),
+            "type_breakdown": type_counts,
+            "status_breakdown": status_counts,
+            "effort_breakdown": effort_counts,
+            "ideas": idea_summary,
+            "generated_at": ideation.get("generated_at", ""),
+        }
+
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
 def _is_binary_file(file_path: Path) -> bool:
     """Check if a file is likely binary by reading a small sample."""
     try:
