@@ -14,6 +14,7 @@ import type {
   RoadmapFeature,
   IdeationItemContext,
   IdeationItemReference,
+  Idea,
 } from '../../shared/types';
 import { debugLog } from '../../shared/utils/debug-logger';
 
@@ -1151,6 +1152,181 @@ export async function newSessionWithRoadmapContext(
   );
   contextParts.push(
     `- What would implementing this feature involve?\n`
+  );
+  contextParts.push(
+    `- Are there any technical considerations or challenges?\n`
+  );
+  contextParts.push(
+    `- How does this fit with the existing codebase architecture?\n`
+  );
+
+  // Send the context message
+  const contextMessage = contextParts.join('\n');
+  await sendMessage(projectId, contextMessage);
+}
+
+/**
+ * Create a new Insights session with ideation item context pre-loaded.
+ * This is used when clicking "Explore in Insights" from the Ideation view.
+ */
+export async function newSessionWithIdeationContext(
+  projectId: string,
+  idea: Idea
+): Promise<void> {
+  // Create new session
+  const result = await window.electronAPI.newInsightsSession(projectId);
+  if (!result.success || !result.data) {
+    return;
+  }
+
+  // Set the new session as current
+  useInsightsStore.getState().setSession(result.data);
+  await loadInsightsSessions(projectId);
+
+  // Build comprehensive context message
+  const contextParts: string[] = [];
+
+  contextParts.push(`# Exploring Ideation Item: ${idea.title}\n`);
+  contextParts.push(`**Description:** ${idea.description}\n`);
+  contextParts.push(`**Rationale:** ${idea.rationale}\n`);
+  contextParts.push(`**Type:** ${idea.type}\n`);
+
+  // Add type-specific details based on the idea type
+  switch (idea.type) {
+    case 'code_improvements': {
+      const codeIdea = idea as Extract<Idea, { type: 'code_improvements' }>;
+      if (codeIdea.estimatedEffort) {
+        contextParts.push(`**Estimated Effort:** ${codeIdea.estimatedEffort}\n`);
+      }
+      if (codeIdea.affectedFiles?.length) {
+        contextParts.push(`**Affected Files:** ${codeIdea.affectedFiles.join(', ')}\n`);
+      }
+      if (codeIdea.existingPatterns?.length) {
+        contextParts.push(`**Existing Patterns:** ${codeIdea.existingPatterns.join(', ')}\n`);
+      }
+      if (codeIdea.buildsUpon?.length) {
+        contextParts.push(`**Builds Upon:** ${codeIdea.buildsUpon.join(', ')}\n`);
+      }
+      if (codeIdea.implementationApproach) {
+        contextParts.push(`**Implementation Approach:** ${codeIdea.implementationApproach}\n`);
+      }
+      break;
+    }
+    case 'ui_ux_improvements': {
+      const uiIdea = idea as Extract<Idea, { type: 'ui_ux_improvements' }>;
+      if (uiIdea.category) {
+        contextParts.push(`**Category:** ${uiIdea.category}\n`);
+      }
+      if (uiIdea.affectedComponents?.length) {
+        contextParts.push(`**Affected Components:** ${uiIdea.affectedComponents.join(', ')}\n`);
+      }
+      if (uiIdea.currentState) {
+        contextParts.push(`**Current State:** ${uiIdea.currentState}\n`);
+      }
+      if (uiIdea.proposedChange) {
+        contextParts.push(`**Proposed Change:** ${uiIdea.proposedChange}\n`);
+      }
+      if (uiIdea.userBenefit) {
+        contextParts.push(`**User Benefit:** ${uiIdea.userBenefit}\n`);
+      }
+      break;
+    }
+    case 'documentation_gaps': {
+      const docIdea = idea as Extract<Idea, { type: 'documentation_gaps' }>;
+      if (docIdea.category) {
+        contextParts.push(`**Category:** ${docIdea.category}\n`);
+      }
+      if (docIdea.targetAudience) {
+        contextParts.push(`**Target Audience:** ${docIdea.targetAudience}\n`);
+      }
+      if (docIdea.affectedAreas?.length) {
+        contextParts.push(`**Affected Areas:** ${docIdea.affectedAreas.join(', ')}\n`);
+      }
+      if (docIdea.proposedContent) {
+        contextParts.push(`**Proposed Content:** ${docIdea.proposedContent}\n`);
+      }
+      if (docIdea.priority) {
+        contextParts.push(`**Priority:** ${docIdea.priority}\n`);
+      }
+      break;
+    }
+    case 'security_hardening': {
+      const secIdea = idea as Extract<Idea, { type: 'security_hardening' }>;
+      if (secIdea.category) {
+        contextParts.push(`**Category:** ${secIdea.category}\n`);
+      }
+      if (secIdea.severity) {
+        contextParts.push(`**Severity:** ${secIdea.severity}\n`);
+      }
+      if (secIdea.affectedFiles?.length) {
+        contextParts.push(`**Affected Files:** ${secIdea.affectedFiles.join(', ')}\n`);
+      }
+      if (secIdea.currentRisk) {
+        contextParts.push(`**Current Risk:** ${secIdea.currentRisk}\n`);
+      }
+      if (secIdea.remediation) {
+        contextParts.push(`**Remediation:** ${secIdea.remediation}\n`);
+      }
+      if (secIdea.vulnerability) {
+        contextParts.push(`**Vulnerability:** ${secIdea.vulnerability}\n`);
+      }
+      break;
+    }
+    case 'performance_optimizations': {
+      const perfIdea = idea as Extract<Idea, { type: 'performance_optimizations' }>;
+      if (perfIdea.category) {
+        contextParts.push(`**Category:** ${perfIdea.category}\n`);
+      }
+      if (perfIdea.impact) {
+        contextParts.push(`**Impact:** ${perfIdea.impact}\n`);
+      }
+      if (perfIdea.affectedAreas?.length) {
+        contextParts.push(`**Affected Areas:** ${perfIdea.affectedAreas.join(', ')}\n`);
+      }
+      if (perfIdea.expectedImprovement) {
+        contextParts.push(`**Expected Improvement:** ${perfIdea.expectedImprovement}\n`);
+      }
+      if (perfIdea.implementation) {
+        contextParts.push(`**Implementation:** ${perfIdea.implementation}\n`);
+      }
+      if (perfIdea.tradeoffs) {
+        contextParts.push(`**Tradeoffs:** ${perfIdea.tradeoffs}\n`);
+      }
+      break;
+    }
+    case 'code_quality': {
+      const qualityIdea = idea as Extract<Idea, { type: 'code_quality' }>;
+      if (qualityIdea.category) {
+        contextParts.push(`**Category:** ${qualityIdea.category}\n`);
+      }
+      if (qualityIdea.severity) {
+        contextParts.push(`**Severity:** ${qualityIdea.severity}\n`);
+      }
+      if (qualityIdea.affectedFiles?.length) {
+        contextParts.push(`**Affected Files:** ${qualityIdea.affectedFiles.join(', ')}\n`);
+      }
+      if (qualityIdea.currentState) {
+        contextParts.push(`**Current State:** ${qualityIdea.currentState}\n`);
+      }
+      if (qualityIdea.proposedChange) {
+        contextParts.push(`**Proposed Change:** ${qualityIdea.proposedChange}\n`);
+      }
+      if (qualityIdea.bestPractice) {
+        contextParts.push(`**Best Practice:** ${qualityIdea.bestPractice}\n`);
+      }
+      if (qualityIdea.breakingChange !== undefined) {
+        contextParts.push(`**Breaking Change:** ${qualityIdea.breakingChange ? 'Yes' : 'No'}\n`);
+      }
+      break;
+    }
+  }
+
+  contextParts.push(`---\n`);
+  contextParts.push(
+    `I'm exploring this ideation item. Can you help me understand:\n`
+  );
+  contextParts.push(
+    `- What would implementing this involve?\n`
   );
   contextParts.push(
     `- Are there any technical considerations or challenges?\n`
