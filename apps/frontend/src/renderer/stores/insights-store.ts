@@ -12,6 +12,7 @@ import type {
   RoadmapItemContext,
   RoadmapFeatureReference,
   RoadmapFeature,
+  IdeationItemContext,
   IdeationItemReference,
 } from '../../shared/types';
 import { debugLog } from '../../shared/utils/debug-logger';
@@ -69,6 +70,7 @@ interface InsightsState {
   cleanupSessionState: (sessionId: string) => void;
   removeSession: (sessionId: string) => void;
   exploreRoadmapItem: (roadmapContext: RoadmapItemContext) => void;
+  exploreIdeationItem: (ideationContext: IdeationItemContext) => void;
   addRoadmapFeature: (sessionId: string, feature: RoadmapFeatureReference) => void;
   clearRoadmapFeatures: (sessionId: string) => void;
   addIdeationItem: (sessionId: string, item: IdeationItemReference) => void;
@@ -807,6 +809,46 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
           { roadmapContext, updatedAt: updatedSession.updatedAt }
         ).catch((err: unknown) => {
           console.error('[insights-store] Failed to persist roadmap context to disk:', err);
+        });
+      }
+
+      return {
+        session: updatedSession
+      };
+    }),
+
+  exploreIdeationItem: (ideationContext) =>
+    set((state) => {
+      debugLog('[insights-store] exploreIdeationItem called', {
+        hasSession: !!state.session,
+        sessionId: state.session?.id,
+        ideationContext
+      });
+
+      if (!state.session) {
+        console.error('[insights-store] exploreIdeationItem: No session found, cannot set ideation context');
+        return state;
+      }
+
+      const updatedSession = {
+        ...state.session,
+        ideationContext,
+        updatedAt: new Date()
+      };
+
+      debugLog('[insights-store] exploreIdeationItem: Updating session with ideation context', {
+        sessionId: updatedSession.id,
+        ideaId: ideationContext.ideaId
+      });
+
+      // Persist the updated session to disk so the backend can see the ideation context
+      if (typeof window !== 'undefined' && window.electronAPI?.updateInsightsSession) {
+        window.electronAPI.updateInsightsSession(
+          updatedSession.projectId,
+          updatedSession.id,
+          { ideationContext, updatedAt: updatedSession.updatedAt }
+        ).catch((err: unknown) => {
+          console.error('[insights-store] Failed to persist ideation context to disk:', err);
         });
       }
 
