@@ -181,6 +181,16 @@ export interface RoadmapItemContext {
   status: 'under_review' | 'planned' | 'in_progress' | 'done';
 }
 
+// Lightweight reference to a roadmap feature for linking in insights messages
+export interface RoadmapFeatureReference {
+  id: string;
+  title: string;
+  status: 'under_review' | 'planned' | 'in_progress' | 'done';
+  priority: 'must' | 'should' | 'could' | 'wont';
+  phaseId?: string;
+  externalUrl?: string;
+}
+
 export type InsightsChatRole = 'user' | 'assistant';
 
 // Tool usage record for showing what tools the AI used
