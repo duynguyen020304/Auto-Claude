@@ -1,0 +1,20 @@
+{
+  "strategy": {
+    "enabled": true,
+    "strategy": "least-used",
+    "usageData": {
+      "profile-1": {
+        "requestCount": 100,
+        "tokenUsage": 50000
+      },
+      "profile-2": {
+        "requestCount": 50,
+        "tokenUsage": 25000
+      },
+      "profile-3": {
+        "requestCount": 10,
+        "tokenUsage": 5000
+      }
+    }
+  }
+}
