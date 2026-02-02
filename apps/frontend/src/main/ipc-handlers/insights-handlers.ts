@@ -259,7 +259,7 @@ export function registerInsightsHandlers(getMainWindow: () => BrowserWindow | nu
 
   ipcMain.handle(
     IPC_CHANNELS.INSIGHTS_CLEAR_SESSION,
-    async (_, sessionId: string, projectId: string): Promise<IPCResult> => {
+    async (_, _sessionId: string, projectId: string): Promise<IPCResult> => {
       const project = projectStore.getProject(projectId);
       if (!project) {
         return { success: false, error: "Project not found" };

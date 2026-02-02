@@ -118,11 +118,17 @@ export function Ideation({ projectId, onGoToTask, onDiscussInChat, onSwitchToIns
           typesToAdd={[]}
           availableTypesToAdd={[]}
           onToggleIdeationType={toggleIdeationType}
-          onToggleTypeToAdd={() => {}}
+          onToggleTypeToAdd={() => {
+            // Not implemented - typesToAdd is always empty
+          }}
           onSetConfig={setConfig}
           onCloseConfigDialog={() => setShowConfigDialog(false)}
-          onCloseAddMoreDialog={() => {}}
-          onConfirmAddMore={() => {}}
+          onCloseAddMoreDialog={() => {
+            // Not implemented - add more dialog is never shown
+          }}
+          onConfirmAddMore={() => {
+            // Not implemented - add more dialog is never shown
+          }}
         />
 
         <EnvConfigModal

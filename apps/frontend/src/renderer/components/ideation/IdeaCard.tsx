@@ -6,15 +6,11 @@ import { Card } from '../ui/card';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { Checkbox } from '../ui/checkbox';
 import {
-  IDEATION_TYPE_LABELS,
   IDEATION_TYPE_COLORS,
   IDEATION_STATUS_COLORS,
   IDEATION_EFFORT_COLORS,
   IDEATION_IMPACT_COLORS,
-  SECURITY_SEVERITY_COLORS,
-  UIUX_CATEGORY_LABELS,
-  DOCUMENTATION_CATEGORY_LABELS,
-  CODE_QUALITY_SEVERITY_COLORS
+  SECURITY_SEVERITY_COLORS
 } from '../../../shared/constants';
 import type {
   Idea,
@@ -194,7 +190,7 @@ export function IdeaCard({ idea, isSelected, onClick, onConvert, onGoToTask, onD
                     className="h-8 w-8 p-0 text-primary"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onGoToTask(idea.taskId!);
+                      onGoToTask(idea.taskId);
                     }}
                     aria-label={t('accessibility.goToTaskAriaLabel')}
                   >
@@ -216,7 +212,7 @@ export function IdeaCard({ idea, isSelected, onClick, onConvert, onGoToTask, onD
                     className="h-8 w-8 p-0 text-primary"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onGoToTask(idea.taskId!);
+                      onGoToTask(idea.taskId);
                     }}
                     aria-label={t('accessibility.goToTaskAriaLabel')}
                   >

@@ -87,7 +87,7 @@ function MetricIndicator({ value, max = 5 }: { value: number; max?: number }) {
     <div className="flex gap-0.5" role="presentation" aria-label={`Level ${value} of ${max}`}>
       {Array.from({ length: max }).map((_, i) => (
         <div
-          key={i}
+          key={`metric-dot-${i}`}
           className={cn(
             'w-1.5 h-1.5 rounded-full transition-colors',
             i < value ? 'bg-primary' : 'bg-muted-foreground/30'
@@ -141,7 +141,7 @@ function CollapsibleSection({ title, icon, items, defaultOpen = false }: Collaps
         <ul className="space-y-1 pl-5">
           {items.map((item, index) => (
             <li
-              key={index}
+              key={`item-${index}-${item.slice(0, 20)}`}
               className="text-xs text-muted-foreground list-disc marker:text-muted-foreground/50"
             >
               {item}
@@ -352,7 +352,7 @@ function TypeSpecificDetails({ idea }: { idea: Idea }) {
             <span className="font-medium">{t('insights:ideation.currentState')}:</span> {typedIdea.currentState}
           </p>
         )}
-        {typedIdea.metrics && typedIdea.metrics.lineCount && (
+        {typedIdea.metrics?.lineCount && (
           <p className="text-muted-foreground">
             <span className="font-medium">{t('insights:ideation.linesOfCode')}:</span> {typedIdea.metrics.lineCount.toLocaleString()}
           </p>
@@ -515,7 +515,7 @@ export function IdeationItemCard({
               variant="outline"
               size="sm"
               className="h-7 px-2"
-              onClick={() => onViewLinkedSpec?.(idea.taskId!)}
+              onClick={() => onViewLinkedSpec?.(idea.taskId)}
               aria-label={t('insights:ideation.viewLinkedSpec')}
             >
               <ExternalLink className="h-3 w-3 mr-1" />

@@ -136,7 +136,7 @@ export class InsightsExecutor extends EventEmitter {
     message: string,
     conversationHistory: Array<{ role: string; content: string }>,
     modelConfig?: InsightsModelConfig,
-    priority: SessionPriority = SessionPriority.NORMAL,
+    _priority: SessionPriority = SessionPriority.NORMAL,
     roadmapItemId?: string,
     ideationItemId?: string
   ): Promise<ProcessorResult> {
