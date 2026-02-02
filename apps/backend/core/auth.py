@@ -10,8 +10,10 @@ import hashlib
 import json
 import logging
 import os
+import random
 import shutil
 import subprocess
+import time
 from typing import TYPE_CHECKING
 
 from core.platform import (
@@ -64,6 +66,105 @@ SDK_ENV_VARS = [
     # Profile's custom config directory (for multi-profile token storage)
     "CLAUDE_CONFIG_DIR",
 ]
+
+
+def get_profiles_file_path() -> str:
+    """
+    Get the path to profiles.json in the auto-claude directory.
+
+    Returns a platform-specific path:
+    - macOS/Linux: ~/.auto-claude/profiles.json
+    - Windows: %USERPROFILE%\\.auto-claude\\profiles.json
+
+    This MUST match the frontend's getProfilesFilePath() in profile-manager.ts.
+    The frontend uses app.getPath('userData') + 'auto-claude/profiles.json',
+    which resolves to the same locations on each platform.
+
+    Returns:
+        Absolute path to profiles.json file
+
+    Example:
+        >>> path = get_profiles_file_path()
+        >>> print(path)
+        /home/user/.auto-claude/profiles.json
+    """
+    # Determine home directory based on platform
+    if is_windows():
+        # Windows: use %USERPROFILE% environment variable
+        auto_claude_dir = os.path.expandvars(r"%USERPROFILE%\.auto-claude")
+    else:
+        # macOS/Linux: use ~ expansion
+        auto_claude_dir = os.path.expanduser("~/.auto-claude")
+
+    # Return path to profiles.json
+    return os.path.join(auto_claude_dir, "profiles.json")
+
+
+def load_profiles_file() -> dict:
+    """
+    Load profiles.json from disk with graceful error handling.
+
+    This function mirrors the frontend's loadProfilesFile() in profile-manager.ts.
+    It reads the profiles.json file from the auto-claude directory and returns
+    the parsed data. If the file doesn't exist or cannot be parsed, it returns
+    a default empty profiles structure.
+
+    Returns:
+        Dictionary with keys:
+        - profiles: List of profile dictionaries (default: empty list)
+        - activeProfileId: ID of the active profile (default: None)
+        - version: File format version (default: 1)
+
+    Example:
+        >>> profiles = load_profiles_file()
+        >>> print(profiles.get('profiles', []))
+        []
+        >>> print(profiles.get('activeProfileId'))
+        None
+
+    Note:
+        This function handles all errors gracefully and returns a valid default
+        structure. This allows the application to continue running even if
+        profiles.json is missing, corrupted, or inaccessible.
+    """
+    profiles_path = get_profiles_file_path()
+
+    try:
+        # Check if file exists before attempting to read
+        if not os.path.exists(profiles_path):
+            logger.debug(f"Profiles file not found: {profiles_path}")
+            return {"profiles": [], "activeProfileId": None, "version": 1}
+
+        # Read and parse the JSON file
+        with open(profiles_path, encoding="utf-8") as f:
+            data = json.load(f)
+
+        # Validate basic structure (has expected keys)
+        if not isinstance(data, dict):
+            logger.warning(f"Invalid profiles file structure (not a dict): {profiles_path}")
+            return {"profiles": [], "activeProfileId": None, "version": 1}
+
+        # Ensure required keys exist with defaults
+        result = {
+            "profiles": data.get("profiles", []),
+            "activeProfileId": data.get("activeProfileId"),
+            "version": data.get("version", 1),
+        }
+
+        logger.debug(f"Loaded profiles file: {profiles_path}")
+        return result
+
+    except json.JSONDecodeError as e:
+        logger.warning(f"Failed to parse profiles.json: {e}")
+        return {"profiles": [], "activeProfileId": None, "version": 1}
+
+    except (IOError, OSError, PermissionError) as e:
+        logger.warning(f"Failed to read profiles file: {e}")
+        return {"profiles": [], "activeProfileId": None, "version": 1}
+
+    except Exception as e:
+        logger.warning(f"Unexpected error loading profiles file: {e}")
+        return {"profiles": [], "activeProfileId": None, "version": 1}
 
 
 def _calculate_config_dir_hash(config_dir: str) -> str:
@@ -2118,5 +2219,820 @@ def validate_credential(credential: dict[str, str]) -> bool:
     logger.debug(f"Credential '{credential.get('id', 'unknown')}' passed format validation")
 
     return True
+
+
+def _get_rotation_strategy_file_path() -> str:
+    """
+    Get the path to api-profile-rotation.json in the auto-claude directory.
+
+    Returns a platform-specific path:
+    - macOS/Linux: ~/.auto-claude/api-profile-rotation.json
+    - Windows: %USERPROFILE%\\.auto-claude\\api-profile-rotation.json
+
+    This MUST match the frontend's getRotationStrategyFilePath() in api-usage-storage.ts.
+
+    Returns:
+        Absolute path to api-profile-rotation.json file
+
+    Example:
+        >>> path = _get_rotation_strategy_file_path()
+        >>> print(path)
+        /home/user/.auto-claude/api-profile-rotation.json
+    """
+    # Determine home directory based on platform
+    if is_windows():
+        # Windows: use %USERPROFILE% environment variable
+        auto_claude_dir = os.path.expandvars(r"%USERPROFILE%\.auto-claude")
+    else:
+        # macOS/Linux: use ~ expansion
+        auto_claude_dir = os.path.expanduser("~/.auto-claude")
+
+    # Return path to api-profile-rotation.json
+    return os.path.join(auto_claude_dir, "api-profile-rotation.json")
+
+
+def _load_rotation_strategy() -> dict | None:
+    """
+    Load api-profile-rotation.json from disk with graceful error handling.
+
+    Returns:
+        Dictionary with rotation strategy configuration, or None if file not found
+        or cannot be parsed. Expected structure:
+        - version: File format version
+        - strategy: Dict containing:
+            - enabled: bool
+            - strategy: str ('priority', 'round-robin', 'least-used', 'random', 'weighted', 'time-based')
+            - priorityOrder: List[str] (profile IDs in priority order)
+            - fallbackToOAuth: bool
+            - thresholds: Dict with maxUsagePercent and rateLimitBackoff
+            - rotationIndex: Optional[int] (for round-robin)
+            - rotationInterval: Optional[int] (for time-based, in seconds)
+            - weights: Optional[Dict[str, int]] (for weighted)
+            - timeBasedCurrentProfile: Optional[str]
+            - timeBasedLastRotationTime: Optional[str]
+            - timeBasedProfileIndex: Optional[int]
+
+    Example:
+        >>> strategy = _load_rotation_strategy()
+        >>> if strategy:
+        ...     print(f"Strategy: {strategy['strategy'].get('strategy', 'priority')}")
+        ... else:
+        ...     print("No rotation strategy configured")
+    """
+    strategy_path = _get_rotation_strategy_file_path()
+
+    try:
+        # Check if file exists before attempting to read
+        if not os.path.exists(strategy_path):
+            logger.debug(f"Rotation strategy file not found: {strategy_path}")
+            return None
+
+        # Read and parse the JSON file
+        with open(strategy_path, encoding="utf-8") as f:
+            data = json.load(f)
+
+        # Validate basic structure
+        if not isinstance(data, dict):
+            logger.warning(f"Invalid rotation strategy file structure (not a dict): {strategy_path}")
+            return None
+
+        # Ensure strategy key exists
+        if "strategy" not in data:
+            logger.warning(f"Rotation strategy file missing 'strategy' key: {strategy_path}")
+            return None
+
+        strategy = data["strategy"]
+        if not isinstance(strategy, dict):
+            logger.warning(f"Invalid strategy field (not a dict): {strategy_path}")
+            return None
+
+        logger.debug(f"Loaded rotation strategy file: {strategy_path}")
+        return data
+
+    except json.JSONDecodeError as e:
+        logger.warning(f"Failed to parse api-profile-rotation.json: {e}")
+        return None
+
+    except (IOError, OSError, PermissionError) as e:
+        logger.warning(f"Failed to read rotation strategy file: {e}")
+        return None
+
+    except Exception as e:
+        logger.warning(f"Unexpected error loading rotation strategy file: {e}")
+        return None
+
+
+def _select_profile_by_priority(
+    profiles: list[dict],
+    priority_order: list[str],
+) -> dict | None:
+    """
+    Select a profile using the priority strategy.
+
+    Iterates through the priorityOrder list and returns the first profile
+    ID that exists in the profiles list. This is the default and simplest
+    rotation strategy.
+
+    Args:
+        profiles: List of profile dictionaries from profiles.json
+        priority_order: List of profile IDs in priority order (first = highest priority)
+
+    Returns:
+        The first matching profile dict, or None if:
+        - priority_order is empty
+        - no profile IDs in priority_order exist in profiles list
+        - profiles list is empty
+
+    Example:
+        >>> profiles = [
+        ...     {"id": "profile-1", "name": "Profile 1", "baseUrl": "...", "apiKey": "..."},
+        ...     {"id": "profile-2", "name": "Profile 2", "baseUrl": "...", "apiKey": "..."},
+        ... ]
+        >>> priority_order = ["profile-2", "profile-1"]  # profile-2 has higher priority
+        >>> profile = _select_profile_by_priority(profiles, priority_order)
+        >>> print(profile["name"])
+        Profile 2
+
+    Note:
+        This strategy does NOT check:
+        - Rate limit status (no usage tracking in backend yet)
+        - Authentication status (assumes apiKey is valid)
+        - Usage thresholds (no usage tracking in backend yet)
+
+        These checks will be added when usage tracking is implemented in the backend.
+    """
+    if not priority_order:
+        logger.debug("Priority strategy: priority_order is empty, no profile selected")
+        return None
+
+    if not profiles:
+        logger.debug("Priority strategy: profiles list is empty, no profile selected")
+        return None
+
+    # Create a lookup dict for O(1) profile access by ID
+    profiles_by_id = {p["id"]: p for p in profiles if "id" in p}
+
+    # Iterate through priority order and return first match
+    for profile_id in priority_order:
+        if profile_id in profiles_by_id:
+            profile = profiles_by_id[profile_id]
+            logger.debug(
+                f"Priority strategy: selected profile '{profile.get('name', profile_id)}' "
+                f"(ID: {profile_id}, priority position: {priority_order.index(profile_id)})"
+            )
+            return profile
+
+    # No profile IDs from priority_order found in profiles list
+    logger.debug(
+        f"Priority strategy: no profiles from priority_order found in profiles list. "
+        f"priority_order={priority_order}, available_profile_ids={list(profiles_by_id.keys())}"
+    )
+    return None
+
+
+def _select_profile_by_round_robin(
+    profiles: list[dict],
+    rotation_index: int | None,
+) -> dict | None:
+    """
+    Select a profile using the round-robin strategy.
+
+    Cycles through profiles sequentially using rotationIndex state.
+    Each call increments the index and wraps around to 0 when exceeding
+    the list length.
+
+    Args:
+        profiles: List of profile dictionaries from profiles.json
+        rotation_index: Current rotation index from strategy state (defaults to 0 if None)
+
+    Returns:
+        The profile dict at the calculated index, or None if:
+        - profiles list is empty
+
+    Example:
+        >>> profiles = [
+        ...     {"id": "profile-1", "name": "Profile 1", "baseUrl": "...", "apiKey": "..."},
+        ...     {"id": "profile-2", "name": "Profile 2", "baseUrl": "...", "apiKey": "..."},
+        ...     {"id": "profile-3", "name": "Profile 3", "baseUrl": "...", "apiKey": "..."},
+        ... ]
+        >>> # First call with rotationIndex=0: selects profile-2 (index 1)
+        >>> profile = _select_profile_by_round_robin(profiles, 0)
+        >>> # Next call with rotationIndex=1: selects profile-3 (index 2)
+        >>> profile = _select_profile_by_round_robin(profiles, 1)
+        >>> # Next call with rotationIndex=2: selects profile-1 (index 0, wraps around)
+        >>> profile = _select_profile_by_round_robin(profiles, 2)
+
+    Note:
+        - This strategy does NOT check rate limit status, authentication status,
+          or usage thresholds. These checks will be added when usage tracking
+          is implemented in the backend.
+        - State persistence (writing updated rotationIndex back to the file)
+          is optional for initial implementation. The frontend manages the
+          rotation state in api-profile-rotation.json.
+    """
+    if not profiles:
+        logger.debug("Round-robin strategy: profiles list is empty, no profile selected")
+        return None
+
+    # Get current rotation index (default to 0)
+    current_index = rotation_index if rotation_index is not None else 0
+
+    # Calculate next index (circular - wraps around to 0)
+    next_index = (current_index + 1) % len(profiles)
+
+    # Get the profile at the calculated index
+    selected_profile = profiles[next_index]
+
+    profile_id = selected_profile.get("id", "unknown")
+    profile_name = selected_profile.get("name", profile_id)
+
+    logger.debug(
+        f"Round-robin strategy: selected profile '{profile_name}' "
+        f"(ID: {profile_id}, index: {next_index}/{len(profiles)})"
+    )
+
+    return selected_profile
+
+
+def _select_profile_by_least_used(
+    profiles: list[dict],
+    usage_data: dict | None,
+) -> dict | None:
+    """
+    Select a profile using the least-used strategy.
+
+    Calculates a usage score for each profile (requestCount + tokenUsage)
+    and returns the profile with the lowest score. This strategy distributes
+    load across profiles by preferring those with minimal usage.
+
+    Args:
+        profiles: List of profile dictionaries from profiles.json
+        usage_data: Optional dict mapping profile IDs to usage stats.
+                    Each usage dict should have 'requestCount' and 'tokenUsage'.
+                    If None, all profiles are treated as having equal usage (score=0).
+
+    Returns:
+        The profile dict with the lowest usage score, or None if:
+        - profiles list is empty
+
+    Example:
+        >>> profiles = [
+        ...     {"id": "profile-1", "name": "Profile 1"},
+        ...     {"id": "profile-2", "name": "Profile 2"},
+        ... ]
+        >>> usage = {"profile-1": {"requestCount": 100, "tokenUsage": 50000}}
+        >>> profile = _select_profile_by_least_used(profiles, usage)
+        >>> print(profile["name"])
+        Profile 2
+
+    Note:
+        - Usage data is tracked by the frontend and stored in the rotation
+          strategy state file. The backend reads this data but does not
+          modify it (usage updates happen in the frontend).
+        - If usage data is missing for a profile, its score defaults to 0.
+        - If multiple profiles have the same score, the first one is selected.
+        - Token usage is weighted equally with request count (1 token = 1 request).
+    """
+    if not profiles:
+        logger.debug("Least-used strategy: profiles list is empty, no profile selected")
+        return None
+
+    # Default usage data to empty dict if not provided
+    usage_by_profile = usage_data if usage_data is not None else {}
+
+    # Track the profile with minimum usage score
+    min_score = float('inf')
+    selected_profile = None
+
+    for profile in profiles:
+        profile_id = profile.get("id", "unknown")
+        profile_name = profile.get("name", profile_id)
+
+        # Get usage stats for this profile (default to 0 if not found)
+        profile_usage = usage_by_profile.get(profile_id, {})
+        request_count = profile_usage.get("requestCount", 0)
+        token_usage = profile_usage.get("tokenUsage", 0)
+
+        # Calculate usage score: requests + tokens
+        # Note: token usage may be large, but this is intentional - profiles
+        # with heavy token consumption should be deprioritized
+        score = request_count + token_usage
+
+        # Track minimum score profile
+        if score < min_score:
+            min_score = score
+            selected_profile = profile
+
+    if selected_profile:
+        profile_id = selected_profile.get("id", "unknown")
+        profile_name = selected_profile.get("name", profile_id)
+
+        logger.debug(
+            f"Least-used strategy: selected profile '{profile_name}' "
+            f"(ID: {profile_id}, score: {min_score})"
+        )
+
+        # Log all scores for debugging (only if more than one profile)
+        if len(profiles) > 1:
+            scores_str = ", ".join(
+                f"{p.get('id', 'unknown')}={usage_by_profile.get(p.get('id', 'unknown'), {}).get('requestCount', 0) + usage_by_profile.get(p.get('id', 'unknown'), {}).get('tokenUsage', 0)}"
+                for p in profiles
+            )
+            logger.debug(f"Least-used strategy: all profile scores: {scores_str}")
+    else:
+        # This shouldn't happen since we check profiles list at the start
+        logger.debug("Least-used strategy: unexpected error, no profile selected")
+
+    return selected_profile
+
+
+def _select_profile_by_random(
+    profiles: list[dict],
+) -> dict | None:
+    """
+    Select a profile using the random strategy.
+
+    Selects a profile uniformly at random from the list. This strategy
+    provides equal probability for all profiles, making it suitable for
+    load distribution when there's no preference ordering.
+
+    Args:
+        profiles: List of profile dictionaries from profiles.json
+
+    Returns:
+        A randomly selected profile dict, or None if:
+        - profiles list is empty
+
+    Example:
+        >>> import random
+        >>> random.seed(42)  # For reproducible example
+        >>> profiles = [
+        ...     {"id": "profile-1", "name": "Profile 1"},
+        ...     {"id": "profile-2", "name": "Profile 2"},
+        ...     {"id": "profile-3", "name": "Profile 3"},
+        ... ]
+        >>> profile = _select_profile_by_random(profiles)
+        >>> print(profile["name"])  # Will vary based on random selection
+        Profile 2
+
+    Note:
+        - Uses Python's random.choice() which provides uniform distribution.
+        - Each profile has equal probability: 1/N where N is the number of profiles.
+        - For testing purposes, you can set random.seed() to make selections reproducible.
+        - The random module is already imported at the top of auth.py.
+    """
+    if not profiles:
+        logger.debug("Random strategy: profiles list is empty, no profile selected")
+        return None
+
+    # Use random.choice() for uniform random selection
+    selected_profile = random.choice(profiles)
+
+    if selected_profile:
+        profile_id = selected_profile.get("id", "unknown")
+        profile_name = selected_profile.get("name", profile_id)
+
+        logger.debug(
+            f"Random strategy: selected profile '{profile_name}' "
+            f"(ID: {profile_id}, total profiles: {len(profiles)})"
+        )
+
+    return selected_profile
+
+
+def _select_profile_by_weighted(
+    profiles: list[dict],
+    weights: dict | None,
+) -> dict | None:
+    """
+    Select a profile using the weighted strategy.
+
+    Selects a profile using weighted random selection. Each profile's weight
+    determines its probability of being selected - higher weight means higher
+    probability. Uses random.choices() with weights parameter for distribution.
+
+    Args:
+        profiles: List of profile dictionaries from profiles.json
+        weights: Optional dict mapping profile IDs to weight values.
+                 If None or a profile ID is missing, weight defaults to 1.
+                 Weights can be any positive number (not required to sum to 1).
+
+    Returns:
+        A randomly selected profile dict based on weights, or None if:
+        - profiles list is empty
+
+    Example:
+        >>> import random
+        >>> random.seed(42)  # For reproducible example
+        >>> profiles = [
+        ...     {"id": "profile-1", "name": "Profile 1"},
+        ...     {"id": "profile-2", "name": "Profile 2"},
+        ...     {"id": "profile-3", "name": "Profile 3"},
+        ... ]
+        >>> weights = {"profile-1": 10, "profile-2": 5, "profile-3": 1}
+        >>> # profile-1 is ~2x more likely than profile-2, ~10x more than profile-3
+        >>> profile = _select_profile_by_weighted(profiles, weights)
+        >>> print(profile["name"])  # Will vary based on weighted random selection
+        Profile 1
+
+    Note:
+        - Uses Python's random.choices() with weights parameter.
+        - Probability of selecting profile i = weight_i / sum(all_weights)
+        - Missing weights default to 1 (equal weight).
+        - Zero or negative weights are treated as weight=1.
+        - For testing purposes, you can set random.seed() to make selections reproducible.
+    """
+    if not profiles:
+        logger.debug("Weighted strategy: profiles list is empty, no profile selected")
+        return None
+
+    # Build profile list and corresponding weights for random.choices()
+    profile_ids = [p.get("id") for p in profiles if p.get("id")]
+    if not profile_ids:
+        logger.debug("Weighted strategy: no valid profile IDs found")
+        return None
+
+    # Get weight for each profile (default to 1 if not in weights dict or invalid)
+    profile_weights = []
+    for pid in profile_ids:
+        if weights and pid in weights:
+            w = weights[pid]
+            # Validate weight - must be positive number
+            if isinstance(w, (int, float)) and w > 0:
+                profile_weights.append(w)
+            else:
+                # Invalid weight - default to 1
+                logger.debug(
+                    f"Weighted strategy: invalid weight {w} for profile '{pid}', "
+                    "defaulting to weight=1"
+                )
+                profile_weights.append(1)
+        else:
+            # No weight specified - default to 1 (equal weight)
+            profile_weights.append(1)
+
+    # Use random.choices() with weights for weighted random selection
+    # k=1 returns a list with 1 element
+    selected_profiles = random.choices(profiles, weights=profile_weights, k=1)
+    selected_profile = selected_profiles[0]
+
+    if selected_profile:
+        profile_id = selected_profile.get("id", "unknown")
+        profile_name = selected_profile.get("name", profile_id)
+        profile_weight = weights.get(profile_id, 1) if weights else 1
+        total_weight = sum(profile_weights)
+
+        # Calculate percentage probability
+        probability = (profile_weight / total_weight * 100) if total_weight > 0 else 0
+
+        logger.debug(
+            f"Weighted strategy: selected profile '{profile_name}' "
+            f"(ID: {profile_id}, weight: {profile_weight}, "
+            f"probability: {probability:.1f}%, total profiles: {len(profiles)})"
+        )
+
+    return selected_profile
+
+
+def _save_rotation_strategy(rotation_config: dict) -> bool:
+    """
+    Save rotation strategy configuration to disk.
+
+    Writes the updated rotation config back to api-profile-rotation.json.
+    This is used to persist state changes for time-based rotation (e.g.,
+    updating timeBasedLastRotationTime, timeBasedProfileIndex).
+
+    Args:
+        rotation_config: Full rotation config dict to save (with 'strategy' key)
+
+    Returns:
+        True if save succeeded, False otherwise
+
+    Example:
+        >>> config = {
+        ...     "version": 1,
+        ...     "strategy": {
+        ...         "enabled": True,
+        ...         "strategy": "time-based",
+        ...         "timeBasedLastRotationTime": "2025-02-02T12:00:00Z",
+        ...     }
+        ... }
+        >>> success = _save_rotation_strategy(config)
+    """
+    strategy_path = _get_rotation_strategy_file_path()
+
+    try:
+        # Ensure directory exists
+        auto_claude_dir = os.path.dirname(strategy_path)
+        if auto_claude_dir and not os.path.exists(auto_claude_dir):
+            os.makedirs(auto_claude_dir, exist_ok=True)
+
+        # Write config to file with formatted JSON
+        with open(strategy_path, "w", encoding="utf-8") as f:
+            json.dump(rotation_config, f, indent=2)
+
+        logger.debug(f"Saved rotation strategy file: {strategy_path}")
+        return True
+
+    except (IOError, OSError, PermissionError) as e:
+        logger.warning(f"Failed to save rotation strategy file: {e}")
+        return False
+
+    except Exception as e:
+        logger.warning(f"Unexpected error saving rotation strategy: {e}")
+        return False
+
+
+def _select_profile_by_time_based(
+    profiles: list[dict],
+    rotation_config: dict,
+) -> dict | None:
+    """
+    Select a profile using the time-based strategy.
+
+    Rotates profiles at configured time intervals. Tracks the last rotation
+    time and current profile index in the rotation config. When the interval
+    elapses, rotates to the next profile in the list and updates the config.
+
+    Args:
+        profiles: List of profile dictionaries from profiles.json
+        rotation_config: Full rotation config dict containing strategy settings.
+                        Must include strategy.rotationInterval and strategy
+                        time-based state fields (timeBasedLastRotationTime,
+                        timeBasedProfileIndex).
+
+    Returns:
+        A profile dict selected based on time interval, or None if:
+        - profiles list is empty
+        - rotationInterval is not set or invalid
+
+    Note:
+        This function updates the rotation config's time-based state fields
+        (timeBasedLastRotationTime, timeBasedProfileIndex) and saves the
+        config to disk when rotation occurs.
+
+    Example:
+        >>> profiles = [
+        ...     {"id": "profile-1", "name": "Profile 1"},
+        ...     {"id": "profile-2", "name": "Profile 2"},
+        ... ]
+        >>> config = {
+        ...     "version": 1,
+        ...     "strategy": {
+        ...         "rotationInterval": 300,  # 5 minutes
+        ...         "timeBasedLastRotationTime": "2025-02-02T12:00:00Z",
+        ...         "timeBasedProfileIndex": 0,
+        ...     }
+        ... }
+        >>> # Returns profile-1 if interval hasn't elapsed,
+        >>> # or profile-2 if interval has elapsed and rotation occurred
+        >>> profile = _select_profile_by_time_based(profiles, config)
+    """
+    if not profiles:
+        logger.debug("Time-based strategy: profiles list is empty, no profile selected")
+        return None
+
+    strategy = rotation_config.get("strategy", {})
+    rotation_interval = strategy.get("rotationInterval", 300)  # Default 5 minutes
+
+    # Validate rotation interval
+    if not isinstance(rotation_interval, (int, float)) or rotation_interval <= 0:
+        logger.debug(
+            f"Time-based strategy: invalid rotationInterval {rotation_interval}, "
+            "defaulting to 300 seconds"
+        )
+        rotation_interval = 300
+
+    # Get current time in seconds since epoch
+    current_time = time.time()
+
+    # Get last rotation time from config
+    last_rotation_time_str = strategy.get("timeBasedLastRotationTime")
+    if last_rotation_time_str:
+        try:
+            # Parse ISO 8601 timestamp to seconds since epoch
+            # Format: "2025-02-02T12:00:00Z" or similar
+            from datetime import datetime
+
+            # Handle various ISO 8601 formats
+            last_rotation_time = datetime.fromisoformat(
+                last_rotation_time_str.replace("Z", "+00:00")
+            ).timestamp()
+        except (ValueError, AttributeError) as e:
+            logger.debug(
+                f"Time-based strategy: failed to parse timeBasedLastRotationTime "
+                f"'{last_rotation_time_str}': {e}, treating as first rotation"
+            )
+            last_rotation_time = None
+    else:
+        last_rotation_time = None
+
+    # Get current profile index from config (defaults to 0)
+    current_index = strategy.get("timeBasedProfileIndex", 0)
+
+    # Check if rotation interval has elapsed
+    should_rotate = False
+    if last_rotation_time is None:
+        # First time using time-based strategy - initialize
+        logger.debug("Time-based strategy: first rotation, initializing state")
+        should_rotate = True
+        current_index = 0
+    else:
+        # Calculate elapsed time
+        elapsed = current_time - last_rotation_time
+        if elapsed >= rotation_interval:
+            logger.debug(
+                f"Time-based strategy: interval elapsed ({elapsed:.1f}s >= {rotation_interval}s), "
+                "rotating to next profile"
+            )
+            should_rotate = True
+        else:
+            logger.debug(
+                f"Time-based strategy: interval not yet elapsed "
+                f"({elapsed:.1f}s < {rotation_interval}s), using current profile"
+            )
+
+    # Select profile based on current index
+    if should_rotate:
+        # Move to next profile (wrap around if needed)
+        num_profiles = len(profiles)
+        current_index = (current_index + 1) % num_profiles
+
+        # Update config with new state
+        strategy["timeBasedProfileIndex"] = current_index
+        # Update last rotation time as ISO 8601 timestamp
+        from datetime import datetime, timezone
+
+        strategy["timeBasedLastRotationTime"] = datetime.now(
+            timezone.utc
+        ).isoformat().replace("+00:00", "Z")
+
+        # Save updated config to disk
+        _save_rotation_strategy(rotation_config)
+
+    # Get the profile at current index
+    if 0 <= current_index < len(profiles):
+        selected_profile = profiles[current_index]
+        profile_id = selected_profile.get("id", "unknown")
+        profile_name = selected_profile.get("name", profile_id)
+
+        logger.debug(
+            f"Time-based strategy: selected profile '{profile_name}' "
+            f"(ID: {profile_id}, index: {current_index}, "
+            f"interval: {rotation_interval}s, total profiles: {len(profiles)})"
+        )
+
+        return selected_profile
+
+    # Should not happen if modulo logic is correct, but handle gracefully
+    logger.debug(
+        f"Time-based strategy: invalid index {current_index} for {len(profiles)} profiles"
+    )
+    return profiles[0] if profiles else None
+
+
+def get_rotating_profile_credential() -> dict[str, str | None] | None:
+    """
+    Get a credential profile from the rotation pool.
+
+    This function implements automatic profile selection using the configured
+    rotation strategy from ~/.auto-claude/api-profile-rotation.json. When 'auto'
+    is selected as the API profile, this function selects the best available
+    profile based on the strategy (priority, round-robin, least-used, random,
+    weighted, time-based).
+
+    Returns:
+        Dictionary with credential data including:
+        - id: Credential ID
+        - type: Credential type ('api_key' for API profiles)
+        - name: Credential name
+        - status: Credential status ('active')
+        - value: Actual credential value (API key)
+        - last_used: Last used timestamp (always None for API profiles)
+
+        Returns None if:
+        - profiles.json is not found
+        - profiles list is empty
+        - rotation strategy is not enabled
+        - no available profiles match the strategy
+        - all profiles are filtered out
+
+    Note:
+        Implemented strategies: priority, round-robin, least-used, random, weighted, time-based.
+
+    Example:
+        >>> cred = get_rotating_profile_credential()
+        >>> if cred:
+        ...     print(f"Selected profile: {cred['name']}")
+        ...     token = cred['value']
+        ... else:
+        ...     print("No rotation pool available, using default auth")
+    """
+    # Load profiles from profiles.json
+    profiles_data = load_profiles_file()
+    profiles = profiles_data.get("profiles", [])
+
+    if not profiles:
+        logger.debug("Rotation pool: no profiles found in profiles.json")
+        return None
+
+    # Load rotation strategy configuration
+    rotation_config = _load_rotation_strategy()
+
+    if rotation_config is None:
+        logger.debug("Rotation pool: no rotation strategy configuration found")
+        return None
+
+    strategy = rotation_config.get("strategy", {})
+
+    # Check if rotation is enabled
+    if not strategy.get("enabled", False):
+        logger.debug("Rotation pool: rotation strategy is not enabled")
+        return None
+
+    # Get the strategy type (default to 'priority')
+    strategy_type = strategy.get("strategy", "priority")
+
+    # Get priority order (used by priority strategy)
+    priority_order = strategy.get("priorityOrder", [])
+
+    logger.debug(
+        f"Rotation pool: using '{strategy_type}' strategy with {len(profiles)} profiles"
+    )
+
+    # Select profile based on strategy type
+    selected_profile: dict | None = None
+
+    if strategy_type == "priority":
+        # Priority strategy: select first available profile from priorityOrder list
+        selected_profile = _select_profile_by_priority(profiles, priority_order)
+    elif strategy_type == "round-robin":
+        # Round-robin strategy: cycle through profiles using rotationIndex
+        rotation_index = strategy.get("rotationIndex")
+        selected_profile = _select_profile_by_round_robin(profiles, rotation_index)
+    elif strategy_type == "least-used":
+        # Least-used strategy: select profile with lowest usage score
+        usage_data = strategy.get("usageData")
+        selected_profile = _select_profile_by_least_used(profiles, usage_data)
+    elif strategy_type == "random":
+        # Random strategy: uniformly random profile selection
+        selected_profile = _select_profile_by_random(profiles)
+    elif strategy_type == "weighted":
+        # Weighted strategy: weighted random selection using weights dict
+        weights = strategy.get("weights")
+        selected_profile = _select_profile_by_weighted(profiles, weights)
+    elif strategy_type == "time-based":
+        # Time-based strategy: rotate at configured intervals
+        selected_profile = _select_profile_by_time_based(profiles, rotation_config)
+    else:
+        # Other strategies not implemented yet - fall back to priority
+        logger.debug(
+            f"Rotation pool: strategy '{strategy_type}' not implemented yet, "
+            "falling back to priority strategy"
+        )
+        selected_profile = _select_profile_by_priority(profiles, priority_order)
+
+    # If no profile selected, return None
+    if not selected_profile:
+        logger.debug(
+            f"Rotation pool: no profile selected using '{strategy_type}' strategy, "
+            "returning None to fall back to default auth"
+        )
+        return None
+
+    # Validate selected profile has required fields
+    profile_id = selected_profile.get("id")
+    if not profile_id:
+        logger.warning(
+            f"Rotation pool: selected profile is missing 'id' field, "
+            "returning None to fall back to default auth"
+        )
+        return None
+
+    # Check for apiKey (critical - without this the credential is unusable)
+    api_key = selected_profile.get("apiKey")
+    if not api_key:
+        logger.warning(
+            f"Rotation pool: selected profile '{profile_id}' is missing 'apiKey' field, "
+            "returning None to fall back to default auth"
+        )
+        return None
+
+    # Build and return credential dict in get_credential() format
+    credential = {
+        "id": profile_id,
+        "type": "api_key",
+        "name": selected_profile.get("name", profile_id),
+        "status": "active",
+        "value": api_key,
+        "last_used": None,
+    }
+
+    logger.info(
+        f"Rotation pool: selected profile '{credential['name']}' (ID: {credential['id']}) "
+        f"using '{strategy_type}' strategy"
+    )
+
+    return credential
 
 

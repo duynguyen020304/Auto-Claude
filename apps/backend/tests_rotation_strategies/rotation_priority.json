@@ -1,0 +1,7 @@
+{
+  "strategy": {
+    "enabled": true,
+    "strategy": "priority",
+    "priorityOrder": ["profile-1", "profile-2", "profile-3"]
+  }
+}

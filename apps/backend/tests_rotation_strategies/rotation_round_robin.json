@@ -1,0 +1,7 @@
+{
+  "strategy": {
+    "enabled": true,
+    "strategy": "round-robin",
+    "rotationIndex": 0
+  }
+}

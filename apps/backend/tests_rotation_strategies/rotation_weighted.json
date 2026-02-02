@@ -1,0 +1,11 @@
+{
+  "strategy": {
+    "enabled": true,
+    "strategy": "weighted",
+    "weights": {
+      "profile-1": 10,
+      "profile-2": 5,
+      "profile-3": 1
+    }
+  }
+}

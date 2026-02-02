@@ -1,0 +1,30 @@
+{
+  "profiles": [
+    {
+      "id": "profile-1",
+      "name": "Primary Account",
+      "baseUrl": "https://api.anthropic.com",
+      "apiKey": "sk-ant-api03-primary-test-key-12345",
+      "createdAt": 1704067200000,
+      "updatedAt": 1704067200000
+    },
+    {
+      "id": "profile-2",
+      "name": "Secondary Account",
+      "baseUrl": "https://api.anthropic.com",
+      "apiKey": "sk-ant-api03-secondary-test-key-67890",
+      "createdAt": 1704067200000,
+      "updatedAt": 1704067200000
+    },
+    {
+      "id": "profile-3",
+      "name": "Tertiary Account",
+      "baseUrl": "https://api.anthropic.com",
+      "apiKey": "sk-ant-api03-tertiary-test-key-abcde",
+      "createdAt": 1704067200000,
+      "updatedAt": 1704067200000
+    }
+  ],
+  "activeProfileId": "profile-1",
+  "version": 1
+}

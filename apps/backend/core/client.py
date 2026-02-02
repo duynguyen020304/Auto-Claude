@@ -141,6 +141,7 @@ from claude_agent_sdk.types import HookMatcher
 from core.auth import (
     configure_sdk_authentication,
     get_credential,  # Keep - needed for task metadata API profile feature
+    get_rotating_profile_credential,  # Keep - needed for auto profile rotation
     get_sdk_env_vars,
 )
 from phase_config import load_task_metadata  # Keep - needed for apiProfileId check
@@ -594,36 +595,73 @@ def create_client(
     task_metadata = load_task_metadata(spec_dir)
     if task_metadata and task_metadata.get("apiProfileId"):
         api_profile_id = task_metadata["apiProfileId"]
-        try:
-            # Load the credential profile from platform storage
-            credential = get_credential(api_profile_id)
-            if credential:
-                credential_value = credential.get("value")
-                if credential_value:
-                    # Set API profile mode environment variables
-                    # configure_sdk_authentication() will detect ANTHROPIC_AUTH_TOKEN
-                    # and use API profile mode (no OAuth required)
-                    os.environ["ANTHROPIC_AUTH_TOKEN"] = credential_value
-                    logger.info(
-                        f"Using API profile {api_profile_id} ({credential.get('name', 'Unknown')}) "
-                        f"from task metadata"
-                    )
+
+        # Handle 'auto' rotation selector vs specific profile
+        # 'auto' triggers rotation pool selection (implemented in auth.py)
+        # Specific profile IDs use direct credential lookup
+        if api_profile_id == "auto":
+            # Rotation pool selection - get best available profile from rotation pool
+            try:
+                credential = get_rotating_profile_credential()
+                if credential:
+                    credential_value = credential.get("value")
+                    if credential_value:
+                        # Set API profile mode environment variables
+                        # configure_sdk_authentication() will detect ANTHROPIC_AUTH_TOKEN
+                        # and use API profile mode (no OAuth required)
+                        os.environ["ANTHROPIC_AUTH_TOKEN"] = credential_value
+                        logger.info(
+                            f"Using auto-selected API profile {credential.get('id')} "
+                            f"({credential.get('name', 'Unknown')}) from rotation pool"
+                        )
+                    else:
+                        logger.warning(
+                            f"Auto-selected profile has no value, "
+                            f"falling back to default authentication"
+                        )
                 else:
                     logger.warning(
-                        f"API profile '{api_profile_id}' found but has no value, "
+                        f"Rotation pool selection returned None, "
                         f"falling back to default authentication"
                     )
-            else:
-                logger.warning(
-                    f"API profile '{api_profile_id}' specified in task metadata "
-                    f"but not found in credential storage, falling back to default authentication"
+            except Exception as e:
+                logger.error(
+                    f"Failed to get rotating profile credential: {e}. "
+                    f"Using default credential.",
+                    exc_info=True
                 )
-        except Exception as e:
-            logger.error(
-                f"Failed to load API profile '{api_profile_id}' from task metadata: {e}. "
-                f"Using default credential.",
-                exc_info=True
-            )
+        else:
+            # Specific profile requested - load from credential storage
+            try:
+                # Load the credential profile from platform storage
+                credential = get_credential(api_profile_id)
+                if credential:
+                    credential_value = credential.get("value")
+                    if credential_value:
+                        # Set API profile mode environment variables
+                        # configure_sdk_authentication() will detect ANTHROPIC_AUTH_TOKEN
+                        # and use API profile mode (no OAuth required)
+                        os.environ["ANTHROPIC_AUTH_TOKEN"] = credential_value
+                        logger.info(
+                            f"Using API profile {api_profile_id} ({credential.get('name', 'Unknown')}) "
+                            f"from task metadata"
+                        )
+                    else:
+                        logger.warning(
+                            f"API profile '{api_profile_id}' found but has no value, "
+                            f"falling back to default authentication"
+                        )
+                else:
+                    logger.warning(
+                        f"API profile '{api_profile_id}' specified in task metadata "
+                        f"but not found in credential storage, falling back to default authentication"
+                    )
+            except Exception as e:
+                logger.error(
+                    f"Failed to load API profile '{api_profile_id}' from task metadata: {e}. "
+                    f"Using default credential.",
+                    exc_info=True
+                )
 
     # Collect env vars to pass to SDK (ANTHROPIC_BASE_URL, CLAUDE_CONFIG_DIR, etc.)
     sdk_env = get_sdk_env_vars()
