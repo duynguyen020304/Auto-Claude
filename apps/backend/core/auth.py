@@ -3000,13 +3000,31 @@ def get_rotating_profile_credential() -> dict[str, str | None] | None:
         )
         return None
 
+    # Validate selected profile has required fields
+    profile_id = selected_profile.get("id")
+    if not profile_id:
+        logger.warning(
+            f"Rotation pool: selected profile is missing 'id' field, "
+            "returning None to fall back to default auth"
+        )
+        return None
+
+    # Check for apiKey (critical - without this the credential is unusable)
+    api_key = selected_profile.get("apiKey")
+    if not api_key:
+        logger.warning(
+            f"Rotation pool: selected profile '{profile_id}' is missing 'apiKey' field, "
+            "returning None to fall back to default auth"
+        )
+        return None
+
     # Build and return credential dict in get_credential() format
     credential = {
-        "id": selected_profile.get("id"),
+        "id": profile_id,
         "type": "api_key",
-        "name": selected_profile.get("name"),
+        "name": selected_profile.get("name", profile_id),
         "status": "active",
-        "value": selected_profile.get("apiKey"),
+        "value": api_key,
         "last_used": None,
     }
 
