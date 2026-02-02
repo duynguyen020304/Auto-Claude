@@ -10,7 +10,8 @@ import {
   IDEATION_STATUS_COLORS,
   IDEATION_EFFORT_COLORS,
   IDEATION_IMPACT_COLORS,
-  SECURITY_SEVERITY_COLORS
+  SECURITY_SEVERITY_COLORS,
+  CODE_QUALITY_SEVERITY_COLORS
 } from '../../../shared/constants';
 import type {
   Idea,
@@ -190,7 +191,7 @@ export function IdeaCard({ idea, isSelected, onClick, onConvert, onGoToTask, onD
                     className="h-8 w-8 p-0 text-primary"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onGoToTask(idea.taskId);
+                      if (idea.taskId) onGoToTask(idea.taskId);
                     }}
                     aria-label={t('accessibility.goToTaskAriaLabel')}
                   >
@@ -212,7 +213,7 @@ export function IdeaCard({ idea, isSelected, onClick, onConvert, onGoToTask, onD
                     className="h-8 w-8 p-0 text-primary"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onGoToTask(idea.taskId);
+                      if (idea.taskId) onGoToTask(idea.taskId);
                     }}
                     aria-label={t('accessibility.goToTaskAriaLabel')}
                   >

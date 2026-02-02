@@ -515,7 +515,7 @@ export function IdeationItemCard({
               variant="outline"
               size="sm"
               className="h-7 px-2"
-              onClick={() => onViewLinkedSpec?.(idea.taskId)}
+              onClick={() => idea.taskId && onViewLinkedSpec?.(idea.taskId)}
               aria-label={t('insights:ideation.viewLinkedSpec')}
             >
               <ExternalLink className="h-3 w-3 mr-1" />

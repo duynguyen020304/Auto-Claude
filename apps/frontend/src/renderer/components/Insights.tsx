@@ -216,7 +216,8 @@ export function Insights({ projectId }: InsightsProps) {
         try {
           const result = await window.electronAPI.getRoadmapFeatureDetails(projectId, featureRef.id);
           if (result.success && result.data) {
-            setRoadmapFeatures((prev) => new Map(prev).set(featureRef.id, result.data));
+            const featureData = result.data;
+            setRoadmapFeatures((prev) => new Map(prev).set(featureRef.id, featureData));
           }
         } catch (error) {
           console.error(`Failed to load roadmap feature ${featureRef.id}:`, error);
