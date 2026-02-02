@@ -2694,6 +2694,203 @@ def _select_profile_by_weighted(
     return selected_profile
 
 
+def _save_rotation_strategy(rotation_config: dict) -> bool:
+    """
+    Save rotation strategy configuration to disk.
+
+    Writes the updated rotation config back to api-profile-rotation.json.
+    This is used to persist state changes for time-based rotation (e.g.,
+    updating timeBasedLastRotationTime, timeBasedProfileIndex).
+
+    Args:
+        rotation_config: Full rotation config dict to save (with 'strategy' key)
+
+    Returns:
+        True if save succeeded, False otherwise
+
+    Example:
+        >>> config = {
+        ...     "version": 1,
+        ...     "strategy": {
+        ...         "enabled": True,
+        ...         "strategy": "time-based",
+        ...         "timeBasedLastRotationTime": "2025-02-02T12:00:00Z",
+        ...     }
+        ... }
+        >>> success = _save_rotation_strategy(config)
+    """
+    strategy_path = _get_rotation_strategy_file_path()
+
+    try:
+        # Ensure directory exists
+        auto_claude_dir = os.path.dirname(strategy_path)
+        if auto_claude_dir and not os.path.exists(auto_claude_dir):
+            os.makedirs(auto_claude_dir, exist_ok=True)
+
+        # Write config to file with formatted JSON
+        with open(strategy_path, "w", encoding="utf-8") as f:
+            json.dump(rotation_config, f, indent=2)
+
+        logger.debug(f"Saved rotation strategy file: {strategy_path}")
+        return True
+
+    except (IOError, OSError, PermissionError) as e:
+        logger.warning(f"Failed to save rotation strategy file: {e}")
+        return False
+
+    except Exception as e:
+        logger.warning(f"Unexpected error saving rotation strategy: {e}")
+        return False
+
+
+def _select_profile_by_time_based(
+    profiles: list[dict],
+    rotation_config: dict,
+) -> dict | None:
+    """
+    Select a profile using the time-based strategy.
+
+    Rotates profiles at configured time intervals. Tracks the last rotation
+    time and current profile index in the rotation config. When the interval
+    elapses, rotates to the next profile in the list and updates the config.
+
+    Args:
+        profiles: List of profile dictionaries from profiles.json
+        rotation_config: Full rotation config dict containing strategy settings.
+                        Must include strategy.rotationInterval and strategy
+                        time-based state fields (timeBasedLastRotationTime,
+                        timeBasedProfileIndex).
+
+    Returns:
+        A profile dict selected based on time interval, or None if:
+        - profiles list is empty
+        - rotationInterval is not set or invalid
+
+    Note:
+        This function updates the rotation config's time-based state fields
+        (timeBasedLastRotationTime, timeBasedProfileIndex) and saves the
+        config to disk when rotation occurs.
+
+    Example:
+        >>> profiles = [
+        ...     {"id": "profile-1", "name": "Profile 1"},
+        ...     {"id": "profile-2", "name": "Profile 2"},
+        ... ]
+        >>> config = {
+        ...     "version": 1,
+        ...     "strategy": {
+        ...         "rotationInterval": 300,  # 5 minutes
+        ...         "timeBasedLastRotationTime": "2025-02-02T12:00:00Z",
+        ...         "timeBasedProfileIndex": 0,
+        ...     }
+        ... }
+        >>> # Returns profile-1 if interval hasn't elapsed,
+        >>> # or profile-2 if interval has elapsed and rotation occurred
+        >>> profile = _select_profile_by_time_based(profiles, config)
+    """
+    if not profiles:
+        logger.debug("Time-based strategy: profiles list is empty, no profile selected")
+        return None
+
+    strategy = rotation_config.get("strategy", {})
+    rotation_interval = strategy.get("rotationInterval", 300)  # Default 5 minutes
+
+    # Validate rotation interval
+    if not isinstance(rotation_interval, (int, float)) or rotation_interval <= 0:
+        logger.debug(
+            f"Time-based strategy: invalid rotationInterval {rotation_interval}, "
+            "defaulting to 300 seconds"
+        )
+        rotation_interval = 300
+
+    # Get current time in seconds since epoch
+    current_time = time.time()
+
+    # Get last rotation time from config
+    last_rotation_time_str = strategy.get("timeBasedLastRotationTime")
+    if last_rotation_time_str:
+        try:
+            # Parse ISO 8601 timestamp to seconds since epoch
+            # Format: "2025-02-02T12:00:00Z" or similar
+            from datetime import datetime
+
+            # Handle various ISO 8601 formats
+            last_rotation_time = datetime.fromisoformat(
+                last_rotation_time_str.replace("Z", "+00:00")
+            ).timestamp()
+        except (ValueError, AttributeError) as e:
+            logger.debug(
+                f"Time-based strategy: failed to parse timeBasedLastRotationTime "
+                f"'{last_rotation_time_str}': {e}, treating as first rotation"
+            )
+            last_rotation_time = None
+    else:
+        last_rotation_time = None
+
+    # Get current profile index from config (defaults to 0)
+    current_index = strategy.get("timeBasedProfileIndex", 0)
+
+    # Check if rotation interval has elapsed
+    should_rotate = False
+    if last_rotation_time is None:
+        # First time using time-based strategy - initialize
+        logger.debug("Time-based strategy: first rotation, initializing state")
+        should_rotate = True
+        current_index = 0
+    else:
+        # Calculate elapsed time
+        elapsed = current_time - last_rotation_time
+        if elapsed >= rotation_interval:
+            logger.debug(
+                f"Time-based strategy: interval elapsed ({elapsed:.1f}s >= {rotation_interval}s), "
+                "rotating to next profile"
+            )
+            should_rotate = True
+        else:
+            logger.debug(
+                f"Time-based strategy: interval not yet elapsed "
+                f"({elapsed:.1f}s < {rotation_interval}s), using current profile"
+            )
+
+    # Select profile based on current index
+    if should_rotate:
+        # Move to next profile (wrap around if needed)
+        num_profiles = len(profiles)
+        current_index = (current_index + 1) % num_profiles
+
+        # Update config with new state
+        strategy["timeBasedProfileIndex"] = current_index
+        # Update last rotation time as ISO 8601 timestamp
+        from datetime import datetime, timezone
+
+        strategy["timeBasedLastRotationTime"] = datetime.now(
+            timezone.utc
+        ).isoformat().replace("+00:00", "Z")
+
+        # Save updated config to disk
+        _save_rotation_strategy(rotation_config)
+
+    # Get the profile at current index
+    if 0 <= current_index < len(profiles):
+        selected_profile = profiles[current_index]
+        profile_id = selected_profile.get("id", "unknown")
+        profile_name = selected_profile.get("name", profile_id)
+
+        logger.debug(
+            f"Time-based strategy: selected profile '{profile_name}' "
+            f"(ID: {profile_id}, index: {current_index}, "
+            f"interval: {rotation_interval}s, total profiles: {len(profiles)})"
+        )
+
+        return selected_profile
+
+    # Should not happen if modulo logic is correct, but handle gracefully
+    logger.debug(
+        f"Time-based strategy: invalid index {current_index} for {len(profiles)} profiles"
+    )
+    return profiles[0] if profiles else None
+
+
 def get_rotating_profile_credential() -> dict[str, str | None] | None:
     """
     Get a credential profile from the rotation pool.
@@ -2721,8 +2918,7 @@ def get_rotating_profile_credential() -> dict[str, str | None] | None:
         - all profiles are filtered out
 
     Note:
-        Implemented strategies: priority, round-robin, least-used, random, weighted.
-        Time-based strategy will be added in future subtasks.
+        Implemented strategies: priority, round-robin, least-used, random, weighted, time-based.
 
     Example:
         >>> cred = get_rotating_profile_credential()
@@ -2785,6 +2981,9 @@ def get_rotating_profile_credential() -> dict[str, str | None] | None:
         # Weighted strategy: weighted random selection using weights dict
         weights = strategy.get("weights")
         selected_profile = _select_profile_by_weighted(profiles, weights)
+    elif strategy_type == "time-based":
+        # Time-based strategy: rotate at configured intervals
+        selected_profile = _select_profile_by_time_based(profiles, rotation_config)
     else:
         # Other strategies not implemented yet - fall back to priority
         logger.debug(
