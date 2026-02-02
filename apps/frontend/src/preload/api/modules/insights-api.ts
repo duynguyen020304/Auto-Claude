@@ -7,6 +7,7 @@ import type {
   InsightsModelConfig,
   RoadmapItemContext,
   RoadmapFeature,
+  IdeationItemContext,
   Task,
   TaskMetadata,
   IPCResult
@@ -30,6 +31,12 @@ export interface InsightsAPI {
   createSpecFromRoadmap: (
     projectId: string,
     roadmapContext: RoadmapItemContext,
+    chatContext?: string
+  ) => Promise<IPCResult<Task>>;
+  getIdeationItem: (projectId: string, ideaId: string) => Promise<IPCResult<IdeationItemContext>>;
+  createSpecFromIdeation: (
+    projectId: string,
+    ideationContext: IdeationItemContext,
     chatContext?: string
   ) => Promise<IPCResult<Task>>;
   listInsightsSessions: (projectId: string) => Promise<IPCResult<InsightsSessionSummary[]>>;
@@ -86,6 +93,16 @@ export const createInsightsAPI = (): InsightsAPI => ({
     chatContext?: string
   ): Promise<IPCResult<Task>> =>
     invokeIpc(IPC_CHANNELS.INSIGHTS_CREATE_SPEC_FROM_ROADMAP, projectId, roadmapContext, chatContext),
+
+  getIdeationItem: (projectId: string, ideaId: string): Promise<IPCResult<IdeationItemContext>> =>
+    invokeIpc(IPC_CHANNELS.INSIGHTS_GET_IDEATION_ITEM, projectId, ideaId),
+
+  createSpecFromIdeation: (
+    projectId: string,
+    ideationContext: IdeationItemContext,
+    chatContext?: string
+  ): Promise<IPCResult<Task>> =>
+    invokeIpc(IPC_CHANNELS.INSIGHTS_CREATE_SPEC_FROM_IDEATION, projectId, ideationContext, chatContext),
 
   listInsightsSessions: (projectId: string): Promise<IPCResult<InsightsSessionSummary[]>> =>
     invokeIpc(IPC_CHANNELS.INSIGHTS_LIST_SESSIONS, projectId),

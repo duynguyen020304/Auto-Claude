@@ -482,10 +482,12 @@ export const IPC_CHANNELS = {
   // Insights operations
   INSIGHTS_GET_SESSION: 'insights:getSession',
   INSIGHTS_GET_ROADMAP_FEATURE: 'insights:getRoadmapFeature',
+  INSIGHTS_GET_IDEATION_ITEM: 'insights:getIdeationItem',
   INSIGHTS_SEND_MESSAGE: 'insights:sendMessage',
   INSIGHTS_CLEAR_SESSION: 'insights:clearSession',
   INSIGHTS_CREATE_TASK: 'insights:createTask',
   INSIGHTS_CREATE_SPEC_FROM_ROADMAP: 'insights:createSpecFromRoadmap',
+  INSIGHTS_CREATE_SPEC_FROM_IDEATION: 'insights:createSpecFromIdeation',
   INSIGHTS_LIST_SESSIONS: 'insights:listSessions',
   INSIGHTS_NEW_SESSION: 'insights:newSession',
   INSIGHTS_SWITCH_SESSION: 'insights:switchSession',

@@ -1,5 +1,6 @@
 import { TabsContent } from '../ui/tabs';
 import { useTranslation } from 'react-i18next';
+import type { Idea } from '../../../shared/types';
 import { EnvConfigModal } from '../EnvConfigModal';
 import { IDEATION_TYPE_DESCRIPTIONS } from '../../../shared/constants';
 import { IdeationEmptyState } from './IdeationEmptyState';
@@ -16,9 +17,11 @@ import { ALL_IDEATION_TYPES } from './constants';
 interface IdeationProps {
   projectId: string;
   onGoToTask?: (taskId: string) => void;
+  onDiscussInChat?: (idea: Idea) => void;
+  onSwitchToInsights?: () => void;
 }
 
-export function Ideation({ projectId, onGoToTask }: IdeationProps) {
+export function Ideation({ projectId, onGoToTask, onDiscussInChat, onSwitchToInsights }: IdeationProps) {
   const { t } = useTranslation(['ideation', 'common']);
 
   // Get showArchived from shared context for cross-page sync
@@ -65,12 +68,16 @@ export function Ideation({ projectId, onGoToTask }: IdeationProps) {
     toggleTypeToAdd,
     handleConvertToTask,
     handleGoToTask,
+    handleDiscussInChat: hookHandleDiscussInChat,
     handleDismiss,
     toggleIdeationType,
     toggleSelectIdea,
     clearSelection,
     getIdeasByType
-  } = useIdeation(projectId, { onGoToTask, showArchived });
+  } = useIdeation(projectId, { onGoToTask, onSwitchToInsights, showArchived });
+
+  // Use hook's handler if available, otherwise fall back to external prop
+  const handleDiscussInChat = onDiscussInChat || hookHandleDiscussInChat;
 
   // Show generation progress with streaming ideas (use isGenerating flag for reliable state)
   if (isGenerating) {
@@ -111,11 +118,17 @@ export function Ideation({ projectId, onGoToTask }: IdeationProps) {
           typesToAdd={[]}
           availableTypesToAdd={[]}
           onToggleIdeationType={toggleIdeationType}
-          onToggleTypeToAdd={() => {}}
+          onToggleTypeToAdd={() => {
+            // Not implemented - typesToAdd is always empty
+          }}
           onSetConfig={setConfig}
           onCloseConfigDialog={() => setShowConfigDialog(false)}
-          onCloseAddMoreDialog={() => {}}
-          onConfirmAddMore={() => {}}
+          onCloseAddMoreDialog={() => {
+            // Not implemented - add more dialog is never shown
+          }}
+          onConfirmAddMore={() => {
+            // Not implemented - add more dialog is never shown
+          }}
         />
 
         <EnvConfigModal
@@ -170,6 +183,7 @@ export function Ideation({ projectId, onGoToTask }: IdeationProps) {
                   onGoToTask={handleGoToTask}
                   onDismiss={handleDismiss}
                   onToggleSelect={toggleSelectIdea}
+                  onDiscussInChat={handleDiscussInChat}
                 />
               ))}
               {activeIdeas.length === 0 && (
@@ -205,6 +219,7 @@ export function Ideation({ projectId, onGoToTask }: IdeationProps) {
                       onGoToTask={handleGoToTask}
                       onDismiss={handleDismiss}
                       onToggleSelect={toggleSelectIdea}
+                      onDiscussInChat={handleDiscussInChat}
                     />
                   ))}
                 </div>

@@ -61,9 +61,37 @@
     "searchingFiles": "Searching files",
     "searchingCode": "Searching code",
     "exploringRoadmapItem": "Exploring Roadmap Feature",
+    "exploringIdeationItem": "Exploring Ideation Item",
+    "convertIdeationToTask": "Convert to Task",
+    "discussInChat": "Discuss in Chat",
     "convertToSpec": "Convert to Spec",
     "convertingToSpec": "Converting...",
-    "specCreated": "Spec Created"
+    "specCreated": "Spec Created",
+    "ideationTypes": {
+      "code_improvements": "Code Improvements",
+      "performance": "Performance",
+      "security": "Security",
+      "features": "Features",
+      "refactoring": "Refactoring",
+      "documentation": "Documentation",
+      "testing": "Testing",
+      "architecture": "Architecture",
+      "ux": "UX/UI",
+      "dependencies": "Dependencies"
+    },
+    "status": {
+      "draft": "Draft",
+      "in_progress": "In Progress",
+      "completed": "Completed",
+      "archived": "Archived"
+    },
+    "effort": {
+      "trivial": "Trivial",
+      "small": "Small",
+      "medium": "Medium",
+      "large": "Large",
+      "significant": "Significant"
+    }
   },
   "modelSelector": {
     "agentProfile": "Agent Profile",

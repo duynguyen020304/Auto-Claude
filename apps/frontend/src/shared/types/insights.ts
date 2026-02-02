@@ -181,6 +181,31 @@ export interface RoadmapItemContext {
   status: 'under_review' | 'planned' | 'in_progress' | 'done';
 }
 
+// Ideation item context for exploring ideation ideas in Insights Chat
+export interface IdeationItemContext {
+  ideaId: string;
+  title: string;
+  description: string;
+  rationale: string;
+  type: IdeationType;
+  status: IdeationStatus;
+  estimatedEffort: 'trivial' | 'small' | 'medium' | 'large' | 'complex';
+  affectedFiles: string[];
+  existingPatterns: string[];
+  buildsUpon: string[];
+  implementationApproach?: string;
+}
+
+// Lightweight reference to an ideation idea for linking in insights messages
+export interface IdeationItemReference {
+  id: string;
+  title: string;
+  type: IdeationType;
+  status: IdeationStatus;
+  estimatedEffort: 'trivial' | 'small' | 'medium' | 'large' | 'complex';
+  externalUrl?: string;
+}
+
 // Lightweight reference to a roadmap feature for linking in insights messages
 export interface RoadmapFeatureReference {
   id: string;
@@ -213,6 +238,8 @@ export interface InsightsChatMessage {
   };
   // Tools used during this response (assistant messages only)
   toolsUsed?: InsightsToolUsage[];
+  // Ideation items referenced in this message
+  ideationItems?: IdeationItemReference[];
 }
 
 export interface InsightsSession {
@@ -222,6 +249,7 @@ export interface InsightsSession {
   messages: InsightsChatMessage[];
   modelConfig?: InsightsModelConfig; // Per-session model configuration
   roadmapContext?: RoadmapItemContext; // Roadmap item being explored
+  ideationContext?: IdeationItemContext; // Ideation idea being explored
   createdAt: Date;
   updatedAt: Date;
 }
@@ -252,7 +280,7 @@ export interface InsightsChatStatus {
 }
 
 export interface InsightsStreamChunk {
-  type: 'text' | 'task_suggestion' | 'tool_start' | 'tool_end' | 'roadmap_feature' | 'done' | 'error';
+  type: 'text' | 'task_suggestion' | 'tool_start' | 'tool_end' | 'roadmap_feature' | 'ideation_item' | 'done' | 'error';
   content?: string;
   suggestedTask?: {
     title: string;
@@ -264,5 +292,6 @@ export interface InsightsStreamChunk {
     input?: string;  // Brief description of what's being searched/read
   };
   roadmapFeature?: RoadmapFeatureReference;  // Lightweight reference to a roadmap feature
+  ideationItem?: IdeationItemReference;  // Lightweight reference to an ideation item
   error?: string;
 }

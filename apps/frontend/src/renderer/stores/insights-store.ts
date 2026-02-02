@@ -12,6 +12,9 @@ import type {
   RoadmapItemContext,
   RoadmapFeatureReference,
   RoadmapFeature,
+  IdeationItemContext,
+  IdeationItemReference,
+  Idea,
 } from '../../shared/types';
 import { debugLog } from '../../shared/utils/debug-logger';
 
@@ -36,6 +39,7 @@ interface InsightsState {
   sessions: InsightsSessionSummary[]; // List of all sessions
   sessionStates: Map<string, InsightsSessionState>; // Per-session streaming state
   sessionRoadmapFeatures: Map<string, RoadmapFeatureReference[]>; // sessionId -> roadmap features for exploration
+  sessionIdeationItems: Map<string, IdeationItemReference[]>; // sessionId -> ideation items for exploration
   isLoadingSessions: boolean;
   abortControllers: Map<string, AbortController>; // sessionId -> AbortController mapping for active generations
 
@@ -67,13 +71,17 @@ interface InsightsState {
   cleanupSessionState: (sessionId: string) => void;
   removeSession: (sessionId: string) => void;
   exploreRoadmapItem: (roadmapContext: RoadmapItemContext) => void;
+  exploreIdeationItem: (ideationContext: IdeationItemContext) => void;
   addRoadmapFeature: (sessionId: string, feature: RoadmapFeatureReference) => void;
   clearRoadmapFeatures: (sessionId: string) => void;
+  addIdeationItem: (sessionId: string, item: IdeationItemReference) => void;
+  clearIdeationItems: (sessionId: string) => void;
 
   // Selectors
   getCurrentSessionState: () => InsightsSessionState | undefined;
   getSessionState: (sessionId: string) => InsightsSessionState | undefined;
   getRoadmapFeatures: (sessionId: string) => RoadmapFeatureReference[] | undefined;
+  getIdeationItems: (sessionId: string) => IdeationItemReference[] | undefined;
 }
 
 const initialStatus: InsightsChatStatus = {
@@ -104,6 +112,7 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
   sessions: [],
   sessionStates: new Map<string, InsightsSessionState>(),
   sessionRoadmapFeatures: new Map<string, RoadmapFeatureReference[]>(),
+  sessionIdeationItems: new Map<string, IdeationItemReference[]>(),
   isLoadingSessions: false,
   abortControllers: new Map<string, AbortController>(),
   status: initialStatus,
@@ -205,11 +214,21 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
         }
       }
 
+      // Clean up sessionIdeationItems: remove entries for deleted sessions
+      const newSessionIdeationItems = new Map<string, IdeationItemReference[]>();
+      for (const [sessionId, items] of state.sessionIdeationItems.entries()) {
+        // Keep ideation items if session still exists or is the current session
+        if (currentSessionIds.has(sessionId) || sessionId === state.currentSessionId) {
+          newSessionIdeationItems.set(sessionId, items);
+        }
+      }
+
       return {
         sessions,
         sessionStates: newSessionStates,
         abortControllers: newAbortControllers,
-        sessionRoadmapFeatures: newSessionRoadmapFeatures
+        sessionRoadmapFeatures: newSessionRoadmapFeatures,
+        sessionIdeationItems: newSessionIdeationItems
       };
     }),
 
@@ -601,6 +620,7 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       currentSessionId: null,
       sessionStates: new Map<string, InsightsSessionState>(),
       sessionRoadmapFeatures: new Map<string, RoadmapFeatureReference[]>(),
+      sessionIdeationItems: new Map<string, IdeationItemReference[]>(),
       abortControllers: new Map<string, AbortController>(),
       status: initialStatus,
       pendingMessage: '',
@@ -734,6 +754,11 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       newSessionRoadmapFeatures.delete(sessionId);
       updates.sessionRoadmapFeatures = newSessionRoadmapFeatures;
 
+      // Remove from sessionIdeationItems
+      const newSessionIdeationItems = new Map(state.sessionIdeationItems);
+      newSessionIdeationItems.delete(sessionId);
+      updates.sessionIdeationItems = newSessionIdeationItems;
+
       // Remove from abortControllers
       const newAbortControllers = new Map(state.abortControllers);
       newAbortControllers.delete(sessionId);
@@ -793,6 +818,46 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       };
     }),
 
+  exploreIdeationItem: (ideationContext) =>
+    set((state) => {
+      debugLog('[insights-store] exploreIdeationItem called', {
+        hasSession: !!state.session,
+        sessionId: state.session?.id,
+        ideationContext
+      });
+
+      if (!state.session) {
+        console.error('[insights-store] exploreIdeationItem: No session found, cannot set ideation context');
+        return state;
+      }
+
+      const updatedSession = {
+        ...state.session,
+        ideationContext,
+        updatedAt: new Date()
+      };
+
+      debugLog('[insights-store] exploreIdeationItem: Updating session with ideation context', {
+        sessionId: updatedSession.id,
+        ideaId: ideationContext.ideaId
+      });
+
+      // Persist the updated session to disk so the backend can see the ideation context
+      if (typeof window !== 'undefined' && window.electronAPI?.updateInsightsSession) {
+        window.electronAPI.updateInsightsSession(
+          updatedSession.projectId,
+          updatedSession.id,
+          { ideationContext, updatedAt: updatedSession.updatedAt }
+        ).catch((err: unknown) => {
+          console.error('[insights-store] Failed to persist ideation context to disk:', err);
+        });
+      }
+
+      return {
+        session: updatedSession
+      };
+    }),
+
   /**
    * Adds a roadmap feature to the specified session's feature list.
    * If the session doesn't have any features yet, creates a new array.
@@ -823,6 +888,39 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
 
       return {
         sessionRoadmapFeatures: newSessionRoadmapFeatures
+      };
+    }),
+
+  /**
+   * Adds an ideation item to the specified session's item list.
+   * If the session doesn't have any items yet, creates a new array.
+   *
+   * @param sessionId - The ID of the session to add the item to
+   * @param item - The ideation item reference to add
+   */
+  addIdeationItem: (sessionId: string, item: IdeationItemReference) =>
+    set((state) => {
+      const existingItems = state.sessionIdeationItems.get(sessionId) || [];
+      const newSessionIdeationItems = new Map(state.sessionIdeationItems);
+      newSessionIdeationItems.set(sessionId, [...existingItems, item]);
+
+      return {
+        sessionIdeationItems: newSessionIdeationItems
+      };
+    }),
+
+  /**
+   * Clears all ideation items for the specified session.
+   *
+   * @param sessionId - The ID of the session to clear items for
+   */
+  clearIdeationItems: (sessionId: string) =>
+    set((state) => {
+      const newSessionIdeationItems = new Map(state.sessionIdeationItems);
+      newSessionIdeationItems.delete(sessionId);
+
+      return {
+        sessionIdeationItems: newSessionIdeationItems
       };
     }),
 
@@ -859,6 +957,17 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
    */
   getRoadmapFeatures: (sessionId: string) => {
     return _get().sessionRoadmapFeatures.get(sessionId);
+  },
+
+  /**
+   * Gets the ideation items for a specific session by ID.
+   * Returns undefined if the session has no items.
+   *
+   * @param sessionId - The ID of the session to retrieve ideation items for
+   * @returns The session's ideation items, or undefined if no items exist for that session
+   */
+  getIdeationItems: (sessionId: string) => {
+    return _get().sessionIdeationItems.get(sessionId);
   },
 }));
 
@@ -1054,6 +1163,49 @@ export async function newSessionWithRoadmapContext(
   // Send the context message
   const contextMessage = contextParts.join('\n');
   await sendMessage(projectId, contextMessage);
+}
+
+/**
+ * Create a new Insights session with ideation item context pre-loaded.
+ * This is used when clicking "Explore in Insights" from the Ideation view.
+ */
+export async function newSessionWithIdeationContext(
+  projectId: string,
+  idea: Idea
+): Promise<void> {
+  // Create new session
+  const result = await window.electronAPI.newInsightsSession(projectId);
+  if (!result.success || !result.data) {
+    return;
+  }
+
+  // Set the new session as current
+  useInsightsStore.getState().setSession(result.data);
+  await loadInsightsSessions(projectId);
+
+  // Build IdeationItemContext to attach to session (backend adds full context to system prompt)
+  // Note: Only include fields that exist in IdeationItemContext interface
+  // The backend will load the full type-specific context from the ideation file using ideaId
+  const ideationContext: IdeationItemContext = {
+    ideaId: idea.id,
+    title: idea.title,
+    description: idea.description,
+    rationale: idea.rationale,
+    type: idea.type,
+    status: idea.status,
+    estimatedEffort: 'medium',  // Default value - backend loads full context from file
+    affectedFiles: [],
+    existingPatterns: [],
+    buildsUpon: [],
+    implementationApproach: undefined,
+  };
+
+  // Set the ideation context on the session (backend will add to system prompt)
+  useInsightsStore.getState().exploreIdeationItem(ideationContext);
+
+  // Send simple user message - context is attached to system prompt via ideationContext
+  const simpleMessage = `Help me explore this ideation feature: "${idea.title}". What's the scope, what files are affected, and what should I know before starting implementation?`;
+  await sendMessage(projectId, simpleMessage);
 }
 
 export async function switchSession(projectId: string, sessionId: string): Promise<void> {
@@ -1372,6 +1524,12 @@ export function setupInsightsListeners(): () => void {
           if (chunk.roadmapFeature) {
             // Add the roadmap feature to the session
             store.addRoadmapFeature(targetSessionId, chunk.roadmapFeature);
+          }
+          break;
+        case 'ideation_item':
+          if (chunk.ideationItem) {
+            // Add the ideation item to the session
+            store.addIdeationItem(targetSessionId, chunk.ideationItem);
           }
           break;
         case 'done':

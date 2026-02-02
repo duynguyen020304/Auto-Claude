@@ -967,7 +967,11 @@ export function App() {
                   <Context projectId={activeProjectId || selectedProjectId!} />
                 )}
                 {activeView === 'ideation' && (activeProjectId || selectedProjectId) && (
-                  <Ideation projectId={activeProjectId || selectedProjectId!} onGoToTask={handleGoToTask} />
+                  <Ideation
+                    projectId={activeProjectId || selectedProjectId!}
+                    onGoToTask={handleGoToTask}
+                    onSwitchToInsights={() => setActiveView('insights')}
+                  />
                 )}
                 {activeView === 'insights' && (activeProjectId || selectedProjectId) && (
                   <Insights projectId={activeProjectId || selectedProjectId!} />

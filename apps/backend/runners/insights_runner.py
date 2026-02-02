@@ -213,6 +213,117 @@ def load_roadmap_item_context(project_dir: str, item_id: str) -> dict | None:
         return None
 
 
+def load_ideation_context(project_dir: str) -> dict | None:
+    """Load ideation context for the AI.
+
+    Args:
+        project_dir: Path to the project directory
+
+    Returns:
+        Dictionary with ideation summary (ideas, count, type breakdown)
+        or None if ideation not found.
+    """
+    ideation_path = Path(project_dir) / ".auto-claude" / "ideation" / "ideation.json"
+
+    if not ideation_path.exists():
+        return None
+
+    try:
+        with open(ideation_path, encoding="utf-8") as f:
+            ideation = json.load(f)
+
+        ideas = ideation.get("ideas", [])
+
+        # Build type breakdown
+        type_counts = {}
+        for idea in ideas:
+            idea_type = idea.get("type", "unknown")
+            type_counts[idea_type] = type_counts.get(idea_type, 0) + 1
+
+        # Build status breakdown
+        status_counts = {}
+        for idea in ideas:
+            status = idea.get("status", "draft")
+            status_counts[status] = status_counts.get(status, 0) + 1
+
+        # Build effort breakdown
+        effort_counts = {}
+        for idea in ideas:
+            effort = idea.get("estimated_effort", "medium")
+            effort_counts[effort] = effort_counts.get(effort, 0) + 1
+
+        # Summarize ideas
+        idea_summary = [
+            {
+                "id": i.get("id", ""),
+                "type": i.get("type", ""),
+                "title": i.get("title", ""),
+                "status": i.get("status", "draft"),
+                "estimated_effort": i.get("estimated_effort", "medium"),
+            }
+            for i in ideas
+        ]
+
+        return {
+            "total_ideas": len(ideas),
+            "type_breakdown": type_counts,
+            "status_breakdown": status_counts,
+            "effort_breakdown": effort_counts,
+            "ideas": idea_summary,
+            "generated_at": ideation.get("generated_at", ""),
+        }
+
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def load_ideation_item_context(project_dir: str, item_id: str) -> dict | None:
+    """Load context for a specific ideation item.
+
+    Args:
+        project_dir: Path to the project directory
+        item_id: ID of the ideation item to load
+
+    Returns:
+        Dictionary with complete ideation item context (title, description, rationale,
+        type, category, affected_components, screenshots, current_state, proposed_change,
+        user_benefit, status, created_at) or None if not found.
+    """
+    ideation_path = Path(project_dir) / ".auto-claude" / "ideation" / "ideation.json"
+
+    if not ideation_path.exists():
+        return None
+
+    try:
+        with open(ideation_path, encoding="utf-8") as f:
+            ideation = json.load(f)
+
+        ideas = ideation.get("ideas", [])
+
+        # Find the idea by ID
+        for idea in ideas:
+            if idea.get("id") == item_id:
+                return {
+                    "title": idea.get("title", ""),
+                    "description": idea.get("description", ""),
+                    "rationale": idea.get("rationale", ""),
+                    "type": idea.get("type", ""),
+                    "category": idea.get("category", ""),
+                    "affected_components": idea.get("affected_components", []),
+                    "screenshots": idea.get("screenshots", []),
+                    "current_state": idea.get("current_state", ""),
+                    "proposed_change": idea.get("proposed_change", ""),
+                    "user_benefit": idea.get("user_benefit", ""),
+                    "status": idea.get("status", "draft"),
+                    "created_at": idea.get("created_at", ""),
+                }
+
+        return None
+
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
 def _is_binary_file(file_path: Path) -> bool:
     """Check if a file is likely binary by reading a small sample."""
     try:
@@ -322,7 +433,7 @@ def load_mentioned_files(project_dir: str, mentions: list) -> str:
     return "\n\n".join(file_contexts) if file_contexts else ""
 
 
-def build_system_prompt(project_dir: str, roadmap_context: dict = None) -> str:
+def build_system_prompt(project_dir: str, roadmap_context: dict = None, ideation_context: dict = None) -> str:
     """Build the system prompt for the insights agent."""
     context = load_project_context(project_dir)
 
@@ -359,16 +470,75 @@ You are currently exploring a specific roadmap feature:
 When answering questions about this roadmap item, analyze the codebase and provide specific, actionable insights. Use the available tools (Read, Glob, Grep) to explore the codebase and ground your answers in actual code.
 """
 
+    # Build ideation-specific context if provided
+    ideation_section = ""
+    if ideation_context:
+        ideation_section = f"""
+
+## Ideation Item Context
+You are currently exploring a specific ideation idea:
+
+**Title:** {ideation_context.get('title', 'Unknown')}
+
+**Description:** {ideation_context.get('description', 'No description')}
+
+**Rationale:** {ideation_context.get('rationale', 'No rationale provided')}
+
+**Type:** {ideation_context.get('type', 'unknown')}
+
+**Category:** {ideation_context.get('category', 'Unknown')}
+
+**Current State:** {ideation_context.get('current_state', 'Not specified')}
+
+**Proposed Change:** {ideation_context.get('proposed_change', 'Not specified')}
+
+**User Benefit:** {ideation_context.get('user_benefit', 'Not specified')}
+
+**Affected Components:** {', '.join(ideation_context.get('affected_components', [])) or 'None'}
+
+**Status:** {ideation_context.get('status', 'draft').replace('_', ' ').title()}
+
+When answering questions about this ideation item, analyze the codebase and provide specific, actionable insights. Help evaluate the feasibility of this idea, identify implementation challenges, and suggest improvements or alternatives. Use the available tools (Read, Glob, Grep) to explore the codebase and ground your answers in actual code.
+"""
+
     return f"""You are an AI assistant helping developers understand and work with their codebase.
 You have access to the following project context:
 
 {context}
 {roadmap_section}
+{ideation_section}
 Your capabilities:
 1. Answer questions about the codebase structure, patterns, and architecture
 2. Suggest improvements, features, or bug fixes based on the code
 3. Help plan implementation of new features
 4. Provide code examples and explanations
+
+## Ideation Item Analysis
+When an ideation item context is provided above, you can help with:
+
+**Feasibility Assessment:**
+- Evaluate whether the proposed idea is technically feasible
+- Identify potential technical blockers or limitations
+- Assess alignment with existing architecture and patterns
+- Estimate rough implementation complexity
+
+**Implementation Planning:**
+- Suggest specific implementation approaches
+- Identify files and components that would need changes
+- Recommend design patterns or libraries to use
+- Break down the idea into actionable steps
+
+**Impact Analysis:**
+- Identify what parts of the codebase would be affected
+- Find potential conflicts with existing features
+- Assess testing implications
+- Evaluate performance considerations
+
+**Enhancement Suggestions:**
+- Propose improvements to the original idea
+- Suggest alternative approaches if needed
+- Identify related opportunities or extensions
+- Recommend best practices for the implementation
 
 ## Roadmap Item Analysis
 When a roadmap item context is provided above, you can help with:
@@ -428,6 +598,21 @@ Valid actions:
 - "explore" - Suggest exploring the feature in insights chat
 - "implement" - Suggest implementing/creating a task for the feature
 
+## Ideation Item References
+When discussing ideation items or ideas, output an ideation item reference in this exact format on a SINGLE LINE:
+__IDEATION_ITEM__:{{"id": "idea-id", "title": "Idea Title", "action": "view|explore|implement"}}
+
+Use this when:
+- Referencing a specific ideation item by ID or title
+- Suggesting the user explore a particular idea
+- Recommending implementation of an ideation item
+- Linking analysis back to an ideation context
+
+Valid actions:
+- "view" - Suggest viewing the idea details
+- "explore" - Suggest exploring the idea in insights chat
+- "implement" - Suggest implementing/creating a task for the idea
+
 Be conversational and helpful. Focus on providing actionable insights and clear explanations.
 Keep responses concise but informative."""
 
@@ -440,6 +625,7 @@ async def run_with_sdk(
     thinking_level: str = "medium",
     mentions: list = None,
     roadmap_context: dict = None,
+    ideation_context: dict = None,
 ) -> None:
     """Run the chat using Claude SDK with streaming."""
     if not SDK_AVAILABLE:
@@ -458,7 +644,7 @@ async def run_with_sdk(
     # Ensure SDK can find the token
     ensure_claude_code_oauth_token()
 
-    system_prompt = build_system_prompt(project_dir, roadmap_context)
+    system_prompt = build_system_prompt(project_dir, roadmap_context, ideation_context)
     project_path = Path(project_dir).resolve()
 
     # Build conversation context from history
@@ -707,6 +893,11 @@ def main():
         default=None,
         help="ID of the roadmap item to provide context for",
     )
+    parser.add_argument(
+        "--ideation-item-id",
+        default=None,
+        help="ID of the ideation item to provide context for",
+    )
     args = parser.parse_args()
 
     debug_section("insights_runner", "Starting Insights Chat")
@@ -778,9 +969,30 @@ def main():
                 f"Roadmap item {args.roadmap_item_id} not found",
             )
 
+    # Load ideation item context if provided
+    ideation_context = None
+    if args.ideation_item_id:
+        debug_detailed(
+            "insights_runner",
+            "Loading ideation item context",
+            item_id=args.ideation_item_id,
+        )
+        ideation_context = load_ideation_item_context(project_dir, args.ideation_item_id)
+        if ideation_context:
+            debug_success(
+                "insights_runner",
+                "Loaded ideation item context",
+                title=ideation_context.get("title", "Unknown"),
+            )
+        else:
+            debug_error(
+                "insights_runner",
+                f"Ideation item {args.ideation_item_id} not found",
+            )
+
     # Run the async SDK function
     debug("insights_runner", "Running SDK query")
-    asyncio.run(run_with_sdk(project_dir, user_message, history, model, thinking_level, mentions, roadmap_context))
+    asyncio.run(run_with_sdk(project_dir, user_message, history, model, thinking_level, mentions, roadmap_context, ideation_context))
     debug_success("insights_runner", "Query completed")
 
 

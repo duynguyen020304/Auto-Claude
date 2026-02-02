@@ -226,6 +226,7 @@ export class InsightsService extends EventEmitter {
     try {
       // Execute insights query
       const roadmapItemId = session.roadmapContext?.featureId;
+      const ideationItemId = session.ideationContext?.ideaId;
       const result = await this.executor.execute(
         session.id,
         targetProjectId,
@@ -234,7 +235,8 @@ export class InsightsService extends EventEmitter {
         conversationHistory,
         configToUse,
         undefined, // priority - use default
-        roadmapItemId
+        roadmapItemId,
+        ideationItemId
       );
 
       // Add assistant message to session

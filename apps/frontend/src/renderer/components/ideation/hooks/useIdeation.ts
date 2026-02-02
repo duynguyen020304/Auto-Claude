@@ -17,18 +17,21 @@ import {
   setupIdeationListeners
 } from '../../../stores/ideation-store';
 import { loadTasks } from '../../../stores/task-store';
+import { newSessionWithIdeationContext } from '../../../stores/insights-store';
 import { useIdeationAuth } from './useIdeationAuth';
 import type { Idea, IdeationType } from '../../../../shared/types';
 import { ALL_IDEATION_TYPES } from '../constants';
 
 interface UseIdeationOptions {
   onGoToTask?: (taskId: string) => void;
+  /** Callback to switch to insights view when discussing an idea in chat */
+  onSwitchToInsights?: () => void;
   /** External showArchived state from context - when provided, hook uses this instead of internal state */
   showArchived?: boolean;
 }
 
 export function useIdeation(projectId: string, options: UseIdeationOptions = {}) {
-  const { onGoToTask, showArchived: externalShowArchived } = options;
+  const { onGoToTask, onSwitchToInsights, showArchived: externalShowArchived } = options;
   const { t } = useTranslation('common');
   const session = useIdeationStore((state) => state.session);
   const generationStatus = useIdeationStore((state) => state.generationStatus);
@@ -195,6 +198,27 @@ export function useIdeation(projectId: string, options: UseIdeationOptions = {})
     [onGoToTask]
   );
 
+  const handleDiscussInChat = useCallback(
+    async (idea: Idea) => {
+      try {
+        // Create new session with ideation context and send initial message
+        await newSessionWithIdeationContext(projectId, idea);
+
+        // Switch to insights view
+        if (onSwitchToInsights) {
+          onSwitchToInsights();
+        }
+      } catch {
+        toast({
+          variant: 'destructive',
+          title: t('ideation.discussInChatError'),
+          description: t('ideation.discussInChatErrorDescription')
+        });
+      }
+    },
+    [projectId, onSwitchToInsights, t]
+  );
+
   const handleDismiss = async (idea: Idea) => {
     const result = await window.electronAPI.dismissIdea(projectId, idea.id);
     if (result.success) {
@@ -301,6 +325,7 @@ export function useIdeation(projectId: string, options: UseIdeationOptions = {})
     toggleTypeToAdd,
     handleConvertToTask,
     handleGoToTask,
+    handleDiscussInChat,
     handleDismiss,
     toggleIdeationType,
     toggleSelectIdea,
