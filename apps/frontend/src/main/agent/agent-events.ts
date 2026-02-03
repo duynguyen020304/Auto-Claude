@@ -59,6 +59,7 @@ export class AgentEvents {
     const lowerLog = log.toLowerCase();
 
     // Spec runner phase detection (all part of "planning")
+    // IMPORTANT: Spec runner should NEVER transition to coding/qa phases via fallback matching
     if (isSpecRunner) {
       if (lowerLog.includes('discovering') || lowerLog.includes('discovery')) {
         return { phase: 'planning', message: 'Discovering project context...' };
@@ -75,6 +76,8 @@ export class AgentEvents {
       if (lowerLog.includes('spec complete') || lowerLog.includes('specification complete')) {
         return { phase: 'planning', message: 'Specification complete' };
       }
+      // Spec runner: don't fall through to run.py patterns (would incorrectly detect coding phase)
+      return null;
     }
 
     // Run.py phase detection

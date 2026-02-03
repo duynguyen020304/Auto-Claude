@@ -83,7 +83,8 @@
     "apply": "Appliquer",
     "gotIt": "Compris",
     "continue": "Continuer",
-    "saving": "Enregistrement..."
+    "saving": "Enregistrement...",
+    "deleting": "Suppression..."
   },
   "actions": {
     "save": "Enregistrer",
@@ -126,7 +127,8 @@
     "branch": "Branche",
     "token": "Jeton",
     "important": "Important",
-    "impact": "impact"
+    "impact": "impact",
+    "orphaned": "(orphelin)"
   },
   "selection": {
     "select": "Sélectionner",
@@ -161,6 +163,11 @@
     "taskCreationFailed": "Échec de la création de la tâche",
     "taskCreationFailedDescription": "Impossible de créer la tâche à partir de la suggestion. Veuillez réessayer.",
     "validationError": "Erreur de validation"
+  },
+  "worktrees": {
+    "deleteSuccess": "Worktree '{{branch}}' supprimé avec succès",
+    "bulkDeleteSuccess": "{{count}} worktree supprimé avec succès",
+    "bulkDeleteSuccess_plural": "{{count}} worktrees supprimés avec succès"
   },
   "notification": {
     "accountSwitched": "Compte changé",

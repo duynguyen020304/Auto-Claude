@@ -83,7 +83,8 @@
     "apply": "Apply",
     "gotIt": "Got it",
     "continue": "Continue",
-    "saving": "Saving..."
+    "saving": "Saving...",
+    "deleting": "Deleting..."
   },
   "actions": {
     "save": "Save",
@@ -131,7 +132,8 @@
     "name": "Name",
     "status": "Status",
     "important": "Important",
-    "impact": "impact"
+    "impact": "impact",
+    "orphaned": "(orphaned)"
   },
   "selection": {
     "select": "Select",
@@ -181,6 +183,11 @@
     "taskCreationFailed": "Failed to create task",
     "taskCreationFailedDescription": "Could not create task from suggestion. Please try again.",
     "validationError": "Validation Error"
+  },
+  "worktrees": {
+    "deleteSuccess": "Worktree '{{branch}}' deleted successfully",
+    "bulkDeleteSuccess": "{{count}} worktree deleted successfully",
+    "bulkDeleteSuccess_plural": "{{count}} worktrees deleted successfully"
   },
   "notification": {
     "accountSwitched": "Account Switched",
