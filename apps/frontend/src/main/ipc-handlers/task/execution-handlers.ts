@@ -280,7 +280,7 @@ export function registerTaskExecutionHandlers(
         // Start spec creation process - pass the existing spec directory
         // so spec_runner uses it instead of creating a new one
         // Also pass baseBranch so worktrees are created from the correct branch
-        agentManager.startSpecCreation(taskId, project.path, taskDescription, specDir, task.metadata, baseBranch);
+        agentManager.startSpecCreation(taskId, project.path, taskDescription, specDir, task.metadata, baseBranch, project.id);
       } else if (needsImplementation) {
         // Spec exists but no subtasks - run run.py to create implementation plan and execute
         // Read the spec.md to get the task description
@@ -303,7 +303,8 @@ export function registerTaskExecutionHandlers(
             workers: 1,
             baseBranch,
             useWorktree: task.metadata?.useWorktree
-          }
+          },
+          project.id
         );
       } else {
         // Task has subtasks, start normal execution
@@ -319,7 +320,8 @@ export function registerTaskExecutionHandlers(
             workers: 1,
             baseBranch,
             useWorktree: task.metadata?.useWorktree
-          }
+          },
+          project.id
         );
       }
     }
@@ -529,7 +531,7 @@ export function registerTaskExecutionHandlers(
         // The QA process needs to run where the implementation_plan.json with completed subtasks is
         const qaProjectPath = hasWorktree ? worktreePath : project.path;
         console.warn('[TASK_REVIEW] Starting QA process with projectPath:', qaProjectPath);
-        agentManager.startQAProcess(taskId, qaProjectPath, task.specId);
+        agentManager.startQAProcess(taskId, qaProjectPath, task.specId, project.id);
 
         taskStateManager.handleUiEvent(
           taskId,
@@ -762,7 +764,7 @@ export function registerTaskExecutionHandlers(
             // No spec file - need to run spec_runner.py to create the spec
             const taskDescription = task.description || task.title;
             console.warn('[TASK_UPDATE_STATUS] Starting spec creation for:', task.specId);
-            agentManager.startSpecCreation(taskId, project.path, taskDescription, specDir, task.metadata, baseBranchForUpdate);
+            agentManager.startSpecCreation(taskId, project.path, taskDescription, specDir, task.metadata, baseBranchForUpdate, project.id);
           } else if (needsImplementation) {
             // Spec exists but no subtasks - run run.py to create implementation plan and execute
             console.warn('[TASK_UPDATE_STATUS] Starting task execution (no subtasks) for:', task.specId);
@@ -775,7 +777,8 @@ export function registerTaskExecutionHandlers(
                 workers: 1,
                 baseBranch: baseBranchForUpdate,
                 useWorktree: task.metadata?.useWorktree
-              }
+              },
+              project.id
             );
           } else {
             // Task has subtasks, start normal execution
@@ -790,7 +793,8 @@ export function registerTaskExecutionHandlers(
                 workers: 1,
                 baseBranch: baseBranchForUpdate,
                 useWorktree: task.metadata?.useWorktree
-              }
+              },
+              project.id
             );
           }
 
@@ -1144,7 +1148,7 @@ export function registerTaskExecutionHandlers(
               // No spec file - need to run spec_runner.py to create the spec
               const taskDescription = task.description || task.title;
               console.warn(`[Recovery] Starting spec creation for: ${task.specId}`);
-              agentManager.startSpecCreation(taskId, project.path, taskDescription, specDirForWatcher, task.metadata, baseBranchForRecovery);
+              agentManager.startSpecCreation(taskId, project.path, taskDescription, specDirForWatcher, task.metadata, baseBranchForRecovery, project.id);
             } else {
               // Spec exists - run task execution
               console.warn(`[Recovery] Starting task execution for: ${task.specId}`);
@@ -1157,7 +1161,8 @@ export function registerTaskExecutionHandlers(
                   workers: 1,
                   baseBranch: baseBranchForRecovery,
                   useWorktree: task.metadata?.useWorktree
-                }
+                },
+                project.id
               );
             }
 

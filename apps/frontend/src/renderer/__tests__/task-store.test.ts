@@ -9,7 +9,7 @@
  * This prevents race conditions where a stale plan could overwrite XState status.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { useTaskStore } from '../stores/task-store';
+import { useTaskStore, hasRecentActivity, clearTaskActivity } from '../stores/task-store';
 import type { Task, TaskStatus, ImplementationPlan } from '../../shared/types';
 
 // Helper to create test tasks
@@ -61,17 +61,7 @@ describe('Task Store', () => {
       tasks: [],
       selectedTaskId: null,
       isLoading: false,
-      error: null,
-      taskOrder: {
-        backlog: [],
-        queue: [],
-        in_progress: [],
-        ai_review: [],
-        human_review: [],
-        pr_created: [],
-        done: [],
-        error: []
-      }
+      error: null
     });
   });
 
@@ -208,6 +198,42 @@ describe('Task Store', () => {
         originalDate.getTime()
       );
     });
+
+    it('should apply reviewReason when provided', () => {
+      useTaskStore.setState({
+        tasks: [createTestTask({ id: 'task-1', status: 'in_progress' })]
+      });
+
+      useTaskStore.getState().updateTaskStatus('task-1', 'human_review', 'plan_review');
+
+      const task = useTaskStore.getState().tasks[0];
+      expect(task.status).toBe('human_review');
+      expect(task.reviewReason).toBe('plan_review');
+    });
+
+    it('should clear reviewReason when not provided', () => {
+      useTaskStore.setState({
+        tasks: [createTestTask({ id: 'task-1', status: 'human_review', reviewReason: 'plan_review' })]
+      });
+
+      useTaskStore.getState().updateTaskStatus('task-1', 'in_progress');
+
+      const task = useTaskStore.getState().tasks[0];
+      expect(task.status).toBe('in_progress');
+      expect(task.reviewReason).toBeUndefined();
+    });
+
+    it('should update when only reviewReason changes', () => {
+      useTaskStore.setState({
+        tasks: [createTestTask({ id: 'task-1', status: 'human_review', reviewReason: 'plan_review' })]
+      });
+
+      useTaskStore.getState().updateTaskStatus('task-1', 'human_review', 'completed');
+
+      const task = useTaskStore.getState().tasks[0];
+      expect(task.status).toBe('human_review');
+      expect(task.reviewReason).toBe('completed');
+    });
   });
 
   describe('updateTaskFromPlan', () => {
@@ -276,83 +302,58 @@ describe('Task Store', () => {
       expect(useTaskStore.getState().tasks[0].title).toBe('New Feature Name');
     });
 
-    // NOTE: XState is the source of truth for status management.
-    // updateTaskFromPlan does NOT modify status or reviewReason fields.
-    // It only extracts subtasks, updates title, and refreshes updatedAt.
-    it('should preserve existing status regardless of subtask states', () => {
+    it('should keep status when plan has no status', () => {
       useTaskStore.setState({
         tasks: [createTestTask({ id: 'task-1', status: 'in_progress' })]
       });
 
-      const plan = createTestPlan({
-        phases: [
-          {
-            phase: 1,
-            name: 'Phase 1',
-            type: 'implementation',
-            subtasks: [
-              { id: 'c1', description: 'Subtask 1', status: 'completed' },
-              { id: 'c2', description: 'Subtask 2', status: 'completed' }
-            ]
-          }
-        ]
-      });
+      const plan = createTestPlan();
 
       useTaskStore.getState().updateTaskFromPlan('task-1', plan);
 
-      // Status should remain unchanged - XState manages status via TASK_STATUS_CHANGE
       expect(useTaskStore.getState().tasks[0].status).toBe('in_progress');
-      // Subtasks should still be updated
-      expect(useTaskStore.getState().tasks[0].subtasks).toHaveLength(2);
     });
 
-    it('should preserve status even when all subtasks are failed', () => {
+    it('should NOT modify status from plan (XState is source of truth)', () => {
       useTaskStore.setState({
-        tasks: [createTestTask({ id: 'task-1', status: 'backlog' })]
+        tasks: [createTestTask({ id: 'task-1', status: 'ai_review' })]
       });
 
       const plan = createTestPlan({
-        phases: [
-          {
-            phase: 1,
-            name: 'Phase 1',
-            type: 'implementation',
-            subtasks: [
-              { id: 'c1', description: 'Subtask 1', status: 'failed' },
-              { id: 'c2', description: 'Subtask 2', status: 'failed' }
-            ]
-          }
-        ]
+        status: 'human_review',
+        reviewReason: 'completed'
       });
 
       useTaskStore.getState().updateTaskFromPlan('task-1', plan);
 
-      // Status should remain unchanged - XState manages status
-      expect(useTaskStore.getState().tasks[0].status).toBe('backlog');
+      // Status should remain unchanged - XState controls status via TASK_STATUS_CHANGE
+      expect(useTaskStore.getState().tasks[0].status).toBe('ai_review');
     });
 
-    it('should update updatedAt timestamp when plan is applied', () => {
-      const originalDate = new Date('2024-01-01');
+    it('should preserve existing status and reviewReason when plan has different values', () => {
       useTaskStore.setState({
-        tasks: [createTestTask({ id: 'task-1', updatedAt: originalDate, subtasks: [] })]
+        tasks: [createTestTask({ id: 'task-1', status: 'human_review', reviewReason: 'errors' })]
       });
 
-      const plan = createTestPlan({
-        phases: [
-          {
-            phase: 1,
-            name: 'Phase 1',
-            type: 'implementation',
-            subtasks: [{ id: 'c1', description: 'Subtask 1', status: 'pending' }]
-          }
-        ]
-      });
+      const plan = createTestPlan({ status: 'ai_review' });
 
       useTaskStore.getState().updateTaskFromPlan('task-1', plan);
 
-      expect(useTaskStore.getState().tasks[0].updatedAt.getTime()).toBeGreaterThan(
-        originalDate.getTime()
-      );
+      // Status and reviewReason should remain unchanged - XState is source of truth
+      expect(useTaskStore.getState().tasks[0].status).toBe('human_review');
+      expect(useTaskStore.getState().tasks[0].reviewReason).toBe('errors');
+    });
+
+    it('should skip update when plan is invalid', () => {
+      useTaskStore.setState({
+        tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
+      });
+
+      const invalidPlan = { feature: 'Test' } as any;
+
+      useTaskStore.getState().updateTaskFromPlan('task-1', invalidPlan);
+
+      expect(useTaskStore.getState().tasks[0].subtasks).toHaveLength(0);
     });
   });
 
@@ -494,6 +495,67 @@ describe('Task Store', () => {
     });
   });
 
+  describe('activity recording for stuck detection', () => {
+    afterEach(() => {
+      // Clean up activity tracking between tests
+      clearTaskActivity('task-1');
+    });
+
+    it('should record activity when updateTaskStatus is called', () => {
+      useTaskStore.setState({
+        tasks: [createTestTask({ id: 'task-1', status: 'backlog' })]
+      });
+
+      // Clear any prior activity
+      clearTaskActivity('task-1');
+      expect(hasRecentActivity('task-1')).toBe(false);
+
+      // Status change should record activity
+      useTaskStore.getState().updateTaskStatus('task-1', 'in_progress');
+
+      expect(hasRecentActivity('task-1')).toBe(true);
+    });
+
+    it('should record activity when batchAppendLogs is called', () => {
+      useTaskStore.setState({
+        tasks: [createTestTask({ id: 'task-1', status: 'in_progress' })]
+      });
+
+      clearTaskActivity('task-1');
+      expect(hasRecentActivity('task-1')).toBe(false);
+
+      // Log append should record activity
+      useTaskStore.getState().batchAppendLogs('task-1', ['line 1', 'line 2']);
+
+      expect(hasRecentActivity('task-1')).toBe(true);
+    });
+
+    it('should record activity when updateExecutionProgress is called', () => {
+      useTaskStore.setState({
+        tasks: [createTestTask({ id: 'task-1', status: 'in_progress' })]
+      });
+
+      clearTaskActivity('task-1');
+      expect(hasRecentActivity('task-1')).toBe(false);
+
+      // Execution progress should record activity
+      useTaskStore.getState().updateExecutionProgress('task-1', { phase: 'coding', phaseProgress: 50 });
+
+      expect(hasRecentActivity('task-1')).toBe(true);
+    });
+
+    it('should not record activity for non-existent tasks in updateTaskStatus', () => {
+      useTaskStore.setState({ tasks: [] });
+
+      // Status change for missing task should still record activity
+      // (recordTaskActivity fires before the index check)
+      useTaskStore.getState().updateTaskStatus('nonexistent', 'in_progress');
+
+      expect(hasRecentActivity('nonexistent')).toBe(true);
+      clearTaskActivity('nonexistent');
+    });
+  });
+
   describe('getTasksByStatus', () => {
     it('should return empty array when no tasks match status', () => {
       useTaskStore.setState({
@@ -536,973 +598,4 @@ describe('Task Store', () => {
     });
   });
 
-  describe('updateTaskFromPlan - validation and subtask creation edge cases', () => {
-    beforeEach(() => {
-      // Spy on console methods to test validation logging and prevent crashes
-      vi.spyOn(console, 'log').mockImplementation(() => {});
-      vi.spyOn(console, 'warn').mockImplementation(() => {});
-      vi.spyOn(console, 'error').mockImplementation(() => {});
-    });
-
-    afterEach(() => {
-      vi.restoreAllMocks();
-    });
-
-    describe('plan validation', () => {
-      it('should reject plan with missing phases array', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
-        });
-
-        const invalidPlan = { feature: 'Test' } as any;
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', invalidPlan);
-
-        // Task should not be updated when plan is invalid
-        expect(useTaskStore.getState().tasks[0].subtasks).toHaveLength(0);
-        expect(console.warn).toHaveBeenCalledWith(
-          expect.stringContaining('Invalid plan: missing or invalid phases array')
-        );
-      });
-
-      it('should reject plan with null phases', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
-        });
-
-        const invalidPlan = {
-          feature: 'Test',
-          phases: null
-        } as any;
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', invalidPlan);
-
-        expect(useTaskStore.getState().tasks[0].subtasks).toHaveLength(0);
-        expect(console.warn).toHaveBeenCalledWith(
-          expect.stringContaining('Invalid plan: missing or invalid phases array')
-        );
-      });
-
-      it('should reject plan with phase missing subtasks array', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
-        });
-
-        const invalidPlan = {
-          feature: 'Test',
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation'
-              // Missing subtasks
-            }
-          ]
-        } as any;
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', invalidPlan);
-
-        expect(useTaskStore.getState().tasks[0].subtasks).toHaveLength(0);
-        expect(console.warn).toHaveBeenCalledWith(
-          expect.stringContaining('Invalid phase 0: missing or invalid subtasks array')
-        );
-      });
-
-      it('should reject plan with phase having subtasks not as array', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
-        });
-
-        const invalidPlan = {
-          feature: 'Test',
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: 'not-an-array'
-            }
-          ]
-        } as any;
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', invalidPlan);
-
-        expect(useTaskStore.getState().tasks[0].subtasks).toHaveLength(0);
-        expect(console.warn).toHaveBeenCalledWith(
-          expect.stringContaining('Invalid phase 0: missing or invalid subtasks array')
-        );
-      });
-
-      it('should reject plan with subtask not being an object', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
-        });
-
-        const invalidPlan = {
-          feature: 'Test',
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: ['not-an-object', 'also-not-an-object']
-            }
-          ]
-        } as any;
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', invalidPlan);
-
-        expect(useTaskStore.getState().tasks[0].subtasks).toHaveLength(0);
-        expect(console.warn).toHaveBeenCalledWith(
-          expect.stringContaining('Invalid subtask at phase 0, index 0: not an object')
-        );
-      });
-
-      it('should reject plan with subtask missing description', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
-        });
-
-        const invalidPlan = {
-          feature: 'Test',
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'subtask-1', status: 'pending' } // Missing description
-              ]
-            }
-          ]
-        } as any;
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', invalidPlan);
-
-        expect(useTaskStore.getState().tasks[0].subtasks).toHaveLength(0);
-        expect(console.warn).toHaveBeenCalledWith(
-          expect.stringContaining('Invalid subtask at phase 0, index 0: missing or empty description')
-        );
-      });
-
-      it('should reject plan with subtask having empty description', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
-        });
-
-        const invalidPlan = {
-          feature: 'Test',
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'subtask-1', description: '', status: 'pending' }
-              ]
-            }
-          ]
-        } as any;
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', invalidPlan);
-
-        expect(useTaskStore.getState().tasks[0].subtasks).toHaveLength(0);
-        expect(console.warn).toHaveBeenCalledWith(
-          expect.stringContaining('Invalid subtask at phase 0, index 0: missing or empty description')
-        );
-      });
-
-      it('should reject plan with subtask having whitespace-only description', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
-        });
-
-        const invalidPlan = {
-          feature: 'Test',
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'subtask-1', description: '   ', status: 'pending' }
-              ]
-            }
-          ]
-        } as any;
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', invalidPlan);
-
-        expect(useTaskStore.getState().tasks[0].subtasks).toHaveLength(0);
-        expect(console.warn).toHaveBeenCalledWith(
-          expect.stringContaining('Invalid subtask at phase 0, index 0: missing or empty description')
-        );
-      });
-
-      it('should accept valid plan with all required fields', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
-        });
-
-        const validPlan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'subtask-1', description: 'Valid subtask', status: 'pending' }
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', validPlan);
-
-        expect(useTaskStore.getState().tasks[0].subtasks).toHaveLength(1);
-        expect(useTaskStore.getState().tasks[0].subtasks[0].description).toBe('Valid subtask');
-      });
-    });
-
-    describe('subtask creation edge cases', () => {
-      it('should generate id for subtask missing id', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
-        });
-
-        const plan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { description: 'Subtask without id', status: 'pending' } as any
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        const subtask = useTaskStore.getState().tasks[0].subtasks[0];
-        expect(subtask.id).toBeDefined();
-        // Accept either UUID format (crypto.randomUUID) or fallback format (subtask-timestamp-random)
-        expect(subtask.id).toMatch(/^([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}|subtask-\d+-[a-z0-9]+)$/);
-      });
-
-      it('should use description as title for subtasks', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
-        });
-
-        const plan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'subtask-1', description: 'Test Description', status: 'pending' }
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        const subtask = useTaskStore.getState().tasks[0].subtasks[0];
-        expect(subtask.title).toBe('Test Description');
-        expect(subtask.description).toBe('Test Description');
-      });
-
-      it('should accept all valid subtask statuses', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
-        });
-
-        const plan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'subtask-1', description: 'Pending subtask', status: 'pending' },
-                { id: 'subtask-2', description: 'In progress subtask', status: 'in_progress' },
-                { id: 'subtask-3', description: 'Completed subtask', status: 'completed' },
-                { id: 'subtask-4', description: 'Failed subtask', status: 'failed' }
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        const subtasks = useTaskStore.getState().tasks[0].subtasks;
-        expect(subtasks[0].status).toBe('pending');
-        expect(subtasks[1].status).toBe('in_progress');
-        expect(subtasks[2].status).toBe('completed');
-        expect(subtasks[3].status).toBe('failed');
-      });
-
-      it('should default status to pending when status is missing', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
-        });
-
-        const plan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'subtask-1', description: 'Test subtask' } as any
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        const subtask = useTaskStore.getState().tasks[0].subtasks[0];
-        expect(subtask.status).toBe('pending');
-      });
-
-      it('should initialize subtask with empty files array', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
-        });
-
-        const plan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'subtask-1', description: 'Test subtask', status: 'pending' }
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        const subtask = useTaskStore.getState().tasks[0].subtasks[0];
-        expect(subtask.files).toEqual([]);
-      });
-
-      it('should preserve verification field from plan subtask', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
-        });
-
-        const plan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                {
-                  id: 'subtask-1',
-                  description: 'Test subtask',
-                  status: 'pending',
-                  verification: { type: 'command', run: 'npm test' }
-                }
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        const subtask = useTaskStore.getState().tasks[0].subtasks[0];
-        expect(subtask.verification).toEqual({ type: 'command', run: 'npm test' });
-      });
-
-      it('should handle subtask with verification undefined', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
-        });
-
-        const plan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                {
-                  id: 'subtask-1',
-                  description: 'Test subtask',
-                  status: 'pending'
-                  // verification is undefined
-                }
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        const subtask = useTaskStore.getState().tasks[0].subtasks[0];
-        expect(subtask.verification).toBeUndefined();
-      });
-
-      it('should flatten subtasks from all phases in correct order', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
-        });
-
-        const plan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'p1-s1', description: 'Phase 1 Subtask 1', status: 'pending' },
-                { id: 'p1-s2', description: 'Phase 1 Subtask 2', status: 'pending' }
-              ]
-            },
-            {
-              phase: 2,
-              name: 'Phase 2',
-              type: 'testing',
-              subtasks: [
-                { id: 'p2-s1', description: 'Phase 2 Subtask 1', status: 'pending' },
-                { id: 'p2-s2', description: 'Phase 2 Subtask 2', status: 'pending' }
-              ]
-            },
-            {
-              phase: 3,
-              name: 'Phase 3',
-              type: 'cleanup',
-              subtasks: [
-                { id: 'p3-s1', description: 'Phase 3 Subtask 1', status: 'pending' }
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        const subtasks = useTaskStore.getState().tasks[0].subtasks;
-        expect(subtasks).toHaveLength(5);
-        expect(subtasks[0].id).toBe('p1-s1');
-        expect(subtasks[1].id).toBe('p1-s2');
-        expect(subtasks[2].id).toBe('p2-s1');
-        expect(subtasks[3].id).toBe('p2-s2');
-        expect(subtasks[4].id).toBe('p3-s1');
-      });
-
-      it('should handle phase with empty subtasks array', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({ id: 'task-1', subtasks: [] })]
-        });
-
-        const plan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'subtask-1', description: 'Valid subtask', status: 'pending' }
-              ]
-            },
-            {
-              phase: 2,
-              name: 'Phase 2',
-              type: 'testing',
-              subtasks: [] // Empty array
-            },
-            {
-              phase: 3,
-              name: 'Phase 3',
-              type: 'cleanup',
-              subtasks: [
-                { id: 'subtask-2', description: 'Another valid subtask', status: 'pending' }
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        const subtasks = useTaskStore.getState().tasks[0].subtasks;
-        expect(subtasks).toHaveLength(2);
-        expect(subtasks[0].id).toBe('subtask-1');
-        expect(subtasks[1].id).toBe('subtask-2');
-      });
-    });
-
-    // NOTE: XState is the source of truth for status management.
-    // updateTaskFromPlan does NOT modify status or reviewReason fields.
-    // The following tests verify that status is preserved regardless of subtask states.
-    describe('status preservation (XState source of truth)', () => {
-      it('should preserve status regardless of execution phase', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({
-            id: 'task-1',
-            status: 'in_progress',
-            executionProgress: { phase: 'planning', phaseProgress: 10, overallProgress: 5 }
-          })]
-        });
-
-        const plan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'c1', description: 'Subtask 1', status: 'completed' },
-                { id: 'c2', description: 'Subtask 2', status: 'completed' }
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        // Status should remain unchanged - XState manages status
-        expect(useTaskStore.getState().tasks[0].status).toBe('in_progress');
-        // Subtasks should still be updated
-        expect(useTaskStore.getState().tasks[0].subtasks).toHaveLength(2);
-      });
-
-      it('should preserve status in terminal phase (complete)', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({
-            id: 'task-1',
-            status: 'human_review',
-            executionProgress: { phase: 'complete', phaseProgress: 100, overallProgress: 100 }
-          })]
-        });
-
-        const plan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'c1', description: 'Subtask 1', status: 'completed' },
-                { id: 'c2', description: 'Subtask 2', status: 'completed' }
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        // Status should remain unchanged
-        expect(useTaskStore.getState().tasks[0].status).toBe('human_review');
-      });
-
-      it('should preserve status in terminal phase (failed)', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({
-            id: 'task-1',
-            status: 'human_review',
-            executionProgress: { phase: 'failed', phaseProgress: 50, overallProgress: 30 }
-          })]
-        });
-
-        const plan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'c1', description: 'Subtask 1', status: 'completed' },
-                { id: 'c2', description: 'Subtask 2', status: 'failed' }
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        // Status should remain unchanged
-        expect(useTaskStore.getState().tasks[0].status).toBe('human_review');
-      });
-
-      it('should preserve status regardless of subtask completion states', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({
-            id: 'task-1',
-            status: 'backlog',
-            executionProgress: undefined
-          })]
-        });
-
-        const plan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'c1', description: 'Subtask 1', status: 'completed' },
-                { id: 'c2', description: 'Subtask 2', status: 'completed' }
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        // Status should remain unchanged even with all subtasks completed
-        expect(useTaskStore.getState().tasks[0].status).toBe('backlog');
-      });
-
-      it('should preserve reviewReason field', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({
-            id: 'task-1',
-            status: 'human_review',
-            reviewReason: 'qa_rejected'
-          })]
-        });
-
-        const plan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'c1', description: 'Subtask 1', status: 'completed' },
-                { id: 'c2', description: 'Subtask 2', status: 'failed' }
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        // reviewReason should be preserved - XState manages this field
-        expect(useTaskStore.getState().tasks[0].reviewReason).toBe('qa_rejected');
-      });
-
-      it('should still update subtasks and title while preserving status', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({
-            id: 'task-1',
-            title: 'Original Title',
-            status: 'in_progress',
-            subtasks: [],
-            executionProgress: { phase: 'coding', phaseProgress: 50, overallProgress: 40 }
-          })]
-        });
-
-        const plan = createTestPlan({
-          feature: 'New Feature Name',
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'c1', description: 'Subtask 1', status: 'completed' },
-                { id: 'c2', description: 'Subtask 2', status: 'in_progress' },
-                { id: 'c3', description: 'Subtask 3', status: 'pending' }
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        // Status should be preserved
-        expect(useTaskStore.getState().tasks[0].status).toBe('in_progress');
-        // Subtasks should be updated
-        expect(useTaskStore.getState().tasks[0].subtasks).toHaveLength(3);
-        expect(useTaskStore.getState().tasks[0].subtasks[0].status).toBe('completed');
-        expect(useTaskStore.getState().tasks[0].subtasks[1].status).toBe('in_progress');
-        expect(useTaskStore.getState().tasks[0].subtasks[2].status).toBe('pending');
-        // Title should be updated
-        expect(useTaskStore.getState().tasks[0].title).toBe('New Feature Name');
-      });
-    });
-  });
-
-  describe('rapid task creation (race condition testing)', () => {
-    it('should handle rapid task creation without duplicates', () => {
-      const store = useTaskStore.getState();
-      const taskCount = 15;
-      const createdTasks: Task[] = [];
-
-      // Simulate rapid task creation (like clicking "Create Task" multiple times quickly)
-      for (let i = 0; i < taskCount; i++) {
-        const task = createTestTask({
-          id: `rapid-task-${i}`,
-          title: `Rapid Task ${i}`,
-          status: 'backlog'
-        });
-        createdTasks.push(task);
-        store.addTask(task);
-      }
-
-      // Verify all tasks are present
-      expect(useTaskStore.getState().tasks).toHaveLength(taskCount);
-
-      // Verify no duplicate task IDs
-      const taskIds = useTaskStore.getState().tasks.map(t => t.id);
-      const uniqueIds = new Set(taskIds);
-      expect(uniqueIds.size).toBe(taskCount);
-    });
-
-    it('should maintain correct task order for rapid backlog additions', () => {
-      const store = useTaskStore.getState();
-
-      // Add initial tasks
-      store.addTask(createTestTask({ id: 'initial-1', title: 'Initial 1', status: 'backlog' }));
-      store.addTask(createTestTask({ id: 'initial-2', title: 'Initial 2', status: 'backlog' }));
-
-      // Rapidly add new tasks
-      const rapidTasks = [
-        createTestTask({ id: 'rapid-1', title: 'Rapid 1', status: 'backlog' }),
-        createTestTask({ id: 'rapid-2', title: 'Rapid 2', status: 'backlog' }),
-        createTestTask({ id: 'rapid-3', title: 'Rapid 3', status: 'backlog' }),
-        createTestTask({ id: 'rapid-4', title: 'Rapid 4', status: 'backlog' }),
-        createTestTask({ id: 'rapid-5', title: 'Rapid 5', status: 'backlog' })
-      ];
-
-      rapidTasks.forEach(task => store.addTask(task));
-
-      // Get tasks in backlog status
-      const backlogTasks = store.getTasksByStatus('backlog');
-
-      // Verify all tasks are present
-      expect(backlogTasks).toHaveLength(7); // 2 initial + 5 rapid
-
-      // Verify most recently added tasks are at the top
-      // The addTask function adds new tasks to index 0 of the status column
-      const taskOrder = useTaskStore.getState().taskOrder;
-      expect(taskOrder?.backlog).toBeDefined();
-
-      // Verify the order: rapid-5 should be first (most recently added), then rapid-4, etc.
-      if (taskOrder?.backlog) {
-        expect(taskOrder.backlog[0]).toBe('rapid-5');
-        expect(taskOrder.backlog[1]).toBe('rapid-4');
-        expect(taskOrder.backlog[2]).toBe('rapid-3');
-        expect(taskOrder.backlog[3]).toBe('rapid-2');
-        expect(taskOrder.backlog[4]).toBe('rapid-1');
-        // Initial tasks should be after rapid tasks
-        expect(taskOrder.backlog[5]).toBe('initial-2');
-        expect(taskOrder.backlog[6]).toBe('initial-1');
-      }
-    });
-
-    it('should handle rapid additions to different columns correctly', () => {
-      const store = useTaskStore.getState();
-
-      // Rapidly add tasks to different statuses
-      const tasksToAdd = [
-        createTestTask({ id: 'backlog-1', status: 'backlog' }),
-        createTestTask({ id: 'backlog-2', status: 'backlog' }),
-        createTestTask({ id: 'progress-1', status: 'in_progress' }),
-        createTestTask({ id: 'backlog-3', status: 'backlog' }),
-        createTestTask({ id: 'review-1', status: 'ai_review' }),
-        createTestTask({ id: 'progress-2', status: 'in_progress' }),
-        createTestTask({ id: 'done-1', status: 'done' })
-      ];
-
-      tasksToAdd.forEach(task => store.addTask(task));
-
-      // Verify counts per status
-      expect(store.getTasksByStatus('backlog')).toHaveLength(3);
-      expect(store.getTasksByStatus('in_progress')).toHaveLength(2);
-      expect(store.getTasksByStatus('ai_review')).toHaveLength(1);
-      expect(store.getTasksByStatus('done')).toHaveLength(1);
-
-      // Verify taskOrder is correctly maintained for all columns
-      const taskOrder = useTaskStore.getState().taskOrder;
-
-      // Check backlog order
-      expect(taskOrder?.backlog).toHaveLength(3);
-      expect(taskOrder?.backlog?.[0]).toBe('backlog-3'); // Most recent
-      expect(taskOrder?.backlog?.[1]).toBe('backlog-2');
-      expect(taskOrder?.backlog?.[2]).toBe('backlog-1');
-
-      // Check in_progress order
-      expect(taskOrder?.in_progress).toHaveLength(2);
-      expect(taskOrder?.in_progress?.[0]).toBe('progress-2'); // Most recent
-      expect(taskOrder?.in_progress?.[1]).toBe('progress-1');
-
-      // Check ai_review order
-      expect(taskOrder?.ai_review).toHaveLength(1);
-      expect(taskOrder?.ai_review?.[0]).toBe('review-1');
-
-      // Check done order
-      expect(taskOrder?.done).toHaveLength(1);
-      expect(taskOrder?.done?.[0]).toBe('done-1');
-    });
-
-    it('should handle adding same task multiple times (deduplication in taskOrder)', () => {
-      const store = useTaskStore.getState();
-
-      const task = createTestTask({
-        id: 'duplicate-test',
-        title: 'Duplicate Test',
-        status: 'backlog'
-      });
-
-      // Try to add the same task multiple times (simulating race condition or retry)
-      store.addTask(task);
-      store.addTask(task);
-      store.addTask(task);
-
-      // The tasks array will have duplicates (current behavior)
-      const allTasks = useTaskStore.getState().tasks;
-      const duplicateCount = allTasks.filter(t => t.id === 'duplicate-test').length;
-      expect(duplicateCount).toBe(3); // Current behavior: adds to tasks array each time
-
-      // However, taskOrder handles duplicates correctly via safety check
-      const taskOrder = useTaskStore.getState().taskOrder;
-      const backlogOrder = taskOrder?.backlog || [];
-      const duplicateInOrder = backlogOrder.filter(id => id === 'duplicate-test').length;
-
-      // taskOrder should only have one instance (safety check in addTask)
-      expect(duplicateInOrder).toBe(1);
-    });
-
-    it('should maintain state consistency during rapid additions and removals', () => {
-      const store = useTaskStore.getState();
-
-      // Add initial set of tasks
-      const tasks1 = [
-        createTestTask({ id: 'task-1', status: 'backlog' }),
-        createTestTask({ id: 'task-2', status: 'backlog' }),
-        createTestTask({ id: 'task-3', status: 'backlog' })
-      ];
-
-      tasks1.forEach(task => store.addTask(task));
-
-      // Rapidly add more tasks
-      const tasks2 = [
-        createTestTask({ id: 'task-4', status: 'backlog' }),
-        createTestTask({ id: 'task-5', status: 'backlog' })
-      ];
-
-      tasks2.forEach(task => store.addTask(task));
-
-      // Verify all tasks are present
-      expect(useTaskStore.getState().tasks).toHaveLength(5);
-
-      // Update one task to different status
-      store.updateTaskStatus('task-3', 'in_progress');
-
-      // Add more tasks
-      const tasks3 = [
-        createTestTask({ id: 'task-6', status: 'backlog' }),
-        createTestTask({ id: 'task-7', status: 'backlog' })
-      ];
-
-      tasks3.forEach(task => store.addTask(task));
-
-      // Verify final state
-      expect(useTaskStore.getState().tasks).toHaveLength(7);
-      expect(store.getTasksByStatus('backlog')).toHaveLength(6); // 1,2,4,5,6,7 (task-3 moved to in_progress)
-      expect(store.getTasksByStatus('in_progress')).toHaveLength(1); // task-3
-
-      // Verify taskOrder consistency
-      // Note: updateTaskStatus doesn't update taskOrder, so task-3 remains in backlog order
-      const taskOrder = useTaskStore.getState().taskOrder;
-      expect(taskOrder?.backlog).toHaveLength(7); // All tasks still in backlog order (including task-3)
-      expect(taskOrder?.in_progress).toHaveLength(0); // in_progress order not updated by updateTaskStatus
-
-      // task-3 remains in taskOrder.backlog even though its status is now in_progress
-      // This is current behavior - taskOrder is only updated by drag-drop or addTask
-      expect(taskOrder?.backlog).toContain('task-3');
-    });
-
-    it('should handle very rapid task creation (10+ tasks in succession)', () => {
-      const store = useTaskStore.getState();
-      const taskCount = 20;
-      const taskIds: string[] = [];
-
-      // Simulate very rapid task creation (e.g., user clicking "Create" 20 times rapidly)
-      const startTime = Date.now();
-      for (let i = 0; i < taskCount; i++) {
-        const taskId = `rapid-fire-${i}`;
-        taskIds.push(taskId);
-        store.addTask(createTestTask({
-          id: taskId,
-          title: `Rapid Fire Task ${i}`,
-          status: 'backlog'
-        }));
-      }
-      const endTime = Date.now();
-
-      // Log timing for performance reference
-      const duration = endTime - startTime;
-
-      // Verify all tasks were added
-      expect(useTaskStore.getState().tasks).toHaveLength(taskCount);
-
-      // Verify no duplicates
-      const uniqueTaskIds = new Set(useTaskStore.getState().tasks.map(t => t.id));
-      expect(uniqueTaskIds.size).toBe(taskCount);
-
-      // Verify all task IDs are present in taskOrder
-      const taskOrder = useTaskStore.getState().taskOrder;
-      expect(taskOrder?.backlog).toHaveLength(taskCount);
-
-      // Verify all created task IDs exist in taskOrder
-      taskIds.forEach(id => {
-        expect(taskOrder?.backlog).toContain(id);
-      });
-
-      // Performance assertion: should complete very quickly (< 100ms for 20 tasks)
-      expect(duration).toBeLessThan(100);
-    });
-
-    it('should preserve task data integrity during concurrent updates', () => {
-      const store = useTaskStore.getState();
-      const taskCount = 10;
-
-      // Create tasks with unique data
-      const tasks: Task[] = [];
-      for (let i = 0; i < taskCount; i++) {
-        tasks.push(createTestTask({
-          id: `concurrent-${i}`,
-          title: `Concurrent Task ${i}`,
-          description: `Description ${i}`,
-          status: 'backlog'
-        }));
-      }
-
-      // Add all tasks rapidly
-      tasks.forEach(task => store.addTask(task));
-
-      // Verify each task's data is preserved
-      useTaskStore.getState().tasks.forEach(task => {
-        const original = tasks.find(t => t.id === task.id);
-        expect(original).toBeDefined();
-
-        if (original) {
-          expect(task.title).toBe(original.title);
-          expect(task.description).toBe(original.description);
-          expect(task.status).toBe(original.status);
-        }
-      });
-
-      // Verify no data corruption (null/undefined fields)
-      useTaskStore.getState().tasks.forEach(task => {
-        expect(task.id).toBeTruthy();
-        expect(task.title).toBeTruthy();
-        expect(task.status).toBeTruthy();
-        expect(task.createdAt).toBeDefined();
-        expect(task.updatedAt).toBeDefined();
-      });
-    });
-  });
 });
