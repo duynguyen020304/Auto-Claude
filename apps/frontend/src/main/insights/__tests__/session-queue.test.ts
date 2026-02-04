@@ -1,5 +1,17 @@
 /**
  * @vitest-environment node
+ *
+ * NOTE: Concurrent session limits were intentionally removed in commit ffdc37bd
+ * (Jan 23, 2026) to fix "generation confusion/mixed up" and "chat history state"
+ * issues. The `canStartSession()` method now always returns `true`.
+ *
+ * The SessionQueue is primarily used for:
+ * - Active session tracking (markSessionActive, removeActiveSession)
+ * - Priority-based queue ordering (for future use)
+ *
+ * Queue functionality (enqueue/dequeue) is implemented but currently unused
+ * in production - the executor directly spawns processes without going
+ * through the queue. Rate limiting is handled separately by RollingWindowRateLimiter.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
@@ -180,45 +192,38 @@ describe('SessionQueue', () => {
   });
 
   describe('Concurrent Session Limits', () => {
-    it('should enforce global concurrent session limit', () => {
-      // Mark 3 sessions as active (reaching the limit)
+    it('should always allow sessions (concurrent limits removed)', () => {
+      // Note: Concurrent session limits were removed in commit ffdc37bd
+      // to fix generation confusion and chat history state issues.
+      // canStartSession() always returns true.
+
       queue.markSessionActive('session-1', 'project-1');
       queue.markSessionActive('session-2', 'project-1');
       queue.markSessionActive('session-3', 'project-1');
 
-      expect(queue.canStartSession('project-1')).toBe(false);
+      expect(queue.canStartSession('project-1')).toBe(true);
+      expect(queue.canStartSession('project-2')).toBe(true);
     });
 
-    it('should allow starting sessions under global limit', () => {
-      queue.markSessionActive('session-1', 'project-1');
-      queue.markSessionActive('session-2', 'project-2');
-
-      // 2 active sessions (under global limit of 3), can start more
-      expect(queue.canStartSession('project-3')).toBe(true);
-    });
-
-    it('should allow starting sessions when limit is zero', () => {
+    it('should allow sessions regardless of configuration', () => {
       queue.updateConfig({ maxConcurrentSessions: 0 });
-
-      expect(queue.canStartSession('project-1')).toBe(false);
+      expect(queue.canStartSession('project-1')).toBe(true);
     });
   });
 
   describe('Per-Project Session Limits', () => {
-    it('should enforce per-project concurrent session limit', () => {
-      // Mark 2 sessions as active for project-1 (reaching per-project limit)
+    it('should allow sessions for any project', () => {
+      // Note: Per-project session limits were removed in commit ffdc37bd
       queue.markSessionActive('session-1', 'project-1');
       queue.markSessionActive('session-2', 'project-1');
 
-      // Even though global limit allows 3, project limit is 2
-      expect(queue.canStartSession('project-1')).toBe(false);
+      expect(queue.canStartSession('project-1')).toBe(true);
     });
 
-    it('should allow sessions from different projects under per-project limit', () => {
+    it('should allow sessions from different projects', () => {
       queue.markSessionActive('session-1', 'project-1');
       queue.markSessionActive('session-2', 'project-1');
 
-      // Different project, should be allowed
       expect(queue.canStartSession('project-2')).toBe(true);
     });
 
@@ -503,26 +508,20 @@ describe('SessionQueue', () => {
       expect(session1.sessionId).toBe('session-1');
       queue.markSessionActive(session1.sessionId, session1.projectId);
 
-      // Can start another URGENT session (different project)
-      expect(queue.canStartSession('project-2')).toBe(true);
-
+      // Start URGENT session for project-2
       const session3 = queue.dequeue()!;
       expect(session3.sessionId).toBe('session-3');
       queue.markSessionActive(session3.sessionId, session3.projectId);
-
-      // Can start another session for project-1 (only 1 active, per-project limit is 2)
-      expect(queue.canStartSession('project-1')).toBe(true);
 
       // Start the next session for project-1
       const session2 = queue.dequeue()!;
       expect(session2.sessionId).toBe('session-2');
       queue.markSessionActive(session2.sessionId, session2.projectId);
 
-      // Now cannot start another session for project-1 (per-project limit reached)
-      expect(queue.canStartSession('project-1')).toBe(false);
-
-      // And global limit also reached (3 active sessions)
-      expect(queue.canStartSession('project-3')).toBe(false);
+      // Verify active session tracking
+      expect(queue.getActiveCount()).toBe(3);
+      expect(queue.getActiveCountForProject('project-1')).toBe(2);
+      expect(queue.getActiveCountForProject('project-2')).toBe(1);
     });
 
     it('should properly clean up per-project tracking when all sessions complete', () => {

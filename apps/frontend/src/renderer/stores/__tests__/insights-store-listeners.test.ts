@@ -12,6 +12,7 @@ const mockListeners = new Map<string, (...args: unknown[]) => void>();
 const mockUnsubStreamChunk = vi.fn();
 const mockUnsubStatus = vi.fn();
 const mockUnsubError = vi.fn();
+const mockUnsubSessionUpdated = vi.fn();
 
 vi.stubGlobal('window', {
   electronAPI: {
@@ -26,6 +27,10 @@ vi.stubGlobal('window', {
     onInsightsError: vi.fn((callback) => {
       mockListeners.set('error', callback);
       return mockUnsubError;
+    }),
+    onInsightsSessionUpdated: vi.fn((callback) => {
+      mockListeners.set('sessionUpdated', callback);
+      return mockUnsubSessionUpdated;
     })
   }
 });
@@ -44,6 +49,7 @@ describe('insights-store - IPC listener routing by sessionId', () => {
     mockUnsubStreamChunk.mockReset();
     mockUnsubStatus.mockReset();
     mockUnsubError.mockReset();
+    mockUnsubSessionUpdated.mockReset();
 
     // Setup listeners
     cleanup = setupInsightsListeners();
@@ -471,6 +477,7 @@ describe('insights-store - IPC listener routing by sessionId', () => {
       expect(mockUnsubStreamChunk).toHaveBeenCalledTimes(1);
       expect(mockUnsubStatus).toHaveBeenCalledTimes(1);
       expect(mockUnsubError).toHaveBeenCalledTimes(1);
+      expect(mockUnsubSessionUpdated).toHaveBeenCalledTimes(1);
     });
   });
 

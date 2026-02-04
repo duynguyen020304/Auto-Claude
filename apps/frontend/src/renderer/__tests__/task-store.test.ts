@@ -1,6 +1,12 @@
 /**
  * Unit tests for Task Store
  * Tests Zustand store for task state management
+ *
+ * NOTE on status management: XState is the source of truth for task status.
+ * The `updateTaskFromPlan` function does NOT modify status or reviewReason fields.
+ * It only extracts subtasks, updates title from plan.feature, and refreshes updatedAt.
+ * Status changes are handled via TASK_STATUS_CHANGE events from the XState machine.
+ * This prevents race conditions where a stale plan could overwrite XState status.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useTaskStore } from '../stores/task-store';
@@ -258,78 +264,6 @@ describe('Task Store', () => {
       expect(useTaskStore.getState().tasks[0].subtasks).toHaveLength(2);
     });
 
-    it('should update status to ai_review when all subtasks completed', () => {
-      useTaskStore.setState({
-        tasks: [createTestTask({ id: 'task-1', status: 'in_progress' })]
-      });
-
-      const plan = createTestPlan({
-        phases: [
-          {
-            phase: 1,
-            name: 'Phase 1',
-            type: 'implementation',
-            subtasks: [
-              { id: 'c1', description: 'Subtask 1', status: 'completed' },
-              { id: 'c2', description: 'Subtask 2', status: 'completed' }
-            ]
-          }
-        ]
-      });
-
-      useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-      expect(useTaskStore.getState().tasks[0].status).toBe('ai_review');
-    });
-
-    it('should update status to human_review when any subtask failed', () => {
-      useTaskStore.setState({
-        tasks: [createTestTask({ id: 'task-1', status: 'in_progress' })]
-      });
-
-      const plan = createTestPlan({
-        phases: [
-          {
-            phase: 1,
-            name: 'Phase 1',
-            type: 'implementation',
-            subtasks: [
-              { id: 'c1', description: 'Subtask 1', status: 'completed' },
-              { id: 'c2', description: 'Subtask 2', status: 'failed' }
-            ]
-          }
-        ]
-      });
-
-      useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-      expect(useTaskStore.getState().tasks[0].status).toBe('human_review');
-    });
-
-    it('should update status to in_progress when some subtasks in progress', () => {
-      useTaskStore.setState({
-        tasks: [createTestTask({ id: 'task-1', status: 'backlog' })]
-      });
-
-      const plan = createTestPlan({
-        phases: [
-          {
-            phase: 1,
-            name: 'Phase 1',
-            type: 'implementation',
-            subtasks: [
-              { id: 'c1', description: 'Subtask 1', status: 'completed' },
-              { id: 'c2', description: 'Subtask 2', status: 'in_progress' }
-            ]
-          }
-        ]
-      });
-
-      useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-      expect(useTaskStore.getState().tasks[0].status).toBe('in_progress');
-    });
-
     it('should update title from plan feature', () => {
       useTaskStore.setState({
         tasks: [createTestTask({ id: 'task-1', title: 'Original Title' })]
@@ -342,13 +276,12 @@ describe('Task Store', () => {
       expect(useTaskStore.getState().tasks[0].title).toBe('New Feature Name');
     });
 
-    it('should NOT update status when task is in active execution phase (planning)', () => {
+    // NOTE: XState is the source of truth for status management.
+    // updateTaskFromPlan does NOT modify status or reviewReason fields.
+    // It only extracts subtasks, updates title, and refreshes updatedAt.
+    it('should preserve existing status regardless of subtask states', () => {
       useTaskStore.setState({
-        tasks: [createTestTask({
-          id: 'task-1',
-          status: 'in_progress',
-          executionProgress: { phase: 'planning', phaseProgress: 10, overallProgress: 5 }
-        })]
+        tasks: [createTestTask({ id: 'task-1', status: 'in_progress' })]
       });
 
       const plan = createTestPlan({
@@ -367,17 +300,15 @@ describe('Task Store', () => {
 
       useTaskStore.getState().updateTaskFromPlan('task-1', plan);
 
+      // Status should remain unchanged - XState manages status via TASK_STATUS_CHANGE
       expect(useTaskStore.getState().tasks[0].status).toBe('in_progress');
+      // Subtasks should still be updated
       expect(useTaskStore.getState().tasks[0].subtasks).toHaveLength(2);
     });
 
-    it('should NOT update status when task is in active execution phase (coding)', () => {
+    it('should preserve status even when all subtasks are failed', () => {
       useTaskStore.setState({
-        tasks: [createTestTask({
-          id: 'task-1',
-          status: 'in_progress',
-          executionProgress: { phase: 'coding', phaseProgress: 50, overallProgress: 40 }
-        })]
+        tasks: [createTestTask({ id: 'task-1', status: 'backlog' })]
       });
 
       const plan = createTestPlan({
@@ -387,8 +318,8 @@ describe('Task Store', () => {
             name: 'Phase 1',
             type: 'implementation',
             subtasks: [
-              { id: 'c1', description: 'Subtask 1', status: 'completed' },
-              { id: 'c2', description: 'Subtask 2', status: 'completed' }
+              { id: 'c1', description: 'Subtask 1', status: 'failed' },
+              { id: 'c2', description: 'Subtask 2', status: 'failed' }
             ]
           }
         ]
@@ -396,16 +327,14 @@ describe('Task Store', () => {
 
       useTaskStore.getState().updateTaskFromPlan('task-1', plan);
 
-      expect(useTaskStore.getState().tasks[0].status).toBe('in_progress');
+      // Status should remain unchanged - XState manages status
+      expect(useTaskStore.getState().tasks[0].status).toBe('backlog');
     });
 
-    it('should update status when task is in idle phase', () => {
+    it('should update updatedAt timestamp when plan is applied', () => {
+      const originalDate = new Date('2024-01-01');
       useTaskStore.setState({
-        tasks: [createTestTask({
-          id: 'task-1',
-          status: 'in_progress',
-          executionProgress: { phase: 'idle', phaseProgress: 0, overallProgress: 0 }
-        })]
+        tasks: [createTestTask({ id: 'task-1', updatedAt: originalDate, subtasks: [] })]
       });
 
       const plan = createTestPlan({
@@ -414,45 +343,16 @@ describe('Task Store', () => {
             phase: 1,
             name: 'Phase 1',
             type: 'implementation',
-            subtasks: [
-              { id: 'c1', description: 'Subtask 1', status: 'completed' },
-              { id: 'c2', description: 'Subtask 2', status: 'completed' }
-            ]
+            subtasks: [{ id: 'c1', description: 'Subtask 1', status: 'pending' }]
           }
         ]
       });
 
       useTaskStore.getState().updateTaskFromPlan('task-1', plan);
 
-      expect(useTaskStore.getState().tasks[0].status).toBe('ai_review');
-    });
-
-    it('should update status when task has no execution progress', () => {
-      useTaskStore.setState({
-        tasks: [createTestTask({
-          id: 'task-1',
-          status: 'backlog',
-          executionProgress: undefined
-        })]
-      });
-
-      const plan = createTestPlan({
-        phases: [
-          {
-            phase: 1,
-            name: 'Phase 1',
-            type: 'implementation',
-            subtasks: [
-              { id: 'c1', description: 'Subtask 1', status: 'completed' },
-              { id: 'c2', description: 'Subtask 2', status: 'completed' }
-            ]
-          }
-        ]
-      });
-
-      useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-      expect(useTaskStore.getState().tasks[0].status).toBe('ai_review');
+      expect(useTaskStore.getState().tasks[0].updatedAt.getTime()).toBeGreaterThan(
+        originalDate.getTime()
+      );
     });
   });
 
@@ -1140,596 +1040,15 @@ describe('Task Store', () => {
       });
     });
 
-    // FIX (PR Review): Test coverage for terminal phase status preservation
-    describe('terminal phase status preservation', () => {
-      it('should NOT update status when task is in terminal phase (complete)', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({
-            id: 'task-1',
-            status: 'human_review',
-            executionProgress: { phase: 'complete', phaseProgress: 100, overallProgress: 100 }
-          })]
-        });
-
-        const plan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'c1', description: 'Subtask 1', status: 'completed' },
-                { id: 'c2', description: 'Subtask 2', status: 'completed' }
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        // Status should remain human_review, not be recalculated to ai_review
-        expect(useTaskStore.getState().tasks[0].status).toBe('human_review');
-      });
-
-      it('should NOT update status when task is in terminal phase (failed)', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({
-            id: 'task-1',
-            status: 'human_review',
-            executionProgress: { phase: 'failed', phaseProgress: 50, overallProgress: 30 }
-          })]
-        });
-
-        const plan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'c1', description: 'Subtask 1', status: 'completed' },
-                { id: 'c2', description: 'Subtask 2', status: 'failed' }
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        // Status should remain human_review, not be recalculated
-        expect(useTaskStore.getState().tasks[0].status).toBe('human_review');
-      });
-    });
-
-    // FIX (PR Review): Test coverage for explicit human_review from plan file
-    describe('explicit human_review from plan file', () => {
-      it('should skip status recalculation when plan explicitly sets human_review', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({
-            id: 'task-1',
-            status: 'backlog',
-            executionProgress: undefined
-          })]
-        });
-
-        // Plan explicitly sets status to human_review
-        const plan = {
-          ...createTestPlan({
-            phases: [
-              {
-                phase: 1,
-                name: 'Phase 1',
-                type: 'implementation',
-                subtasks: [
-                  { id: 'c1', description: 'Subtask 1', status: 'completed' },
-                  { id: 'c2', description: 'Subtask 2', status: 'completed' }
-                ]
-              }
-            ]
-          }),
-          status: 'human_review' as const
-        };
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        // Status should remain unchanged (backlog) because when plan explicitly
-        // sets human_review, status recalculation is skipped entirely
-        expect(useTaskStore.getState().tasks[0].status).toBe('backlog');
-      });
-
-      it('should NOT preserve status when plan does not explicitly set human_review', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({
-            id: 'task-1',
-            status: 'backlog',
-            executionProgress: undefined
-          })]
-        });
-
-        const plan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'c1', description: 'Subtask 1', status: 'completed' },
-                { id: 'c2', description: 'Subtask 2', status: 'completed' }
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        // Status should be recalculated to ai_review since no explicit human_review
-        expect(useTaskStore.getState().tasks[0].status).toBe('ai_review');
-      });
-    });
-
-    // FIX (PR Review): Test coverage for terminal status downgrade prevention
-    describe('terminal status downgrade prevention', () => {
-      it('should NOT downgrade from done to ai_review', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({
-            id: 'task-1',
-            status: 'done',
-            executionProgress: undefined
-          })]
-        });
-
-        const plan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'c1', description: 'Subtask 1', status: 'completed' },
-                { id: 'c2', description: 'Subtask 2', status: 'completed' }
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        // Status should remain done, not downgrade to ai_review
-        expect(useTaskStore.getState().tasks[0].status).toBe('done');
-      });
-
-      it('should NOT downgrade from human_review to ai_review', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({
-            id: 'task-1',
-            status: 'human_review',
-            executionProgress: undefined
-          })]
-        });
-
-        const plan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'c1', description: 'Subtask 1', status: 'completed' },
-                { id: 'c2', description: 'Subtask 2', status: 'completed' }
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        // Status should remain human_review, not downgrade to ai_review
-        expect(useTaskStore.getState().tasks[0].status).toBe('human_review');
-      });
-    });
-
-    // FIX (Subtask 4-2): Comprehensive tests for all active execution phases
-    describe('active execution phase protection - all phases', () => {
-      it('should NOT update status when task is in qa_review phase', () => {
+    // NOTE: XState is the source of truth for status management.
+    // updateTaskFromPlan does NOT modify status or reviewReason fields.
+    // The following tests verify that status is preserved regardless of subtask states.
+    describe('status preservation (XState source of truth)', () => {
+      it('should preserve status regardless of execution phase', () => {
         useTaskStore.setState({
           tasks: [createTestTask({
             id: 'task-1',
             status: 'in_progress',
-            executionProgress: { phase: 'qa_review', phaseProgress: 50, overallProgress: 80 }
-          })]
-        });
-
-        const plan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'c1', description: 'Subtask 1', status: 'completed' },
-                { id: 'c2', description: 'Subtask 2', status: 'completed' }
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        // Status should remain in_progress during qa_review phase
-        expect(useTaskStore.getState().tasks[0].status).toBe('in_progress');
-      });
-
-      it('should NOT update status when task is in qa_fixing phase', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({
-            id: 'task-1',
-            status: 'in_progress',
-            executionProgress: { phase: 'qa_fixing', phaseProgress: 30, overallProgress: 70 }
-          })]
-        });
-
-        const plan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'c1', description: 'Subtask 1', status: 'completed' },
-                { id: 'c2', description: 'Subtask 2', status: 'completed' }
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        // Status should remain in_progress during qa_fixing phase
-        expect(useTaskStore.getState().tasks[0].status).toBe('in_progress');
-      });
-
-      it('should still update subtasks when status recalculation is blocked', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({
-            id: 'task-1',
-            status: 'in_progress',
-            subtasks: [],
-            executionProgress: { phase: 'coding', phaseProgress: 50, overallProgress: 40 }
-          })]
-        });
-
-        const plan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'c1', description: 'Subtask 1', status: 'completed' },
-                { id: 'c2', description: 'Subtask 2', status: 'in_progress' },
-                { id: 'c3', description: 'Subtask 3', status: 'pending' }
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        // Status should stay in_progress (blocked by active phase)
-        expect(useTaskStore.getState().tasks[0].status).toBe('in_progress');
-        // But subtasks should still be updated
-        expect(useTaskStore.getState().tasks[0].subtasks).toHaveLength(3);
-        expect(useTaskStore.getState().tasks[0].subtasks[0].status).toBe('completed');
-        expect(useTaskStore.getState().tasks[0].subtasks[1].status).toBe('in_progress');
-        expect(useTaskStore.getState().tasks[0].subtasks[2].status).toBe('pending');
-      });
-
-      it('should update title even when status recalculation is blocked', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({
-            id: 'task-1',
-            title: 'Original Title',
-            status: 'in_progress',
-            executionProgress: { phase: 'planning', phaseProgress: 50, overallProgress: 10 }
-          })]
-        });
-
-        const plan = createTestPlan({
-          feature: 'New Feature Name',
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'c1', description: 'Subtask 1', status: 'completed' }
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        // Status should stay in_progress (blocked by active phase)
-        expect(useTaskStore.getState().tasks[0].status).toBe('in_progress');
-        // But title should still be updated
-        expect(useTaskStore.getState().tasks[0].title).toBe('New Feature Name');
-      });
-    });
-
-    // FIX (Subtask 4-2): Tests for shouldBlockTerminalTransition logic
-    describe('terminal transition blocking (shouldBlockTerminalTransition)', () => {
-      it('should block ai_review when subtasks array is empty', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({
-            id: 'task-1',
-            status: 'backlog',
-            subtasks: [],
-            executionProgress: undefined
-          })]
-        });
-
-        // Plan with empty subtasks should not trigger ai_review
-        const plan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: []
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        // Status should remain backlog, not go to ai_review (no subtasks to complete)
-        expect(useTaskStore.getState().tasks[0].status).toBe('backlog');
-      });
-
-      it('should allow transition to ai_review when all subtasks are completed', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({
-            id: 'task-1',
-            status: 'backlog',
-            subtasks: [],
-            executionProgress: undefined
-          })]
-        });
-
-        const plan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'c1', description: 'Subtask 1', status: 'completed' },
-                { id: 'c2', description: 'Subtask 2', status: 'completed' }
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        // Status should transition to ai_review when all subtasks are completed
-        expect(useTaskStore.getState().tasks[0].status).toBe('ai_review');
-      });
-
-      it('should allow transition to human_review when any subtask failed', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({
-            id: 'task-1',
-            status: 'in_progress',
-            subtasks: [],
-            executionProgress: undefined
-          })]
-        });
-
-        const plan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'c1', description: 'Subtask 1', status: 'completed' },
-                { id: 'c2', description: 'Subtask 2', status: 'failed' }
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        // Status should transition to human_review when any subtask failed
-        expect(useTaskStore.getState().tasks[0].status).toBe('human_review');
-      });
-
-      it('should transition to in_progress when some subtasks are in progress', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({
-            id: 'task-1',
-            status: 'backlog',
-            subtasks: [],
-            executionProgress: undefined
-          })]
-        });
-
-        const plan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'c1', description: 'Subtask 1', status: 'completed' },
-                { id: 'c2', description: 'Subtask 2', status: 'in_progress' },
-                { id: 'c3', description: 'Subtask 3', status: 'pending' }
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        // Status should transition to in_progress when some subtasks are in progress
-        expect(useTaskStore.getState().tasks[0].status).toBe('in_progress');
-      });
-
-      it('should transition to in_progress when only some subtasks are completed', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({
-            id: 'task-1',
-            status: 'backlog',
-            subtasks: [],
-            executionProgress: undefined
-          })]
-        });
-
-        const plan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'c1', description: 'Subtask 1', status: 'completed' },
-                { id: 'c2', description: 'Subtask 2', status: 'pending' }
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        // Status should transition to in_progress (some completed but not all)
-        expect(useTaskStore.getState().tasks[0].status).toBe('in_progress');
-      });
-    });
-
-    // FIX (Subtask 4-2): Combined guard tests
-    describe('combined status stability guards', () => {
-      it('should protect status when in terminal phase AND terminal status', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({
-            id: 'task-1',
-            status: 'done',
-            executionProgress: { phase: 'complete', phaseProgress: 100, overallProgress: 100 }
-          })]
-        });
-
-        const plan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'c1', description: 'Subtask 1', status: 'pending' }
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        // Status should remain done (protected by both terminal phase and terminal status)
-        expect(useTaskStore.getState().tasks[0].status).toBe('done');
-      });
-
-      it('should protect status when pr_created even without terminal phase', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({
-            id: 'task-1',
-            status: 'pr_created',
-            executionProgress: { phase: 'idle', phaseProgress: 0, overallProgress: 0 }
-          })]
-        });
-
-        const plan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'c1', description: 'Subtask 1', status: 'completed' }
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        // Status should remain pr_created (protected by terminal status)
-        expect(useTaskStore.getState().tasks[0].status).toBe('pr_created');
-      });
-
-      it('should protect status in failed phase even with all subtasks completed', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({
-            id: 'task-1',
-            status: 'human_review',
-            executionProgress: { phase: 'failed', phaseProgress: 50, overallProgress: 30 }
-          })]
-        });
-
-        const plan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'c1', description: 'Subtask 1', status: 'completed' },
-                { id: 'c2', description: 'Subtask 2', status: 'completed' }
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        // Status should remain human_review (protected by terminal phase 'failed')
-        expect(useTaskStore.getState().tasks[0].status).toBe('human_review');
-      });
-
-      it('should NOT protect non-terminal status in non-active phase', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({
-            id: 'task-1',
-            status: 'in_progress',
-            executionProgress: { phase: 'idle', phaseProgress: 0, overallProgress: 0 }
-          })]
-        });
-
-        const plan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'c1', description: 'Subtask 1', status: 'completed' },
-                { id: 'c2', description: 'Subtask 2', status: 'completed' }
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        // Status should change to ai_review (not protected)
-        expect(useTaskStore.getState().tasks[0].status).toBe('ai_review');
-      });
-
-      it('should NOT update status from backlog to ai_review during active planning', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({
-            id: 'task-1',
-            status: 'backlog',
             executionProgress: { phase: 'planning', phaseProgress: 10, overallProgress: 5 }
           })]
         });
@@ -1750,51 +1069,18 @@ describe('Task Store', () => {
 
         useTaskStore.getState().updateTaskFromPlan('task-1', plan);
 
-        // Status should remain backlog (blocked by active planning phase)
-        expect(useTaskStore.getState().tasks[0].status).toBe('backlog');
+        // Status should remain unchanged - XState manages status
+        expect(useTaskStore.getState().tasks[0].status).toBe('in_progress');
+        // Subtasks should still be updated
+        expect(useTaskStore.getState().tasks[0].subtasks).toHaveLength(2);
       });
-    });
 
-    // FIX (Subtask 4-2): Status stability edge cases
-    describe('status stability edge cases', () => {
-      it('should handle missing executionProgress gracefully', () => {
+      it('should preserve status in terminal phase (complete)', () => {
         useTaskStore.setState({
           tasks: [createTestTask({
             id: 'task-1',
-            status: 'in_progress'
-          } as Partial<Task>)]
-        });
-
-        // Explicitly remove executionProgress
-        const task = useTaskStore.getState().tasks[0];
-        delete (task as any).executionProgress;
-
-        const plan = createTestPlan({
-          phases: [
-            {
-              phase: 1,
-              name: 'Phase 1',
-              type: 'implementation',
-              subtasks: [
-                { id: 'c1', description: 'Subtask 1', status: 'completed' },
-                { id: 'c2', description: 'Subtask 2', status: 'completed' }
-              ]
-            }
-          ]
-        });
-
-        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
-
-        // Should still recalculate status (no executionProgress = not in active phase)
-        expect(useTaskStore.getState().tasks[0].status).toBe('ai_review');
-      });
-
-      it('should handle undefined phase in executionProgress', () => {
-        useTaskStore.setState({
-          tasks: [createTestTask({
-            id: 'task-1',
-            status: 'in_progress',
-            executionProgress: { phaseProgress: 0, overallProgress: 0 } as any
+            status: 'human_review',
+            executionProgress: { phase: 'complete', phaseProgress: 100, overallProgress: 100 }
           })]
         });
 
@@ -1814,16 +1100,16 @@ describe('Task Store', () => {
 
         useTaskStore.getState().updateTaskFromPlan('task-1', plan);
 
-        // Should recalculate status (undefined phase = not in active phase)
-        expect(useTaskStore.getState().tasks[0].status).toBe('ai_review');
+        // Status should remain unchanged
+        expect(useTaskStore.getState().tasks[0].status).toBe('human_review');
       });
 
-      it('should preserve reviewReason when status changes to human_review', () => {
+      it('should preserve status in terminal phase (failed)', () => {
         useTaskStore.setState({
           tasks: [createTestTask({
             id: 'task-1',
-            status: 'in_progress',
-            reviewReason: undefined
+            status: 'human_review',
+            executionProgress: { phase: 'failed', phaseProgress: 50, overallProgress: 30 }
           })]
         });
 
@@ -1843,12 +1129,40 @@ describe('Task Store', () => {
 
         useTaskStore.getState().updateTaskFromPlan('task-1', plan);
 
-        // Status should change to human_review with errors reason
+        // Status should remain unchanged
         expect(useTaskStore.getState().tasks[0].status).toBe('human_review');
-        expect(useTaskStore.getState().tasks[0].reviewReason).toBe('errors');
       });
 
-      it('should update reviewReason when task is already in human_review and plan has failures', () => {
+      it('should preserve status regardless of subtask completion states', () => {
+        useTaskStore.setState({
+          tasks: [createTestTask({
+            id: 'task-1',
+            status: 'backlog',
+            executionProgress: undefined
+          })]
+        });
+
+        const plan = createTestPlan({
+          phases: [
+            {
+              phase: 1,
+              name: 'Phase 1',
+              type: 'implementation',
+              subtasks: [
+                { id: 'c1', description: 'Subtask 1', status: 'completed' },
+                { id: 'c2', description: 'Subtask 2', status: 'completed' }
+              ]
+            }
+          ]
+        });
+
+        useTaskStore.getState().updateTaskFromPlan('task-1', plan);
+
+        // Status should remain unchanged even with all subtasks completed
+        expect(useTaskStore.getState().tasks[0].status).toBe('backlog');
+      });
+
+      it('should preserve reviewReason field', () => {
         useTaskStore.setState({
           tasks: [createTestTask({
             id: 'task-1',
@@ -1873,23 +1187,23 @@ describe('Task Store', () => {
 
         useTaskStore.getState().updateTaskFromPlan('task-1', plan);
 
-        // Status should remain human_review (terminal status in terminalStatuses)
-        expect(useTaskStore.getState().tasks[0].status).toBe('human_review');
-        // reviewReason should be updated to reflect the current failure state from the plan
-        // This is intentional - the plan's failure state takes precedence to show current state
-        expect(useTaskStore.getState().tasks[0].reviewReason).toBe('errors');
+        // reviewReason should be preserved - XState manages this field
+        expect(useTaskStore.getState().tasks[0].reviewReason).toBe('qa_rejected');
       });
 
-      it('should preserve reviewReason when task is in terminal status with no failures', () => {
+      it('should still update subtasks and title while preserving status', () => {
         useTaskStore.setState({
           tasks: [createTestTask({
             id: 'task-1',
-            status: 'human_review',
-            reviewReason: 'completed'
+            title: 'Original Title',
+            status: 'in_progress',
+            subtasks: [],
+            executionProgress: { phase: 'coding', phaseProgress: 50, overallProgress: 40 }
           })]
         });
 
         const plan = createTestPlan({
+          feature: 'New Feature Name',
           phases: [
             {
               phase: 1,
@@ -1897,7 +1211,8 @@ describe('Task Store', () => {
               type: 'implementation',
               subtasks: [
                 { id: 'c1', description: 'Subtask 1', status: 'completed' },
-                { id: 'c2', description: 'Subtask 2', status: 'completed' }
+                { id: 'c2', description: 'Subtask 2', status: 'in_progress' },
+                { id: 'c3', description: 'Subtask 3', status: 'pending' }
               ]
             }
           ]
@@ -1905,10 +1220,15 @@ describe('Task Store', () => {
 
         useTaskStore.getState().updateTaskFromPlan('task-1', plan);
 
-        // Status should remain human_review (protected by terminalStatuses check)
-        expect(useTaskStore.getState().tasks[0].status).toBe('human_review');
-        // reviewReason should be preserved since allCompleted branch is also blocked
-        expect(useTaskStore.getState().tasks[0].reviewReason).toBe('completed');
+        // Status should be preserved
+        expect(useTaskStore.getState().tasks[0].status).toBe('in_progress');
+        // Subtasks should be updated
+        expect(useTaskStore.getState().tasks[0].subtasks).toHaveLength(3);
+        expect(useTaskStore.getState().tasks[0].subtasks[0].status).toBe('completed');
+        expect(useTaskStore.getState().tasks[0].subtasks[1].status).toBe('in_progress');
+        expect(useTaskStore.getState().tasks[0].subtasks[2].status).toBe('pending');
+        // Title should be updated
+        expect(useTaskStore.getState().tasks[0].title).toBe('New Feature Name');
       });
     });
   });

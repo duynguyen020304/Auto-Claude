@@ -37,13 +37,12 @@ export interface SessionQueueConfig {
 }
 
 /**
- * Session queue with priority-based ordering and concurrent limits
+ * Session queue with priority-based ordering
  *
  * Features:
  * - Priority-based ordering (URGENT > HIGH > NORMAL > LOW)
  * - FIFO ordering within same priority level
- * - Global concurrent session limit
- * - Per-project concurrent session limit
+ * - Active session tracking (no enforced limits)
  * - Mid-queue cancellation support
  *
  * @example

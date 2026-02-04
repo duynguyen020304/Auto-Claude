@@ -184,8 +184,8 @@ describe('InsightsExecutor - Queue Integration', () => {
       // Wait for process to start and be marked active
       await new Promise(resolve => setTimeout(resolve, 50));
 
-      // Queue should not allow another session for this project
-      expect(sessionQueue.canStartSession(projectId)).toBe(false);
+      // Queue allows multiple sessions for this project
+      expect(sessionQueue.canStartSession(projectId)).toBe(true);
 
       // But should allow session for different project
       expect(sessionQueue.canStartSession('project-2')).toBe(true);
