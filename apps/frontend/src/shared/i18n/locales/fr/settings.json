@@ -185,6 +185,12 @@
     "comfortable": "Confortable",
     "large": "Grand"
   },
+  "logOrder": {
+    "label": "Ordre des journaux",
+    "description": "Choisir comment les journaux sont affichés dans la vue détaillée des tâches",
+    "chronological": "Chronologique (plus ancien en premier)",
+    "reverseChronological": "Chronologique inverse (plus récent en premier)"
+  },
   "general": {
     "otherAgentSettings": "Autres paramètres de l'agent",
     "otherAgentSettingsDescription": "Options de configuration supplémentaires de l'agent",
@@ -324,7 +330,10 @@
     "stableDowngradeAvailable": "Version stable disponible",
     "stableDowngradeDescription": "Vous êtes actuellement sur une version bêta. Comme vous avez désactivé les mises à jour bêta, vous pouvez passer à la dernière version stable.",
     "stableVersion": "Version stable",
-    "downloadStableVersion": "Télécharger la version stable"
+    "downloadStableVersion": "Télécharger la version stable",
+    "readOnlyVolumeTitle": "Impossible d'installer depuis l'image disque",
+    "readOnlyVolumeDescription": "Auto Claude s'exécute depuis une image disque en lecture seule (DMG). Veuillez glisser l'application dans votre dossier Applications et la relancer depuis cet emplacement pour installer les mises à jour.",
+    "downloadError": "Échec du téléchargement de la mise à jour"
   },
   "notifications": {
     "title": "Notifications",
@@ -366,7 +375,15 @@
       "description": "Synchronisation issues GitHub",
       "integrationTitle": "Intégration GitHub",
       "integrationDescription": "Se connecter à GitHub pour le suivi des issues",
-      "syncDescription": "Synchroniser avec GitHub Issues"
+      "syncDescription": "Synchroniser avec GitHub Issues",
+      "defaultBranch": {
+        "label": "Branche par défaut",
+        "description": "Branche de base pour créer les worktrees de tâches",
+        "autoDetect": "Détection automatique (main/master)",
+        "searchPlaceholder": "Rechercher des branches...",
+        "noBranchesFound": "Aucune branche trouvée",
+        "selectedBranchHelp": "Toutes les nouvelles tâches partiront de {{branch}}"
+      }
     },
     "gitlab": {
       "title": "GitLab",
@@ -475,6 +492,8 @@
     "weeklyThresholdDescription": "Changer quand l'utilisation hebdomadaire atteint ce niveau (recommandé: 99%)",
     "reactiveRecovery": "Récupération réactive",
     "reactiveDescription": "Basculer automatiquement quand une limite inattendue est atteinte",
+    "autoSwitchOnAuthFailure": "Changement auto en cas d'échec d'auth",
+    "autoSwitchOnAuthFailureDescription": "Basculer automatiquement vers un autre compte authentifié en cas d'échec d'authentification",
     "apiKeys": "Clés API",
     "apiKeysInfo": "Les clés définies ici sont utilisées par défaut. Les projets individuels peuvent les remplacer dans leurs paramètres.",
     "openaiKey": "Clé API OpenAI",
@@ -615,7 +634,9 @@
       "weightedDistributionDescription": "Définissez des poids plus élevés pour les comptes qui doivent être sélectionnés plus souvent",
       "usageStats": "Statistiques d'utilisation",
       "usageStatsDescription": "Les comptes sont classés par utilisation (session + hebdomadaire). Le compte le moins utilisé est sélectionné automatiquement.",
-      "usageStatsNote": "Les barres d'utilisation sont affichées dans la liste des comptes ci-dessus. Le système sélectionne automatiquement le compte avec l'utilisation combinée la plus faible."
+      "usageStatsNote": "Les barres d'utilisation sont affichées dans la liste des comptes ci-dessus. Le système sélectionne automatiquement le compte avec l'utilisation combinée la plus faible.",
+      "autoSwitchOnAuthFailure": "Changement auto en cas d'échec d'auth",
+      "autoSwitchOnAuthFailureDescription": "Basculer automatiquement vers un autre compte authentifié en cas d'échec d'authentification"
     },
     "priority": {
       "title": "Ordre de priorité des comptes",

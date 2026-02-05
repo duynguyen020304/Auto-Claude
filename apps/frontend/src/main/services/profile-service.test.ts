@@ -15,7 +15,7 @@ import {
   testConnection,
   trackAPIProfileUsage
 } from './profile-service';
-import type { APIProfile, ProfilesFile, TestConnectionResult } from '../../shared/types/profile';
+import type { ProfilesFile, } from '../../shared/types/profile';
 
 // Mock profile-manager
 vi.mock('../utils/profile-manager', () => ({

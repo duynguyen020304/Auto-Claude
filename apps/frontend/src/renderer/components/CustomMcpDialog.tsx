@@ -21,7 +21,7 @@ import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Switch } from './ui/switch';
 import { useTranslation } from 'react-i18next';
 import type { CustomMcpServer } from '../../shared/types';
-import { Terminal, Globe, X, Github, Loader2, ExternalLink } from 'lucide-react';
+import { Terminal, Globe, X, Github, ExternalLink } from 'lucide-react';
 import { JsonEditor } from './JsonEditor';
 
 interface CustomMcpDialogProps {

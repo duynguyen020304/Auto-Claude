@@ -7,7 +7,6 @@ import { mkdirSync, rmSync, existsSync, mkdtempSync } from 'fs';
 import { tmpdir } from 'os';
 import path from 'path';
 import type { ClaudeProfile, IPCResult } from '../../shared/types';
-
 // Test directories - use secure temp directory with random suffix
 let TEST_DIR: string;
 let TEST_CONFIG_DIR: string;

@@ -169,7 +169,7 @@ export function Insights({ projectId }: InsightsProps) {
     if (isUserAtBottom && viewportEl) {
       viewportEl.scrollTop = viewportEl.scrollHeight;
     }
-  }, [session?.messages, streamingContent, isUserAtBottom, viewportEl]);
+  }, [isUserAtBottom, viewportEl]);
 
   // Focus textarea on mount
   useEffect(() => {

@@ -61,13 +61,17 @@ import path from 'path';
 import { isValidConfigDir } from '../utils/config-path-validator';
 
 describe('isValidConfigDir - Security Validation', () => {
-  // biome-ignore lint/suspicious/noExplicitAny: Mock type
-  let consoleWarnSpy: any;
+  let _originalHomedir: string;
+  let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
+    // Store original homedir for restoration
+    _originalHomedir = os.homedir();
+
     // Spy on console.warn to suppress warning output during tests
-    // biome-ignore lint/suspicious/noEmptyBlockStatements: No-op mock implementation
-    consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {
+      /* intentionally empty - suppress console output during tests */
+    });
   });
 
   afterEach(() => {

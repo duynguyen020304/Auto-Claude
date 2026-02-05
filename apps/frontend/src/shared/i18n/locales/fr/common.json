@@ -270,6 +270,12 @@
     "selectedCount": "{{count}} sélectionné(s)",
     "noResultsFound": "Aucun résultat trouvé",
     "reset": "Réinitialiser",
+    "sort": {
+      "label": "Trier",
+      "newest": "Plus récent",
+      "oldest": "Plus ancien",
+      "largest": "Plus grand"
+    },
     "pullRequests": "Pull Requests",
     "open": "ouvert",
     "selectPRToView": "Sélectionnez une pull request pour voir les détails",
@@ -397,6 +403,8 @@
     "branchUpdateFailed": "Échec de la mise à jour de la branche",
     "allPRsLoaded": "Tous les PRs chargés",
     "maxPRsShown": "Affichage des 100 premières PRs",
+    "loadMore": "Charger plus",
+    "loadingMore": "Chargement...",
     "workflowsAwaitingApproval": "{{count}} workflow en attente d'approbation",
     "workflowsAwaitingApproval_plural": "{{count}} workflows en attente d'approbation",
     "blockedByWorkflows": "Bloqué",
@@ -579,8 +587,7 @@
     "clickToOpenSettings": "Cliquez pour ouvrir les Paramètres →",
     "sessionShort": "Utilisation session 5 heures",
     "weeklyShort": "Utilisation hebdomadaire 7 jours",
-    "swap": "Changer",
-    "account": "Compte"
+    "swap": "Changer"
   },
   "oauth": {
     "enterCode": "Saisie manuelle du code (secours)",
@@ -780,6 +787,16 @@
     "anthropic": "Anthropic",
     "zai": "z.ai",
     "zhipu": "ZHIPU AI"
+  },
+  "git": {
+    "branchGroups": {
+      "local": "Branches Locales",
+      "remote": "Branches Distantes"
+    },
+    "branchType": {
+      "local": "Locale",
+      "remote": "Distante"
+    }
   },
   "roadmapProgress": {
     "elapsedTime": "Écoulé",

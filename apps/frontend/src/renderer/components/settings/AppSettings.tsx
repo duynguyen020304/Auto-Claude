@@ -18,7 +18,6 @@ import {
   Globe,
   Code,
   Bug,
-  Server,
   Terminal,
   Users,
 } from "lucide-react";
@@ -45,29 +44,25 @@ import {
   FullScreenDialogBody,
   FullScreenDialogFooter,
   FullScreenDialogTitle,
-  FullScreenDialogDescription,
-} from "../ui/full-screen-dialog";
-import { Button } from "../ui/button";
-import { ScrollArea } from "../ui/scroll-area";
-import { cn } from "../../lib/utils";
-import { useSettings } from "./hooks/useSettings";
-import { ThemeSettings } from "./ThemeSettings";
-import { DisplaySettings } from "./DisplaySettings";
-import { LanguageSettings } from "./LanguageSettings";
-import { GeneralSettings } from "./GeneralSettings";
-import { AdvancedSettings } from "./AdvancedSettings";
-import { DevToolsSettings } from "./DevToolsSettings";
-import { DebugSettings } from "./DebugSettings";
-import { TerminalFontSettings } from "./terminal-font-settings/TerminalFontSettings";
-import { ProfileList } from "./ProfileList";
-import { AccountSettings } from "./AccountSettings";
-import { ProjectSelector } from "./ProjectSelector";
-import {
-  ProjectSettingsContent,
-  ProjectSettingsSection,
-} from "./ProjectSettingsContent";
-import { useProjectStore } from "../../stores/project-store";
-import type { UseProjectSettingsReturn } from "../project-settings/hooks/useProjectSettings";
+  FullScreenDialogDescription
+} from '../ui/full-screen-dialog';
+import { Button } from '../ui/button';
+import { ScrollArea } from '../ui/scroll-area';
+import { cn } from '../../lib/utils';
+import { useSettings } from './hooks/useSettings';
+import { ThemeSettings } from './ThemeSettings';
+import { DisplaySettings } from './DisplaySettings';
+import { LanguageSettings } from './LanguageSettings';
+import { GeneralSettings } from './GeneralSettings';
+import { AdvancedSettings } from './AdvancedSettings';
+import { DevToolsSettings } from './DevToolsSettings';
+import { DebugSettings } from './DebugSettings';
+import { TerminalFontSettings } from './terminal-font-settings/TerminalFontSettings';
+import { AccountSettings } from './AccountSettings';
+import { ProjectSelector } from './ProjectSelector';
+import { ProjectSettingsContent, ProjectSettingsSection } from './ProjectSettingsContent';
+import { useProjectStore } from '../../stores/project-store';
+import type { UseProjectSettingsReturn } from '../project-settings/hooks/useProjectSettings';
 
 interface AppSettingsDialogProps {
   open: boolean;

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { AppSettings } from '../../shared/types';
-import type { APIProfile, ProfileFormData, TestConnectionResult, DiscoverModelsResult, ModelInfo } from '../../shared/types/profile';
-import type { ClaudeUsageSnapshot, DailyUsageData } from '../../shared/types/agent';
+import type { APIProfile, ProfileFormData, TestConnectionResult, ModelInfo } from '@shared/types/profile';
+import type { ClaudeUsageSnapshot, DailyUsageData } from '@shared/types/agent';
 import { DEFAULT_APP_SETTINGS } from '../../shared/constants';
 import { toast } from '../hooks/use-toast';
 import { markSettingsLoaded } from '../lib/sentry';
@@ -160,7 +160,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       if (result.success && result.data) {
         set((state) => ({
           profiles: state.profiles.map((p) =>
-            p.id === result.data!.id ? result.data! : p
+            p.id === result.data?.id ? result.data! : p
           ),
           profilesLoading: false
         }));
