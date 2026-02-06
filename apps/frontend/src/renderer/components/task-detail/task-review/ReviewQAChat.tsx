@@ -57,9 +57,10 @@ interface ReviewQAChatProps {
   taskId: string;
   projectId: string;
   sessionId?: string;
+  initialQuestion?: string;
 }
 
-export function ReviewQAChat({ specId, taskId, projectId, sessionId }: ReviewQAChatProps) {
+export function ReviewQAChat({ specId, taskId, projectId, sessionId, initialQuestion }: ReviewQAChatProps) {
   const { t } = useTranslation(['common', 'tasks', 'insights']);
 
   // Create markdown components with translated accessibility text
@@ -74,6 +75,7 @@ export function ReviewQAChat({ specId, taskId, projectId, sessionId }: ReviewQAC
   const [error, setError] = useState<string | null>(null);
   const [isUserAtBottom, setIsUserAtBottom] = useState(true);
   const [viewportEl, setViewportEl] = useState<HTMLElement | null>(null);
+  const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -117,6 +119,20 @@ export function ReviewQAChat({ specId, taskId, projectId, sessionId }: ReviewQAC
   useEffect(() => {
     textareaRef.current?.focus();
   }, []);
+
+  // Handle initial question from QuickQuestionChips
+  useEffect(() => {
+    if (initialQuestion && initialQuestion.trim() && initialQuestion !== pendingQuestion) {
+      setPendingQuestion(initialQuestion);
+      setInputValue(initialQuestion);
+      // Auto-send the question after a short delay to let the input update
+      const timer = setTimeout(() => {
+        handleSend();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQuestion]);
 
   // Set up IPC event listeners for streaming responses
   useEffect(() => {
@@ -180,6 +196,7 @@ export function ReviewQAChat({ specId, taskId, projectId, sessionId }: ReviewQAC
     };
     setMessages((prev) => [...prev, userMessage]);
     setInputValue('');
+    setPendingQuestion(null); // Clear pending question after sending
     setError(null);
     setIsLoading(true);
     setIsUserAtBottom(true); // Resume auto-scroll when user sends a message

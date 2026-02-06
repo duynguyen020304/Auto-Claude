@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { useToast } from '../../hooks/use-toast';
@@ -87,6 +88,9 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
   const progressPercent = calculateProgress(task.subtasks);
   const completedSubtasks = task.subtasks.filter(s => s.status === 'completed').length;
   const totalSubtasks = task.subtasks.length;
+
+  // Quick question state for Ask AI tab
+  const [quickQuestion, setQuickQuestion] = useState<string | undefined>(undefined);
 
   // Event Handlers
   const handleStartStop = async () => {
@@ -592,9 +596,31 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
                 {/* Ask AI Tab - Only visible during human_review */}
                 {task.status === 'human_review' && (
                   <TabsContent value="ask-ai" className="flex-1 min-h-0 overflow-hidden mt-0">
-                    {/* Content will be added in subtask 5-2 */}
-                    <div className="flex h-full items-center justify-center text-muted-foreground">
-                      <p>{t('tasks:reviewQA.tab', 'Ask AI')}</p>
+                    <div className="flex h-full flex-col">
+                      {/* Quick Question Chips */}
+                      {state.worktreeDiff && state.worktreeDiff.files && state.worktreeDiff.files.length > 0 && (
+                        <div className="border-b border-border px-6 py-4">
+                          <QuickQuestionChips
+                            changedFiles={state.worktreeDiff.files}
+                            onQuestionClick={(question) => setQuickQuestion(question)}
+                          />
+                        </div>
+                      )}
+                      {/* Review QA Chat */}
+                      <div className="flex-1 min-h-0">
+                        {activeProject ? (
+                          <ReviewQAChat
+                            specId={task.specId}
+                            taskId={task.id}
+                            projectId={activeProject.id}
+                            initialQuestion={quickQuestion}
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-muted-foreground">
+                            <p>No active project</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </TabsContent>
                 )}
