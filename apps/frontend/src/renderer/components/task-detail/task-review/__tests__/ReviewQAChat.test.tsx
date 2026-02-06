@@ -6,7 +6,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { ReviewQAMessage, ReviewQAStreamChunk } from '../../../../shared/types';
+import type { ReviewQAMessage, ReviewQAStreamChunk } from '../../../../../shared/types';
 
 // Helper to create test messages
 function createTestMessage(overrides: Partial<ReviewQAMessage> = {}): ReviewQAMessage {
@@ -72,14 +72,14 @@ describe('ReviewQAChat', () => {
     });
 
     it('should accept optional sessionId prop', () => {
-      const propsWithSession = {
+      const propsWithSession: { specId: string; taskId: string; projectId: string; sessionId?: string } = {
         specId: 'spec-001',
         taskId: 'task-001',
         projectId: 'project-001',
         sessionId: 'custom-session-123'
       };
 
-      const propsWithoutSession = {
+      const propsWithoutSession: { specId: string; taskId: string; projectId: string; sessionId?: string } = {
         specId: 'spec-001',
         taskId: 'task-001',
         projectId: 'project-001'
@@ -90,14 +90,14 @@ describe('ReviewQAChat', () => {
     });
 
     it('should accept optional initialQuestion prop', () => {
-      const propsWithQuestion = {
+      const propsWithQuestion: { specId: string; taskId: string; projectId: string; initialQuestion?: string } = {
         specId: 'spec-001',
         taskId: 'task-001',
         projectId: 'project-001',
         initialQuestion: 'What changed in this task?'
       };
 
-      const propsWithoutQuestion = {
+      const propsWithoutQuestion: { specId: string; taskId: string; projectId: string; initialQuestion?: string } = {
         specId: 'spec-001',
         taskId: 'task-001',
         projectId: 'project-001'
@@ -379,7 +379,7 @@ describe('ReviewQAChat', () => {
       const errorChunk: ReviewQAStreamChunk = { type: 'error', error: 'Test error' };
 
       if (errorChunk.type === 'error') {
-        error = errorChunk.error;
+        error = errorChunk.error ?? null;
         streamingContent = '';
       }
 
@@ -464,7 +464,7 @@ describe('ReviewQAChat', () => {
     });
 
     it('should not send message on Shift+Enter (allow newline)', () => {
-      const key = 'Enter';
+      const key: string = 'Enter';
       const shiftKey = true;
 
       const shouldSend = key === 'Enter' && !shiftKey;
@@ -473,7 +473,7 @@ describe('ReviewQAChat', () => {
     });
 
     it('should not send message on other keys', () => {
-      const key = 'a';
+      const key: string = 'a';
       const shiftKey = false;
 
       const shouldSend = key === 'Enter' && !shiftKey;
@@ -532,8 +532,8 @@ describe('ReviewQAChat', () => {
       const chunk = createTestStreamChunk({ type: 'text', content: 'Hello' });
 
       // Matching chunk
-      const matchingSessionId = 'session-123';
-      const matchingProjectId = 'project-001';
+      const matchingSessionId: string = 'session-123';
+      const matchingProjectId: string = 'project-001';
 
       const shouldHandleMatching =
         matchingSessionId === effectiveSessionId && matchingProjectId === projectId;
@@ -541,14 +541,14 @@ describe('ReviewQAChat', () => {
       expect(shouldHandleMatching).toBe(true);
 
       // Non-matching session ID
-      const nonMatchingSessionId = 'session-456';
+      const nonMatchingSessionId: string = 'session-456';
       const shouldHandleSession =
         nonMatchingSessionId === effectiveSessionId && matchingProjectId === projectId;
 
       expect(shouldHandleSession).toBe(false);
 
       // Non-matching project ID
-      const nonMatchingProjectId = 'project-999';
+      const nonMatchingProjectId: string = 'project-999';
       const shouldHandleProject =
         matchingSessionId === effectiveSessionId && nonMatchingProjectId === projectId;
 
@@ -561,15 +561,15 @@ describe('ReviewQAChat', () => {
       const errorMessage = 'Test error';
 
       // Matching
-      const matchingSessionId = 'session-123';
-      const matchingProjectId = 'project-001';
+      const matchingSessionId: string = 'session-123';
+      const matchingProjectId: string = 'project-001';
       const shouldHandleMatching =
         matchingSessionId === effectiveSessionId && matchingProjectId === projectId;
 
       expect(shouldHandleMatching).toBe(true);
 
       // Non-matching
-      const nonMatchingSessionId = 'session-456';
+      const nonMatchingSessionId: string = 'session-456';
       const shouldHandleNonMatching =
         nonMatchingSessionId === effectiveSessionId && matchingProjectId === projectId;
 
@@ -646,7 +646,7 @@ describe('ReviewQAChat', () => {
     });
 
     it('should not process empty initial question', () => {
-      const initialQuestion = '';
+      const initialQuestion: string = '';
       let shouldProcess = false;
 
       if (initialQuestion && initialQuestion.trim()) {
@@ -657,7 +657,7 @@ describe('ReviewQAChat', () => {
     });
 
     it('should not process whitespace-only initial question', () => {
-      const initialQuestion = '   ';
+      const initialQuestion: string = '   ';
       let shouldProcess = false;
 
       if (initialQuestion && initialQuestion.trim()) {

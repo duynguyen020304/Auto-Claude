@@ -6,7 +6,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { WorktreeDiffFile } from '../../../../shared/types';
+import type { WorktreeDiffFile } from '../../../../../shared/types';
 
 // Helper to create test WorktreeDiffFile
 function createTestFile(overrides: Partial<WorktreeDiffFile> = {}): WorktreeDiffFile {
