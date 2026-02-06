@@ -2,6 +2,7 @@
   "refreshTasks": "Actualiser les tâches",
   "status": {
     "backlog": "Backlog",
+    "queue": "File d'attente",
     "todo": "À faire",
     "in_progress": "En cours",
     "review": "Révision",
@@ -424,6 +425,29 @@
       "push": "Pousser",
       "fetch": "Récupérer",
       "other": "Autre"
+    }
+  },
+  "reviewQA": {
+    "tab": "Demander à l'IA",
+    "emptyState": {
+      "title": "Poser une question sur cette tâche",
+      "description": "Obtenez des explications basées sur l'IA des modifications apportées dans cette tâche. Posez des questions sur des fichiers spécifiques, comprenez les raisons des modifications ou obtenez un résumé de tous les changements."
+    },
+    "assistant": "Assistant",
+    "you": "Vous",
+    "thinking": "Réflexion...",
+    "unknownError": "Une erreur inconnue s'est produite",
+    "inputPlaceholder": "Poser une question sur les changements de cette tâche...",
+    "inputHint": "Appuyez sur Entrée pour envoyer, Shift+Entrée pour nouvelle ligne",
+    "send": "Envoyer",
+    "stop": "Arrêter",
+    "retry": "Réessayer",
+    "quickQuestions": {
+      "summary": "Résumer tous les changements",
+      "whyDeleted": "Pourquoi {{fileName}} a-t-il été supprimé ?",
+      "whatIsNew": "Quel est le but de {{fileName}} ?",
+      "explainChange": "Expliquer les modifications de {{fileName}}",
+      "whyChange": "Pourquoi {{fileName}} a-t-il été modifié ?"
     }
   }
 }

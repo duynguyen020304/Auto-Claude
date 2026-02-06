@@ -476,7 +476,27 @@ const browserMockAPI: ElectronAPI = {
   requestHistoricalUsage: async (_days: number) => ({
     success: true,
     data: null
-  })
+  }),
+
+  // Review QA operations (AI-powered code explanation)
+  sendReviewQAMessage: (_sessionId: string, _specId: string, _projectId: string, _question: string) => {
+    // No-op in browser mode
+  },
+  stopReviewQA: async () => ({
+    success: false,
+    error: 'Not available in browser mode'
+  }),
+  getReviewQAStatus: async () => ({
+    success: true,
+    data: { active: false }
+  }),
+  getReviewQASessions: async () => ({
+    success: true,
+    data: []
+  }),
+  onReviewQAStreamChunk: () => () => {},
+  onReviewQAProgress: () => () => {},
+  onReviewQAError: () => () => {}
 };
 
 /**

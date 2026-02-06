@@ -545,6 +545,22 @@ export const IPC_CHANNELS = {
   // Release events (main -> renderer)
   RELEASE_PROGRESS: 'release:progress',
 
+  // Review & QA operations (AI-powered code explanation)
+  REVIEW_QA_START: 'reviewQa:start',           // Start a QA review session
+  REVIEW_QA_STOP: 'reviewQa:stop',             // Stop a running review
+  REVIEW_QA_GET_STATUS: 'reviewQa:getStatus',  // Get review status
+  REVIEW_QA_GET_RESULTS: 'reviewQa:getResults', // Get review results
+  REVIEW_QA_SEND_MESSAGE: 'reviewQa:sendMessage', // Send follow-up message
+  REVIEW_QA_GET_LOGS: 'reviewQa:getLogs',       // Get review logs
+  REVIEW_QA_GET_REPORT: 'reviewQa:getReport',   // Get QA report
+
+  // Review & QA events (main -> renderer)
+  REVIEW_QA_PROGRESS: 'reviewQa:progress',     // Review progress updates
+  REVIEW_QA_COMPLETE: 'reviewQa:complete',     // Review completed
+  REVIEW_QA_ERROR: 'reviewQa:error',           // Review error
+  REVIEW_QA_LOG: 'reviewQa:log',               // Log message
+  REVIEW_QA_STREAM_CHUNK: 'reviewQa:streamChunk', // Streaming response chunk
+
   // Debug operations
   DEBUG_GET_INFO: 'debug:getInfo',
   DEBUG_OPEN_LOGS_FOLDER: 'debug:openLogsFolder',

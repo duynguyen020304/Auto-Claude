@@ -15,3 +15,5 @@ export { ConflictDetailsDialog } from './ConflictDetailsDialog';
 export { CreatePRDialog } from './CreatePRDialog';
 export { LoadingMessage, NoWorkspaceMessage, StagedInProjectMessage } from './WorkspaceMessages';
 export { getSeverityIcon, getSeverityVariant } from './utils';
+export { ReviewQAChat } from './ReviewQAChat';
+export { QuickQuestionChips } from './QuickQuestionChips';

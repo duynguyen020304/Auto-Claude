@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { useToast } from '../../hooks/use-toast';
@@ -43,6 +44,7 @@ import { TaskSubtasks } from './TaskSubtasks';
 import { TaskLogs } from './TaskLogs';
 import { TaskFiles } from './TaskFiles';
 import { TaskReview } from './TaskReview';
+import { ReviewQAChat, QuickQuestionChips } from './task-review';
 import type { Task, WorktreeCreatePROptions } from '../../../shared/types';
 
 interface TaskDetailModalProps {
@@ -86,6 +88,9 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
   const progressPercent = calculateProgress(task.subtasks);
   const completedSubtasks = task.subtasks.filter(s => s.status === 'completed').length;
   const totalSubtasks = task.subtasks.length;
+
+  // Quick question state for Ask AI tab
+  const [quickQuestion, setQuickQuestion] = useState<string | undefined>(undefined);
 
   // Event Handlers
   const handleStartStop = async () => {
@@ -495,6 +500,14 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
                       {t('tasks:files.tab')}
                     </TabsTrigger>
                   )}
+                  {task.status === 'human_review' && (
+                    <TabsTrigger
+                      value="ask-ai"
+                      className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5 text-sm"
+                    >
+                      {t('tasks:reviewQA.tab', 'Ask AI')}
+                    </TabsTrigger>
+                  )}
                 </TabsList>
 
                 {/* Overview Tab */}
@@ -577,6 +590,38 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
                 {showFilesTab && (
                   <TabsContent value="files" className="flex-1 min-h-0 overflow-hidden mt-0">
                     <TaskFiles task={task} />
+                  </TabsContent>
+                )}
+
+                {/* Ask AI Tab - Only visible during human_review */}
+                {task.status === 'human_review' && (
+                  <TabsContent value="ask-ai" className="flex-1 min-h-0 overflow-hidden mt-0">
+                    <div className="flex h-full flex-col">
+                      {/* Quick Question Chips */}
+                      {state.worktreeDiff && state.worktreeDiff.files && state.worktreeDiff.files.length > 0 && (
+                        <div className="border-b border-border px-6 py-4">
+                          <QuickQuestionChips
+                            changedFiles={state.worktreeDiff.files}
+                            onQuestionClick={(question) => setQuickQuestion(question)}
+                          />
+                        </div>
+                      )}
+                      {/* Review QA Chat */}
+                      <div className="flex-1 min-h-0">
+                        {activeProject ? (
+                          <ReviewQAChat
+                            specId={task.specId}
+                            taskId={task.id}
+                            projectId={activeProject.id}
+                            initialQuestion={quickQuestion}
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-muted-foreground">
+                            <p>No active project</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </TabsContent>
                 )}
               </Tabs>

@@ -542,3 +542,42 @@ export interface TaskStartOptions {
   model?: string;
   baseBranch?: string; // Override base branch for worktree creation
 }
+
+// Review Q&A Types - for AI-powered code explanation in human review phase
+
+export type ReviewQARole = 'user' | 'assistant';
+
+export interface ReviewQAMessage {
+  id: string;
+  role: ReviewQARole;
+  content: string;
+  timestamp: Date;
+  // For streaming responses
+  isStreaming?: boolean;
+}
+
+// Context sources for code explanation
+export interface ReviewQAContext {
+  specId: string;
+  taskId: string;
+  // Aggregated context from multiple sources
+  spec?: string;  // spec.md content
+  plan?: string;  // implementation_plan.json content
+  diff?: WorktreeDiff;  // Git diff information
+  logs?: TaskLogs;  // Execution logs
+  // Changed files for quick question chips
+  changedFiles?: WorktreeDiffFile[];
+}
+
+// Streaming response chunk (similar to InsightsStreamChunk)
+export interface ReviewQAStreamChunk {
+  type: 'text' | 'error' | 'done';
+  content?: string;
+  error?: string;
+}
+
+// Model configuration for review QA
+export interface ReviewQAConfig {
+  model?: string;
+  thinkingLevel?: string;
+}
