@@ -1,4 +1,4 @@
-import { Search, Globe, AlertTriangle, TrendingUp } from 'lucide-react';
+import { Search, Globe, AlertTriangle, TrendingUp, Key, RefreshCw } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -9,12 +9,17 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from './ui/alert-dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { useSettingsStore } from '../stores/settings-store';
+import { useTranslation } from 'react-i18next';
 
 interface CompetitorAnalysisDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAccept: () => void;
   onDecline: () => void;
+  selectedProfileId: string | undefined;
+  onProfileChange: (profileId: string | undefined) => void;
 }
 
 export function CompetitorAnalysisDialog({
@@ -22,7 +27,11 @@ export function CompetitorAnalysisDialog({
   onOpenChange,
   onAccept,
   onDecline,
+  selectedProfileId,
+  onProfileChange,
 }: CompetitorAnalysisDialogProps) {
+  const { t } = useTranslation(['roadmap', 'common']);
+  const { profiles, activeProfileId } = useSettingsStore();
   const handleAccept = () => {
     onAccept();
     onOpenChange(false);
@@ -47,6 +56,39 @@ export function CompetitorAnalysisDialog({
         </AlertDialogHeader>
 
         <div className="py-4 space-y-4">
+          {/* API Profile Selector */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">{t('roadmap:profileSelector.label')}</label>
+            <Select
+              value={selectedProfileId ?? 'auto'}
+              onValueChange={(value) => onProfileChange(value === 'auto' ? undefined : value)}
+            >
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder={t('roadmap:profileSelector.chooseProfile')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">
+                  <div className="flex items-center gap-2">
+                    <RefreshCw className="h-4 w-4 shrink-0" />
+                    <span className="font-medium">{t('roadmap:profileSelector.useActiveProfile')}</span>
+                  </div>
+                </SelectItem>
+                {profiles.map((profile) => (
+                  <SelectItem key={profile.id} value={profile.id}>
+                    <div className="flex items-center gap-2">
+                      <Key className="h-4 w-4 shrink-0" />
+                      <div>
+                        <span className="font-medium">{profile.name}</span>
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          ({profile.baseUrl})
+                        </span>
+                      </div>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           {/* What it does */}
           <div className="rounded-lg bg-primary/5 border border-primary/20 p-4">
             <h4 className="text-sm font-medium text-foreground mb-2">

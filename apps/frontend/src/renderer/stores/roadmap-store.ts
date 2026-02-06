@@ -340,11 +340,12 @@ export async function loadRoadmap(projectId: string): Promise<void> {
 export function generateRoadmap(
   projectId: string,
   enableCompetitorAnalysis?: boolean,
-  refreshCompetitorAnalysis?: boolean
+  refreshCompetitorAnalysis?: boolean,
+  apiProfile?: string
 ): void {
   // Debug logging
   if (window.DEBUG) {
-    console.log('[Roadmap] Starting generation:', { projectId, enableCompetitorAnalysis, refreshCompetitorAnalysis });
+    console.log('[Roadmap] Starting generation:', { projectId, enableCompetitorAnalysis, refreshCompetitorAnalysis, apiProfile });
   }
 
   useRoadmapStore.getState().setGenerationStatus({
@@ -352,17 +353,18 @@ export function generateRoadmap(
     progress: 0,
     message: 'Starting roadmap generation...'
   });
-  window.electronAPI.generateRoadmap(projectId, enableCompetitorAnalysis, refreshCompetitorAnalysis);
+  window.electronAPI.generateRoadmap(projectId, enableCompetitorAnalysis, refreshCompetitorAnalysis, apiProfile);
 }
 
 export function refreshRoadmap(
   projectId: string,
   enableCompetitorAnalysis?: boolean,
-  refreshCompetitorAnalysis?: boolean
+  refreshCompetitorAnalysis?: boolean,
+  apiProfile?: string
 ): void {
   // Debug logging
   if (window.DEBUG) {
-    console.log('[Roadmap] Starting refresh:', { projectId, enableCompetitorAnalysis, refreshCompetitorAnalysis });
+    console.log('[Roadmap] Starting refresh:', { projectId, enableCompetitorAnalysis, refreshCompetitorAnalysis, apiProfile });
   }
 
   useRoadmapStore.getState().setGenerationStatus({
@@ -370,7 +372,7 @@ export function refreshRoadmap(
     progress: 0,
     message: 'Refreshing roadmap...'
   });
-  window.electronAPI.refreshRoadmap(projectId, enableCompetitorAnalysis, refreshCompetitorAnalysis);
+  window.electronAPI.refreshRoadmap(projectId, enableCompetitorAnalysis, refreshCompetitorAnalysis, apiProfile);
 }
 
 export async function stopRoadmap(projectId: string): Promise<boolean> {
