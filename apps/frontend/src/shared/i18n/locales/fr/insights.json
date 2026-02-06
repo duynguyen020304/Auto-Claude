@@ -99,6 +99,12 @@
     "chooseModelThinking": "Choisir le modèle & niveau de réflexion",
     "balanced": "Équilibré"
   },
+  "profileSelector": {
+    "selectLabel": "Sélectionner le profil API",
+    "custom": "Personnaliser...",
+    "noProfiles": "Aucun profil API disponible",
+    "chooseProfile": "Choisir un profil API"
+  },
   "roadmap": {
     "featureCard": {
       "exploreInChat": "Explorer dans la discussion Insights",
