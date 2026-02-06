@@ -44,6 +44,7 @@ import {
 import { useTaskStore } from '../stores/task-store';
 import { ChatHistorySidebar } from './ChatHistorySidebar';
 import { InsightsModelSelector } from './InsightsModelSelector';
+import { InsightsProfileSelector } from './InsightsProfileSelector';
 import { RoadmapFeatureCard } from './RoadmapFeatureCard';
 import { IdeationItemCard } from './IdeationItemCard';
 import type { InsightsChatMessage, InsightsModelConfig, InsightsSessionSummary, RoadmapFeature, Idea } from '../../shared/types';
@@ -107,6 +108,10 @@ export function Insights({ projectId }: InsightsProps) {
   const selectTask = useTaskStore((state) => state.selectTask);
   const abortControllers = useInsightsStore((state) => state.abortControllers);
   const sessionStates = useInsightsStore((state) => state.sessionStates);
+  const setApiProfileId = useInsightsStore((state) => state.setApiProfileId);
+
+  // Get the current session's API profile ID (undefined = use default/active profile)
+  const currentApiProfileId = useInsightsStore((state) => state.getCurrentSessionState()?.apiProfileId);
 
   // Create markdown components with translated accessibility text
   const markdownComponents = useMemo(() => ({
@@ -366,6 +371,12 @@ export function Insights({ projectId }: InsightsProps) {
     }
   };
 
+  const handleApiProfileChange = (profileId: string | undefined) => {
+    // Update the API profile ID for the current session
+    // undefined means use default/active profile
+    setApiProfileId(profileId);
+  };
+
   const handleAbortSession = (sessionId: string) => {
     abortGeneration(sessionId);
   };
@@ -618,6 +629,11 @@ Can you help me understand this idea better and how to implement it?`;
             <InsightsModelSelector
               currentConfig={session?.modelConfig}
               onConfigChange={handleModelConfigChange}
+              disabled={isLoading}
+            />
+            <InsightsProfileSelector
+              currentProfileId={currentApiProfileId}
+              onProfileChange={handleApiProfileChange}
               disabled={isLoading}
             />
             <Button
