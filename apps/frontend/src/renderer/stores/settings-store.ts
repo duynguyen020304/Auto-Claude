@@ -185,11 +185,39 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     try {
       const result = await window.electronAPI.deleteAPIProfile(profileId);
       if (result.success) {
-        set((state) => ({
-          profiles: state.profiles.filter((p) => p.id !== profileId),
-          activeProfileId: state.activeProfileId === profileId ? null : state.activeProfileId,
-          profilesLoading: false
-        }));
+        set((state) => {
+          // Clean up featureApiProfiles settings that reference the deleted profile
+          const featureApiProfiles = state.settings.featureApiProfiles || {};
+          const cleanedFeatureApiProfiles = {
+            insights: featureApiProfiles.insights === profileId ? undefined : featureApiProfiles.insights,
+            roadmap: featureApiProfiles.roadmap === profileId ? undefined : featureApiProfiles.roadmap,
+            ideation: featureApiProfiles.ideation === profileId ? undefined : featureApiProfiles.ideation
+          };
+
+          // Log cleanup if any references were found
+          const hadReferences =
+            featureApiProfiles.insights === profileId ||
+            featureApiProfiles.roadmap === profileId ||
+            featureApiProfiles.ideation === profileId;
+
+          if (hadReferences) {
+            console.warn(
+              `[settings-store] Deleted profile '${profileId}' was referenced in feature settings. ` +
+              `Cleaned up featureApiProfiles:`,
+              { before: featureApiProfiles, after: cleanedFeatureApiProfiles }
+            );
+          }
+
+          return {
+            profiles: state.profiles.filter((p) => p.id !== profileId),
+            activeProfileId: state.activeProfileId === profileId ? null : state.activeProfileId,
+            profilesLoading: false,
+            settings: {
+              ...state.settings,
+              featureApiProfiles: cleanedFeatureApiProfiles
+            }
+          };
+        });
         return true;
       }
       set({
