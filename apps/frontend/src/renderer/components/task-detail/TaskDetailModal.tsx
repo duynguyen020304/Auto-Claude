@@ -43,6 +43,7 @@ import { TaskSubtasks } from './TaskSubtasks';
 import { TaskLogs } from './TaskLogs';
 import { TaskFiles } from './TaskFiles';
 import { TaskReview } from './TaskReview';
+import { ReviewQAChat, QuickQuestionChips } from './task-review';
 import type { Task, WorktreeCreatePROptions } from '../../../shared/types';
 
 interface TaskDetailModalProps {
@@ -495,6 +496,14 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
                       {t('tasks:files.tab')}
                     </TabsTrigger>
                   )}
+                  {task.status === 'human_review' && (
+                    <TabsTrigger
+                      value="ask-ai"
+                      className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2.5 text-sm"
+                    >
+                      {t('tasks:reviewQA.tab', 'Ask AI')}
+                    </TabsTrigger>
+                  )}
                 </TabsList>
 
                 {/* Overview Tab */}
@@ -577,6 +586,16 @@ function TaskDetailModalContent({ open, task, onOpenChange, onSwitchToTerminals,
                 {showFilesTab && (
                   <TabsContent value="files" className="flex-1 min-h-0 overflow-hidden mt-0">
                     <TaskFiles task={task} />
+                  </TabsContent>
+                )}
+
+                {/* Ask AI Tab - Only visible during human_review */}
+                {task.status === 'human_review' && (
+                  <TabsContent value="ask-ai" className="flex-1 min-h-0 overflow-hidden mt-0">
+                    {/* Content will be added in subtask 5-2 */}
+                    <div className="flex h-full items-center justify-center text-muted-foreground">
+                      <p>{t('tasks:reviewQA.tab', 'Ask AI')}</p>
+                    </div>
                   </TabsContent>
                 )}
               </Tabs>
