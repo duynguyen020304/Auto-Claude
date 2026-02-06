@@ -167,10 +167,13 @@ describe('review-qa IPC handlers', () => {
 
       const listener = getListener(IPC_CHANNELS.REVIEW_QA_SEND_MESSAGE);
 
+      // Verify listener exists
+      expect(listener).toBeDefined();
+
       // This test verifies the listener is callable and handles valid inputs
       // The actual service integration is verified through integration tests
       await expect(
-        listener(
+        listener!(
           null,
           'test-session-id',
           '001-test-spec',
@@ -187,9 +190,12 @@ describe('review-qa IPC handlers', () => {
       const listener = getListener(IPC_CHANNELS.REVIEW_QA_SEND_MESSAGE);
       const config = { model: 'claude-sonnet-4', thinkingLevel: 'high' };
 
+      // Verify listener exists
+      expect(listener).toBeDefined();
+
       // Verify the listener accepts config parameter
       await expect(
-        listener(
+        listener!(
           null,
           'test-session-id',
           '001-test-spec',
@@ -204,8 +210,9 @@ describe('review-qa IPC handlers', () => {
       mockProjectStore.getProject.mockReturnValue(undefined);
 
       const listener = getListener(IPC_CHANNELS.REVIEW_QA_SEND_MESSAGE);
+      expect(listener).toBeDefined();
 
-      await listener(
+      await listener!(
         null,
         'test-session-id',
         '001-test-spec',
@@ -231,8 +238,9 @@ describe('review-qa IPC handlers', () => {
       });
 
       const listener = getListener(IPC_CHANNELS.REVIEW_QA_SEND_MESSAGE);
+      expect(listener).toBeDefined();
 
-      await listener(
+      await listener!(
         null,
         'test-session-id',
         '001-test-spec',
@@ -256,8 +264,9 @@ describe('review-qa IPC handlers', () => {
       vi.mocked(existsSync).mockReturnValue(false);
 
       const listener = getListener(IPC_CHANNELS.REVIEW_QA_SEND_MESSAGE);
+      expect(listener).toBeDefined();
 
-      await listener(
+      await listener!(
         null,
         'test-session-id',
         '001-test-spec',
@@ -281,8 +290,9 @@ describe('review-qa IPC handlers', () => {
       mockReviewQAService.startSession.mockRejectedValue(new Error('Python not found'));
 
       const listener = getListener(IPC_CHANNELS.REVIEW_QA_SEND_MESSAGE);
+      expect(listener).toBeDefined();
 
-      await listener(
+      await listener!(
         null,
         'test-session-id',
         '001-test-spec',
@@ -308,7 +318,7 @@ describe('review-qa IPC handlers', () => {
       expect(typeof handler).toBe('function');
 
       // Call with test data
-      const result = await handler(null, 'test-session-id') as IPCResult;
+      const result = await handler!(null, 'test-session-id') as IPCResult;
 
       // Verify it returns a result object
       expect(result).toBeDefined();
@@ -319,7 +329,7 @@ describe('review-qa IPC handlers', () => {
       mockReviewQAService.isSessionActive.mockReturnValue(false);
 
       const handler = getHandler(IPC_CHANNELS.REVIEW_QA_STOP);
-      const result = await handler(null, 'test-session-id') as IPCResult;
+      const result = await handler!(null, 'test-session-id') as IPCResult;
 
       expect(result).toEqual({
         success: false,
@@ -331,22 +341,24 @@ describe('review-qa IPC handlers', () => {
   describe('REVIEW_QA_GET_STATUS', () => {
     it('should return valid result structure', async () => {
       const handler = getHandler(IPC_CHANNELS.REVIEW_QA_GET_STATUS);
+      expect(handler).toBeDefined();
 
-      const result = await handler(null, 'test-session-id') as IPCResult<{ active: boolean }>;
+      const result = await handler!(null, 'test-session-id') as IPCResult<{ active: boolean }>;
 
       // Verify result structure
       expect(result).toBeDefined();
       expect(result.success).toBe(true);
       expect(result.data).toBeDefined();
-      expect(typeof result.data.active).toBe('boolean');
+      expect(typeof result.data?.active).toBe('boolean');
     });
   });
 
   describe('REVIEW_QA_GET_LOGS (active sessions)', () => {
     it('should return valid result structure', async () => {
       const handler = getHandler(IPC_CHANNELS.REVIEW_QA_GET_LOGS);
+      expect(handler).toBeDefined();
 
-      const result = await handler(null) as IPCResult<unknown[]>;
+      const result = await handler!(null) as IPCResult<unknown[]>;
 
       // Verify result structure
       expect(result).toBeDefined();
