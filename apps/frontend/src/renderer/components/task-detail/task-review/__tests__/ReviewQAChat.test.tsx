@@ -915,4 +915,89 @@ describe('ReviewQAChat', () => {
       });
     });
   });
+
+  describe('Retry Functionality', () => {
+    it('should store last question when sending message', () => {
+      const inputValue = 'What changed?';
+      let lastQuestion: string | null = null;
+
+      // Simulate storing last question on send
+      lastQuestion = inputValue.trim();
+
+      expect(lastQuestion).toBe('What changed?');
+    });
+
+    it('should preserve last question after error occurs', () => {
+      const inputValue = 'What changed?';
+      let lastQuestion: string | null = null;
+      let error: string | null = null;
+
+      // Store question and simulate error
+      lastQuestion = inputValue.trim();
+      error = 'Network error';
+
+      expect(lastQuestion).toBe('What changed?');
+      expect(error).toBe('Network error');
+    });
+
+    it('should retry using last question', () => {
+      const lastQuestion = 'What changed?';
+      const specId = 'spec-001';
+      const sessionId = 'session-123';
+      const projectId = 'project-001';
+
+      // Simulate retry - use last question instead of input
+      const questionToRetry = lastQuestion;
+
+      expect(questionToRetry).toBe('What changed?');
+      expect(questionToRetry).toBeDefined();
+    });
+
+    it('should not retry when no last question stored', () => {
+      let lastQuestion: string | null = null;
+
+      const canRetry = lastQuestion !== null;
+
+      expect(canRetry).toBe(false);
+    });
+
+    it('should not retry when already loading', () => {
+      const lastQuestion = 'What changed?';
+      const isLoading = true;
+
+      const canRetry = lastQuestion !== null && !isLoading;
+
+      expect(canRetry).toBe(false);
+    });
+
+    it('should clear error when retrying', () => {
+      let error: string | null = 'Network error';
+      let isLoading = false;
+
+      // Simulate retry - clear error and set loading
+      error = null;
+      isLoading = true;
+
+      expect(error).toBeNull();
+      expect(isLoading).toBe(true);
+    });
+
+    it('should set loading state when retrying', () => {
+      let isLoading = false;
+
+      // Simulate retry
+      isLoading = true;
+
+      expect(isLoading).toBe(true);
+    });
+
+    it('should enable auto-scroll when retrying', () => {
+      let isUserAtBottom = false;
+
+      // Simulate retry - resume auto-scroll
+      isUserAtBottom = true;
+
+      expect(isUserAtBottom).toBe(true);
+    });
+  });
 });

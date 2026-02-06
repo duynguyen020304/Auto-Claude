@@ -441,6 +441,7 @@
     "inputHint": "Press Enter to send, Shift+Enter for new line",
     "send": "Send",
     "stop": "Stop",
+    "retry": "Retry",
     "quickQuestions": {
       "summary": "Summarize all changes",
       "whyDeleted": "Why was {{fileName}} deleted?",

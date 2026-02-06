@@ -7,6 +7,7 @@ import {
   User,
   Bot,
   AlertCircle,
+  RefreshCw,
 } from 'lucide-react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -73,6 +74,7 @@ export function ReviewQAChat({ specId, taskId, projectId, sessionId, initialQues
   const [isLoading, setIsLoading] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [lastQuestion, setLastQuestion] = useState<string | null>(null); // Store last question for retry
   const [isUserAtBottom, setIsUserAtBottom] = useState(true);
   const [viewportEl, setViewportEl] = useState<HTMLElement | null>(null);
   const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
@@ -187,6 +189,9 @@ export function ReviewQAChat({ specId, taskId, projectId, sessionId, initialQues
     const question = inputValue.trim();
     if (!question || isLoading) return;
 
+    // Store the question for potential retry
+    setLastQuestion(question);
+
     // Add user message to chat
     const userMessage: ReviewQAMessage = {
       id: `msg-${Date.now()}`,
@@ -203,6 +208,18 @@ export function ReviewQAChat({ specId, taskId, projectId, sessionId, initialQues
 
     // Send question to backend
     window.electronAPI.sendReviewQAMessage(effectiveSessionId, specId, projectId, question);
+  };
+
+  const handleRetry = () => {
+    if (!lastQuestion || isLoading) return;
+
+    // Clear the error and retry the last question
+    setError(null);
+    setIsLoading(true);
+    setIsUserAtBottom(true);
+
+    // Send the last question to backend
+    window.electronAPI.sendReviewQAMessage(effectiveSessionId, specId, projectId, lastQuestion);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -283,11 +300,24 @@ export function ReviewQAChat({ specId, taskId, projectId, sessionId, initialQues
               </div>
             )}
 
-            {/* Error message */}
+            {/* Error message with retry button */}
             {error && (
-              <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                {error}
+              <div className="flex items-center justify-between gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>{error}</span>
+                </div>
+                <Button
+                  onClick={handleRetry}
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 bg-background text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                  disabled={isLoading}
+                  title={t('tasks:reviewQA.retry')}
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  <span className="sr-only">{t('tasks:reviewQA.retry')}</span>
+                </Button>
               </div>
             )}
           </div>
