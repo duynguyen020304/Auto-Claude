@@ -984,6 +984,33 @@ export interface ElectronAPI {
   getSources: () => Promise<IPCResult<ScreenshotSource[]> & { devMode?: boolean }>;
   capture: (options: { sourceId: string }) => Promise<IPCResult<string>>;
 
+  // Review QA operations (AI-powered code explanation in human review phase)
+  sendReviewQAMessage: (
+    sessionId: string,
+    specId: string,
+    projectId: string,
+    question: string,
+    config?: import('./task').ReviewQAConfig
+  ) => void;
+  stopReviewQA: (sessionId: string) => Promise<IPCResult>;
+  getReviewQAStatus: (sessionId: string) => Promise<IPCResult<{ active: boolean }>>;
+  getReviewQASessions: () => Promise<IPCResult<Array<{
+    sessionId: string;
+    specId: string;
+    projectId: string;
+  }>>>;
+
+  // Review QA event listeners
+  onReviewQAStreamChunk: (
+    callback: (sessionId: string, projectId: string, chunk: import('./task').ReviewQAStreamChunk) => void
+  ) => () => void;
+  onReviewQAProgress: (
+    callback: (sessionId: string, projectId: string, status: unknown) => void
+  ) => () => void;
+  onReviewQAError: (
+    callback: (sessionId: string, projectId: string, error: string) => void
+  ) => () => void;
+
   // Queue Routing API (rate limit recovery)
   queue: import('../../preload/api/queue-api').QueueAPI;
 }
