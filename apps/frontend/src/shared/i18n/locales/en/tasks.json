@@ -426,5 +426,27 @@
       "fetch": "Fetch",
       "other": "Other"
     }
+  },
+  "reviewQA": {
+    "tab": "Ask AI",
+    "emptyState": {
+      "title": "Ask about this task",
+      "description": "Get AI-powered explanations of the changes made in this task. Ask questions about specific files, understand the reasoning behind modifications, or get a summary of all changes."
+    },
+    "assistant": "Assistant",
+    "you": "You",
+    "thinking": "Thinking...",
+    "unknownError": "An unknown error occurred",
+    "inputPlaceholder": "Ask about the changes in this task...",
+    "inputHint": "Press Enter to send, Shift+Enter for new line",
+    "send": "Send",
+    "stop": "Stop",
+    "quickQuestions": {
+      "summary": "Summarize all changes",
+      "whyDeleted": "Why was {{fileName}} deleted?",
+      "whatIsNew": "What is the purpose of {{fileName}}?",
+      "explainChange": "Explain changes to {{fileName}}",
+      "whyChange": "Why was {{fileName}} modified?"
+    }
   }
 }
