@@ -190,6 +190,14 @@ export interface FeatureModelConfig {
   utility: ModelTypeShort;      // Utility agents (commit message, merge resolver)
 }
 
+// Feature-specific API profile selection (for Insights, Roadmap, and Ideation)
+// undefined means "Use Active Profile" for backward compatibility
+export interface FeatureApiProfileConfig {
+  insights?: string;    // API profile ID for Insights chat (undefined = use active profile)
+  ideation?: string;    // API profile ID for Ideation generation (undefined = use active profile)
+  roadmap?: string;     // API profile ID for Roadmap generation (undefined = use active profile)
+}
+
 // Feature-specific thinking level configuration
 export interface FeatureThinkingConfig {
   insights: ThinkingLevel;
@@ -263,6 +271,7 @@ export interface AppSettings {
   // Feature-specific configuration (insights, ideation, roadmap)
   featureModels?: FeatureModelConfig;
   featureThinking?: FeatureThinkingConfig;
+  featureApiProfiles?: FeatureApiProfileConfig;  // API profile selection per feature (undefined = use active profile)
   // Insights concurrency settings
   maxConcurrentSessions?: number;         // Default: 1, enable parallel: 3+
   maxSessionsPerProject?: number;         // Default: 2
