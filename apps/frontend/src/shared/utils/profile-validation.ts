@@ -40,7 +40,7 @@ export interface ProfileValidationResult {
 export function validateProfileSelection(
   selectedProfileId: string | undefined | null,
   availableProfiles: readonly APIProfile[],
-  activeProfileId: string | null
+  _activeProfileId: string | null
 ): ProfileValidationResult {
   // If no profile selected, this means "Use Active Profile"
   // Return null to indicate the caller should use the active profile
@@ -248,8 +248,8 @@ export function maskApiKey(apiKey: string): string {
  * @returns true if profile selection should be disabled
  */
 export function isProfileSelectionDisabled(
-  availableProfiles: readonly APIProfile[],
-  activeProfileId: string | null
+  _availableProfiles: readonly APIProfile[],
+  _activeProfileId: string | null
 ): boolean {
   // Always allow selection if there's at least one profile
   // Even if only the active profile exists, user can still choose "Use Active Profile"
