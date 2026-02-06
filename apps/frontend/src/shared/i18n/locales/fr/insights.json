@@ -103,7 +103,12 @@
     "selectLabel": "Sélectionner le profil API",
     "custom": "Personnaliser...",
     "noProfiles": "Aucun profil API disponible",
-    "chooseProfile": "Choisir un profil API"
+    "chooseProfile": "Choisir un profil API",
+    "auto": "Auto (Défaut)",
+    "apiProfile": "Profil API",
+    "activeProfile": "Profil actif",
+    "oauthProfile": "OAuth (Claude Code)",
+    "active": "Actif"
   },
   "roadmap": {
     "featureCard": {
