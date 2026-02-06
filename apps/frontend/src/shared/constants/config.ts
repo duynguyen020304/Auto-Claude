@@ -87,6 +87,17 @@ export const DEFAULT_PROJECT_SETTINGS = {
 };
 
 // ============================================
+// Default Feature API Profiles
+// ============================================
+
+// Default feature API profile configuration (undefined = "Use Active Profile" for backward compatibility)
+export const DEFAULT_FEATURE_MODELS_PROFILE = {
+  insights: undefined,    // Use Active Profile for Insights chat
+  ideation: undefined,    // Use Active Profile for Ideation generation
+  roadmap: undefined      // Use Active Profile for Roadmap generation
+} as const;
+
+// ============================================
 // Auto Build File Paths
 // ============================================
 
