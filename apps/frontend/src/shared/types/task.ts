@@ -575,3 +575,9 @@ export interface ReviewQAStreamChunk {
   content?: string;
   error?: string;
 }
+
+// Model configuration for review QA
+export interface ReviewQAConfig {
+  model?: string;
+  thinkingLevel?: string;
+}
