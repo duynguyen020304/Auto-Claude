@@ -75,12 +75,13 @@ export function ExistingCompetitorAnalysisDialog({
         <div className="py-4 space-y-3">
           {/* API Profile Selector */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">{t('roadmap:profileSelector.label')}</label>
+            <label htmlFor="roadmap-existing-profile-select" className="text-sm font-medium text-foreground">{t('roadmap:profileSelector.label')}</label>
             <Select
               value={selectedProfileId ?? 'auto'}
               onValueChange={(value) => onProfileChange(value === 'auto' ? undefined : value)}
+              aria-label={t('roadmap:profileSelector.label')}
             >
-              <SelectTrigger className="h-9">
+              <SelectTrigger id="roadmap-existing-profile-select" className="h-9">
                 <SelectValue placeholder={t('roadmap:profileSelector.chooseProfile')} />
               </SelectTrigger>
               <SelectContent>

@@ -1,4 +1,4 @@
-import { CheckCircle2, Plus, Key, RefreshCw } from 'lucide-react';
+import { CheckCircle2, Plus, Key, RefreshCw, Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../ui/button';
 import { Switch } from '../ui/switch';
@@ -137,12 +137,13 @@ export function IdeationDialogs({
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">{t('ideation:profileSelector.label')}</label>
+              <label htmlFor="ideation-profile-select" className="text-sm font-medium">{t('ideation:profileSelector.label')}</label>
               <Select
                 value={config.apiProfile ?? 'auto'}
                 onValueChange={(value) => onSetConfig({ apiProfile: value === 'auto' ? undefined : value })}
+                aria-label={t('ideation:profileSelector.label')}
               >
-                <SelectTrigger className="h-9">
+                <SelectTrigger id="ideation-profile-select" className="h-9">
                   <SelectValue placeholder={t('ideation:profileSelector.chooseProfile')} />
                 </SelectTrigger>
                 <SelectContent>
@@ -150,6 +151,9 @@ export function IdeationDialogs({
                     <div className="flex items-center gap-2">
                       <RefreshCw className="h-4 w-4 shrink-0" />
                       <span className="font-medium">{t('ideation:profileSelector.useActiveProfile')}</span>
+                      {(!config.apiProfile || config.apiProfile === 'auto') && (
+                        <Check className="h-4 w-4 shrink-0 text-primary ml-auto" />
+                      )}
                     </div>
                   </SelectItem>
                   {profiles.map((profile) => (
@@ -162,6 +166,9 @@ export function IdeationDialogs({
                             ({profile.baseUrl})
                           </span>
                         </div>
+                        {config.apiProfile === profile.id && (
+                          <Check className="h-4 w-4 shrink-0 text-primary ml-auto" />
+                        )}
                       </div>
                     </SelectItem>
                   ))}

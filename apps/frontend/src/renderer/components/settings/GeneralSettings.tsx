@@ -262,7 +262,7 @@ export function GeneralSettings({ settings, onSettingsChange, section }: General
                       {/* API Profile Select - only for insights, roadmap, and ideation */}
                       {showApiProfile && (
                         <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">
+                          <Label htmlFor={`${feature}-profile-select`} className="text-xs text-muted-foreground">
                             {feature === 'insights'
                               ? t('general.insightsProfile')
                               : feature === 'roadmap'
@@ -281,8 +281,13 @@ export function GeneralSettings({ settings, onSettingsChange, section }: General
                               }
                               onSettingsChange({ ...settings, featureApiProfiles: newFeatureApiProfiles });
                             }}
+                            aria-label={feature === 'insights'
+                              ? t('general.insightsProfile')
+                              : feature === 'roadmap'
+                                ? t('general.roadmapProfile')
+                                : t('general.ideationProfile')}
                           >
-                            <SelectTrigger className="h-9">
+                            <SelectTrigger id={`${feature}-profile-select`} className="h-9">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
