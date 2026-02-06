@@ -164,6 +164,7 @@ export interface InsightsModelConfig {
   profileId: string;           // 'complex' | 'balanced' | 'quick' | 'custom'
   model: ModelType;            // 'haiku' | 'sonnet' | 'opus'
   thinkingLevel: ThinkingLevel;
+  apiProfile?: string;         // API profile ID to use for this session (undefined = use active profile)
 }
 
 // Roadmap item context for exploring roadmap features in Insights Chat
