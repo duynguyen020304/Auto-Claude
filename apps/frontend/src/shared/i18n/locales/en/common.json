@@ -168,6 +168,21 @@
     "zai": "z.ai",
     "zhipu": "ZHIPU AI"
   },
+  "profileSelection": {
+    "selectLabel": "Select Profile",
+    "selectPlaceholder": "Choose a profile...",
+    "selectAriaLabel": "Select API profile",
+    "noProfilesConfigured": "No API profiles configured",
+    "noProfilesConfiguredDescription": "Add an API profile in Settings to use this feature",
+    "profileSwitching": "Switching profile...",
+    "profileSwitched": "Switched to {{profileName}}",
+    "switchFailed": "Failed to switch profile",
+    "switchFailedDescription": "An error occurred while switching profiles. Please try again.",
+    "currentProfile": "Current profile: {{profileName}}",
+    "usingDefaultProfile": "Using default profile",
+    "configureProfiles": "Configure Profiles",
+    "configureProfilesAriaLabel": "Configure API profiles in Settings"
+  },
   "errors": {
     "generic": "An error occurred",
     "unknownError": "An unknown error occurred",
