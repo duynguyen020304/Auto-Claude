@@ -125,5 +125,10 @@
     "security_hardening": "Security vulnerabilities and hardening opportunities",
     "performance_optimizations": "Performance bottlenecks and optimization opportunities",
     "code_quality": "Refactoring opportunities, large files, code smells, and best practice violations"
+  },
+  "profileSelector": {
+    "label": "API Profile",
+    "useActiveProfile": "Use Active Profile",
+    "chooseProfile": "Choose an API profile"
   }
 }
