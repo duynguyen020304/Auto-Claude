@@ -232,19 +232,22 @@ export function registerRoadmapHandlers(
       _,
       projectId: string,
       enableCompetitorAnalysis?: boolean,
-      refreshCompetitorAnalysis?: boolean
+      refreshCompetitorAnalysis?: boolean,
+      apiProfile?: string
     ) => {
       // Get feature settings for roadmap
       const featureSettings = getFeatureSettings();
       const config: RoadmapConfig = {
         model: featureSettings.model,
         thinkingLevel: featureSettings.thinkingLevel,
+        apiProfile,
       };
 
       debugLog("[Roadmap Handler] Generate request:", {
         projectId,
         enableCompetitorAnalysis,
         refreshCompetitorAnalysis,
+        apiProfile,
         config,
       });
 
@@ -294,19 +297,22 @@ export function registerRoadmapHandlers(
       _,
       projectId: string,
       enableCompetitorAnalysis?: boolean,
-      refreshCompetitorAnalysis?: boolean
+      refreshCompetitorAnalysis?: boolean,
+      apiProfile?: string
     ) => {
       // Get feature settings for roadmap
       const featureSettings = getFeatureSettings();
       const config: RoadmapConfig = {
         model: featureSettings.model,
         thinkingLevel: featureSettings.thinkingLevel,
+        apiProfile,
       };
 
       debugLog("[Roadmap Handler] Refresh request:", {
         projectId,
         enableCompetitorAnalysis,
         refreshCompetitorAnalysis,
+        apiProfile,
         config,
       });
 
