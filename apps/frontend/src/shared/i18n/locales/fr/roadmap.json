@@ -108,5 +108,10 @@
     "organizingPhases": "Organisation des fonctionnalités en phases de mise en œuvre...",
     "finalizing": "Finalisation de la roadmap...",
     "complete": "Génération de la roadmap terminée !"
+  },
+  "profileSelector": {
+    "label": "Profil API",
+    "useActiveProfile": "Utiliser le Profil Actif",
+    "chooseProfile": "Choisir un profil API"
   }
 }

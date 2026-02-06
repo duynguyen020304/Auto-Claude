@@ -28,6 +28,7 @@ export interface IdeationConfig {
   append?: boolean; // If true, append to existing ideas instead of replacing
   model?: string;          // Model shorthand (opus, sonnet, haiku)
   thinkingLevel?: string;  // Thinking level (none, low, medium, high, ultrathink)
+  apiProfile?: string;     // API profile ID to use for ideation (undefined = use active profile)
 }
 
 export interface IdeaBase {
@@ -164,6 +165,7 @@ export interface InsightsModelConfig {
   profileId: string;           // 'complex' | 'balanced' | 'quick' | 'custom'
   model: ModelType;            // 'haiku' | 'sonnet' | 'opus'
   thinkingLevel: ThinkingLevel;
+  apiProfile?: string;         // API profile ID to use for this session (undefined = use active profile)
 }
 
 // Roadmap item context for exploring roadmap features in Insights Chat

@@ -1,4 +1,4 @@
-import { Globe, RefreshCw, TrendingUp, CheckCircle } from 'lucide-react';
+import { Globe, RefreshCw, TrendingUp, CheckCircle, Key } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -8,6 +8,9 @@ import {
   AlertDialogTitle,
 } from './ui/alert-dialog';
 import { Button } from './ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { useSettingsStore } from '../stores/settings-store';
+import { useTranslation } from 'react-i18next';
 
 interface ExistingCompetitorAnalysisDialogProps {
   open: boolean;
@@ -16,6 +19,8 @@ interface ExistingCompetitorAnalysisDialogProps {
   onRunNew: () => void;
   onSkip: () => void;
   analysisDate?: Date;
+  selectedProfileId: string | undefined;
+  onProfileChange: (profileId: string | undefined) => void;
 }
 
 export function ExistingCompetitorAnalysisDialog({
@@ -25,7 +30,11 @@ export function ExistingCompetitorAnalysisDialog({
   onRunNew,
   onSkip,
   analysisDate,
+  selectedProfileId,
+  onProfileChange,
 }: ExistingCompetitorAnalysisDialogProps) {
+  const { t } = useTranslation(['roadmap', 'common']);
+  const { profiles } = useSettingsStore();
   const handleUseExisting = () => {
     onUseExisting();
     onOpenChange(false);
@@ -64,6 +73,40 @@ export function ExistingCompetitorAnalysisDialog({
         </AlertDialogHeader>
 
         <div className="py-4 space-y-3">
+          {/* API Profile Selector */}
+          <div className="space-y-2">
+            <label htmlFor="roadmap-existing-profile-select" className="text-sm font-medium text-foreground">{t('roadmap:profileSelector.label')}</label>
+            <Select
+              value={selectedProfileId ?? 'auto'}
+              onValueChange={(value) => onProfileChange(value === 'auto' ? undefined : value)}
+              aria-label={t('roadmap:profileSelector.label')}
+            >
+              <SelectTrigger id="roadmap-existing-profile-select" className="h-9">
+                <SelectValue placeholder={t('roadmap:profileSelector.chooseProfile')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="auto">
+                  <div className="flex items-center gap-2">
+                    <RefreshCw className="h-4 w-4 shrink-0" />
+                    <span className="font-medium">{t('roadmap:profileSelector.useActiveProfile')}</span>
+                  </div>
+                </SelectItem>
+                {profiles.map((profile) => (
+                  <SelectItem key={profile.id} value={profile.id}>
+                    <div className="flex items-center gap-2">
+                      <Key className="h-4 w-4 shrink-0" />
+                      <div>
+                        <span className="font-medium">{profile.name}</span>
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          ({profile.baseUrl})
+                        </span>
+                      </div>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           {/* Option 1: Use existing (recommended) */}
           <button
             onClick={handleUseExisting}

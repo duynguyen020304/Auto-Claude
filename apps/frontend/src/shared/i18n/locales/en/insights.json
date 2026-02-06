@@ -99,6 +99,17 @@
     "chooseModelThinking": "Choose model & thinking level",
     "balanced": "Balanced"
   },
+  "profileSelector": {
+    "selectLabel": "Select API profile",
+    "custom": "Custom...",
+    "noProfiles": "No API profiles available",
+    "chooseProfile": "Choose an API profile",
+    "auto": "Auto (Default)",
+    "apiProfile": "API Profile",
+    "activeProfile": "Active Profile",
+    "oauthProfile": "OAuth (Claude Code)",
+    "active": "Active"
+  },
   "roadmap": {
     "featureCard": {
       "exploreInChat": "Explore in Insights chat",

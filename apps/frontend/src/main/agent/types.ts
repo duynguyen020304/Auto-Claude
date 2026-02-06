@@ -43,6 +43,7 @@ export interface AgentManagerEvents {
 export interface RoadmapConfig {
   model?: string;          // Model shorthand (opus, sonnet, haiku)
   thinkingLevel?: string;  // Thinking level (none, low, medium, high, ultrathink)
+  apiProfile?: string;     // API profile ID to use for roadmap generation (undefined = use active profile)
 }
 
 export interface TaskExecutionOptions {

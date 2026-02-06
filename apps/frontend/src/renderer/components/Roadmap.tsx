@@ -41,6 +41,9 @@ export function Roadmap({ projectId, onGoToTask, onExploreInInsights }: RoadmapP
     handleCompetitorDialogAccept,
     handleCompetitorDialogDecline,
     handleStop,
+    // Profile selection
+    selectedProfileId,
+    setSelectedProfileId,
   } = useRoadmapGeneration(projectId);
 
   // Event handlers
@@ -78,6 +81,8 @@ export function Roadmap({ projectId, onGoToTask, onExploreInInsights }: RoadmapP
           onOpenChange={setShowCompetitorDialog}
           onAccept={handleCompetitorDialogAccept}
           onDecline={handleCompetitorDialogDecline}
+          selectedProfileId={selectedProfileId}
+          onProfileChange={setSelectedProfileId}
         />
         {/* Dialog for projects WITH existing competitor analysis */}
         <ExistingCompetitorAnalysisDialog
@@ -87,6 +92,8 @@ export function Roadmap({ projectId, onGoToTask, onExploreInInsights }: RoadmapP
           onRunNew={handleRunNewAnalysis}
           onSkip={handleSkipAnalysis}
           analysisDate={competitorAnalysisDate}
+          selectedProfileId={selectedProfileId}
+          onProfileChange={setSelectedProfileId}
         />
       </>
     );
@@ -137,6 +144,8 @@ export function Roadmap({ projectId, onGoToTask, onExploreInInsights }: RoadmapP
         onOpenChange={setShowCompetitorDialog}
         onAccept={handleCompetitorDialogAccept}
         onDecline={handleCompetitorDialogDecline}
+        selectedProfileId={selectedProfileId}
+        onProfileChange={setSelectedProfileId}
       />
 
       {/* Competitor Analysis Options Dialog (existing analysis) */}
@@ -147,6 +156,8 @@ export function Roadmap({ projectId, onGoToTask, onExploreInInsights }: RoadmapP
         onRunNew={handleRunNewAnalysis}
         onSkip={handleSkipAnalysis}
         analysisDate={competitorAnalysisDate}
+        selectedProfileId={selectedProfileId}
+        onProfileChange={setSelectedProfileId}
       />
 
       {/* Competitor Analysis Viewer */}

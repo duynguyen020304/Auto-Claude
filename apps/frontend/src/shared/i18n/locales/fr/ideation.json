@@ -125,5 +125,10 @@
     "security_hardening": "Vulnérabilités de sécurité et opportunités de durcissement",
     "performance_optimizations": "Goulots d'étranglement de performance et opportunités d'optimisation",
     "code_quality": "Opportunités de refactorisation, fichiers volumineux, code smells et violations des meilleures pratiques"
+  },
+  "profileSelector": {
+    "label": "Profil API",
+    "useActiveProfile": "Utiliser le Profil Actif",
+    "chooseProfile": "Choisir un profil API"
   }
 }

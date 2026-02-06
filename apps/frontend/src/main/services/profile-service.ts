@@ -278,9 +278,9 @@ export async function getAPIProfileEnv(): Promise<Record<string, string>> {
 /**
  * Get environment variables for a specific API profile by ID
  *
- * Maps a specific API profile (identified by ID) to SDK environment variables
- * for injection into Python subprocess. Returns empty object when the profile
- * is not found or the ID is empty.
+ * Maps a specific API profile (by ID) to SDK environment variables for injection
+ * into Python subprocess. If the profile is not found or invalid, falls back
+ * to the active profile with a console warning.
  *
  * Environment Variable Mapping:
  * - profile.baseUrl → ANTHROPIC_BASE_URL
@@ -292,24 +292,37 @@ export async function getAPIProfileEnv(): Promise<Record<string, string>> {
  *
  * Empty string values are filtered out (not set as env vars).
  *
- * @param profileId - UUID of the API profile to use
- * @returns Promise<Record<string, string>> Environment variables for the specified profile
+ * @param profileId - Optional profile ID to use (undefined/null = use active profile)
+ * @returns Promise<Record<string, string>> Environment variables for the specified or active profile
  */
-export async function getAPIProfileEnvById(profileId: string): Promise<Record<string, string>> {
-  // If no profile ID provided, return empty object
-  if (!profileId || profileId === '') {
-    return {};
+export async function getAPIProfileEnvById(profileId: string | null | undefined): Promise<Record<string, string>> {
+  // If no profile specified, use active profile (backward compatible)
+  if (!profileId) {
+    return getAPIProfileEnv();
   }
 
   // Load profiles.json
   const file = await loadProfilesFile();
 
-  // Find profile by ID
+  // Find the specified profile
   const profile = file.profiles.find((p) => p.id === profileId);
 
-  // If profile not found, return empty object
+  // If profile not found, log warning and fall back to active profile
   if (!profile) {
-    return {};
+    console.warn(
+      `[profile-service] Profile '${profileId}' not found. ` +
+      `Falling back to active profile.`
+    );
+    return getAPIProfileEnv();
+  }
+
+  // Validate profile has required fields
+  if (!profile.baseUrl || !profile.apiKey) {
+    console.warn(
+      `[profile-service] Profile '${profile.name}' (${profile.id}) is missing required fields. ` +
+      `Falling back to active profile.`
+    );
+    return getAPIProfileEnv();
   }
 
   // Map profile fields to SDK env vars
@@ -322,8 +335,7 @@ export async function getAPIProfileEnvById(profileId: string): Promise<Record<st
     ANTHROPIC_DEFAULT_OPUS_MODEL: profile.models?.opus || '',
   };
 
-  // Filter out empty/whitespace string values (only set env vars that have values)
-  // This handles empty strings, null, undefined, and whitespace-only values
+  // Filter out empty/whitespace string values
   const filteredEnvVars: Record<string, string> = {};
   for (const [key, value] of Object.entries(envVars)) {
     const trimmedValue = value?.trim();

@@ -30,6 +30,7 @@ export interface InsightsSessionState {
   streamingContent: string;
   currentTool: ToolUsage | null;
   toolsUsed: InsightsToolUsage[];
+  apiProfileId?: string; // Session-scoped API profile selection (undefined = use default/active)
 }
 
 interface InsightsState {
@@ -76,6 +77,7 @@ interface InsightsState {
   clearRoadmapFeatures: (sessionId: string) => void;
   addIdeationItem: (sessionId: string, item: IdeationItemReference) => void;
   clearIdeationItems: (sessionId: string) => void;
+  setApiProfileId: (apiProfileId: string | undefined, sessionId?: string) => void;
 
   // Selectors
   getCurrentSessionState: () => InsightsSessionState | undefined;
@@ -102,6 +104,7 @@ function createInitialSessionState(): InsightsSessionState {
     streamingContent: '',
     currentTool: null,
     toolsUsed: [],
+    apiProfileId: undefined, // No profile selected by default (use default/active)
   };
 }
 
@@ -922,6 +925,51 @@ export const useInsightsStore = create<InsightsState>((set, _get) => ({
       return {
         sessionIdeationItems: newSessionIdeationItems
       };
+    }),
+
+  /**
+   * Sets the API profile ID for the specified session.
+   * If no sessionId is provided, updates the current session.
+   * The profile ID is stored in sessionStates and also mirrored for the current session.
+   *
+   * @param apiProfileId - The API profile ID to set (undefined = use default/active)
+   * @param sessionId - The ID of the session to update (optional, defaults to current session)
+   */
+  setApiProfileId: (apiProfileId, sessionId) =>
+    set((state) => {
+      // Determine target session ID
+      const targetSessionId = sessionId || state.currentSessionId;
+
+      if (!targetSessionId) {
+        // No session to update
+        return {};
+      }
+
+      // Ensure session state exists for the target session
+      if (!state.sessionStates.has(targetSessionId)) {
+        const newSessionStates = new Map(state.sessionStates);
+        const newSessionState = createInitialSessionState();
+        newSessionState.apiProfileId = apiProfileId;
+        newSessionStates.set(targetSessionId, newSessionState);
+        return {
+          sessionStates: newSessionStates
+        };
+      }
+
+      // Update the session in the sessionStates map
+      const sessionState = state.sessionStates.get(targetSessionId);
+      if (sessionState) {
+        const newSessionStates = new Map(state.sessionStates);
+        newSessionStates.set(targetSessionId, {
+          ...sessionState,
+          apiProfileId
+        });
+        return {
+          sessionStates: newSessionStates
+        };
+      }
+
+      return {};
     }),
 
   // Selectors

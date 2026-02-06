@@ -201,6 +201,12 @@
     "aiTerminalNamingDescription": "Nommer automatiquement les terminaux en fonction des commandes (utilise Haiku)",
     "featureModelSettings": "Paramètres du modèle de fonctionnalité",
     "featureModelSettingsDescription": "Modèle et niveau de réflexion pour Insights, Idéation et Roadmap",
+    "apiProfileLabel": "Profil API",
+    "apiProfileDescription": "Sélectionner le profil API à utiliser pour cette fonctionnalité",
+    "insightsProfile": "Profil de chat Insights",
+    "roadmapProfile": "Profil de génération Roadmap",
+    "ideationProfile": "Profil de génération Idéation",
+    "useActiveProfile": "Utiliser le profil actif",
     "model": "Modèle",
     "thinkingLevel": "Niveau de réflexion",
     "paths": "Chemins",
@@ -450,9 +456,9 @@
       "worker": "Worker",
       "other": "Autre"
     },
-    "title": "Workspace",
-    "description": "Configure workspace settings and preferences",
-    "workspaceName": "Workspace Name",
+    "title": "Espace de travail",
+    "description": "Configurer les paramètres et préférences de l'espace de travail",
+    "workspaceName": "Nom de l'espace de travail",
     "workspaceDescription": "Description"
   },
   "integrations": {

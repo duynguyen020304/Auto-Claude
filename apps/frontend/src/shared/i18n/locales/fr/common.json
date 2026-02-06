@@ -788,6 +788,21 @@
     "zai": "z.ai",
     "zhipu": "ZHIPU AI"
   },
+  "profileSelection": {
+    "selectLabel": "Sélectionner un profil",
+    "selectPlaceholder": "Choisir un profil...",
+    "selectAriaLabel": "Sélectionner un profil API",
+    "noProfilesConfigured": "Aucun profil API configuré",
+    "noProfilesConfiguredDescription": "Ajoutez un profil API dans les Paramètres pour utiliser cette fonctionnalité",
+    "profileSwitching": "Changement de profil...",
+    "profileSwitched": "Basculé vers {{profileName}}",
+    "switchFailed": "Échec du changement de profil",
+    "switchFailedDescription": "Une erreur s'est produite lors du changement de profil. Veuillez réessayer.",
+    "currentProfile": "Profil actuel : {{profileName}}",
+    "usingDefaultProfile": "Utilisation du profil par défaut",
+    "configureProfiles": "Configurer les profils",
+    "configureProfilesAriaLabel": "Configurer les profils API dans les Paramètres"
+  },
   "git": {
     "branchGroups": {
       "local": "Branches Locales",

@@ -1,7 +1,14 @@
-import { CheckCircle2, Plus } from 'lucide-react';
+import { CheckCircle2, Plus, Key, RefreshCw, Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../ui/button';
 import { Switch } from '../ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '../ui/select';
 import {
   Dialog,
   DialogContent,
@@ -18,6 +25,7 @@ import {
 import type { IdeationType, IdeationConfig } from '../../../shared/types';
 import { TypeIcon } from './TypeIcon';
 import { ALL_IDEATION_TYPES } from './constants';
+import { useSettingsStore } from '../../stores/settings-store';
 
 interface IdeationDialogsProps {
   showConfigDialog: boolean;
@@ -47,6 +55,7 @@ export function IdeationDialogs({
   onConfirmAddMore
 }: IdeationDialogsProps) {
   const { t } = useTranslation(['ideation', 'common']);
+  const { profiles } = useSettingsStore();
 
   return (
     <>
@@ -125,6 +134,46 @@ export function IdeationDialogs({
                   onCheckedChange={(checked) => onSetConfig({ includeKanbanContext: checked })}
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="ideation-profile-select" className="text-sm font-medium">{t('ideation:profileSelector.label')}</label>
+              <Select
+                value={config.apiProfile ?? 'auto'}
+                onValueChange={(value) => onSetConfig({ apiProfile: value === 'auto' ? undefined : value })}
+                aria-label={t('ideation:profileSelector.label')}
+              >
+                <SelectTrigger id="ideation-profile-select" className="h-9">
+                  <SelectValue placeholder={t('ideation:profileSelector.chooseProfile')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">
+                    <div className="flex items-center gap-2">
+                      <RefreshCw className="h-4 w-4 shrink-0" />
+                      <span className="font-medium">{t('ideation:profileSelector.useActiveProfile')}</span>
+                      {(!config.apiProfile || config.apiProfile === 'auto') && (
+                        <Check className="h-4 w-4 shrink-0 text-primary ml-auto" />
+                      )}
+                    </div>
+                  </SelectItem>
+                  {profiles.map((profile) => (
+                    <SelectItem key={profile.id} value={profile.id}>
+                      <div className="flex items-center gap-2">
+                        <Key className="h-4 w-4 shrink-0" />
+                        <div>
+                          <span className="font-medium">{profile.name}</span>
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            ({profile.baseUrl})
+                          </span>
+                        </div>
+                        {config.apiProfile === profile.id && (
+                          <Check className="h-4 w-4 shrink-0 text-primary ml-auto" />
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>

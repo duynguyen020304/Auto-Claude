@@ -99,6 +99,17 @@
     "chooseModelThinking": "Choisir le modèle & niveau de réflexion",
     "balanced": "Équilibré"
   },
+  "profileSelector": {
+    "selectLabel": "Sélectionner le profil API",
+    "custom": "Personnaliser...",
+    "noProfiles": "Aucun profil API disponible",
+    "chooseProfile": "Choisir un profil API",
+    "auto": "Auto (Défaut)",
+    "apiProfile": "Profil API",
+    "activeProfile": "Profil actif",
+    "oauthProfile": "OAuth (Claude Code)",
+    "active": "Actif"
+  },
   "roadmap": {
     "featureCard": {
       "exploreInChat": "Explorer dans la discussion Insights",

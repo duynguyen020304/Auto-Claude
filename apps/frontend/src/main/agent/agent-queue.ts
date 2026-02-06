@@ -9,7 +9,7 @@ import { RoadmapConfig } from './types';
 import type { IdeationConfig, Idea } from '../../shared/types';
 import { AUTO_BUILD_PATHS } from '../../shared/constants';
 import { detectRateLimit, createSDKRateLimitInfo, getBestAvailableProfileEnv } from '../rate-limit-detector';
-import { getAPIProfileEnv } from '../services/profile';
+import { getAPIProfileEnvById } from '../services/profile';
 import { getOAuthModeClearVars } from './env-utils';
 import { debugLog, debugError } from '../../shared/utils/debug-logger';
 import { stripAnsiCodes } from '../../shared/utils/ansi-sanitizer';
@@ -214,7 +214,7 @@ export class AgentQueueManager {
     debugLog('[Agent Queue] Spawning roadmap process with args:', args);
 
     // Use projectId as taskId for roadmap operations
-    await this.spawnRoadmapProcess(projectId, projectPath, args);
+    await this.spawnRoadmapProcess(projectId, projectPath, args, config?.apiProfile);
   }
 
   /**
@@ -290,7 +290,7 @@ export class AgentQueueManager {
     debugLog('[Agent Queue] Spawning ideation process with args:', args);
 
     // Use projectId as taskId for ideation operations
-    await this.spawnIdeationProcess(projectId, projectPath, args);
+    await this.spawnIdeationProcess(projectId, projectPath, args, config.apiProfile);
   }
 
   /**
@@ -299,7 +299,8 @@ export class AgentQueueManager {
   private async spawnIdeationProcess(
     projectId: string,
     projectPath: string,
-    args: string[]
+    args: string[],
+    apiProfileId?: string | null
   ): Promise<void> {
     debugLog('[Agent Queue] Spawning ideation process:', { projectId, projectPath });
 
@@ -330,8 +331,16 @@ export class AgentQueueManager {
     const profileResult = getBestAvailableProfileEnv();
     const profileEnv = profileResult.env;
 
-    // Get active API profile environment variables
-    const apiProfileEnv = await getAPIProfileEnv();
+    // Get API profile environment variables for the specified profile (or active if not specified)
+    // This validates the profile exists and falls back to active profile with warning if invalid
+    const apiProfileEnv = await getAPIProfileEnvById(apiProfileId);
+
+    // Log which profile is being used for ideation
+    debugLog('[Agent Queue] Ideation using API profile:', {
+      requestedProfileId: apiProfileId,
+      usingActiveProfile: !apiProfileId,
+      hasApiProfileEnv: Object.keys(apiProfileEnv).length > 0
+    });
 
     // Get OAuth mode clearing vars (clears stale ANTHROPIC_* vars when in OAuth mode)
     const oauthModeClearVars = getOAuthModeClearVars(apiProfileEnv);
@@ -632,7 +641,8 @@ export class AgentQueueManager {
   private async spawnRoadmapProcess(
     projectId: string,
     projectPath: string,
-    args: string[]
+    args: string[],
+    apiProfileId?: string | null
   ): Promise<void> {
     debugLog('[Agent Queue] Spawning roadmap process:', { projectId, projectPath });
 
@@ -663,8 +673,16 @@ export class AgentQueueManager {
     const profileResult = getBestAvailableProfileEnv();
     const profileEnv = profileResult.env;
 
-    // Get active API profile environment variables
-    const apiProfileEnv = await getAPIProfileEnv();
+    // Get API profile environment variables for the specified profile (or active if not specified)
+    // This validates the profile exists and falls back to active profile with warning if invalid
+    const apiProfileEnv = await getAPIProfileEnvById(apiProfileId);
+
+    // Log which profile is being used for roadmap
+    debugLog('[Agent Queue] Roadmap using API profile:', {
+      requestedProfileId: apiProfileId,
+      usingActiveProfile: !apiProfileId,
+      hasApiProfileEnv: Object.keys(apiProfileEnv).length > 0
+    });
 
     // Get OAuth mode clearing vars (clears stale ANTHROPIC_* vars when in OAuth mode)
     const oauthModeClearVars = getOAuthModeClearVars(apiProfileEnv);
