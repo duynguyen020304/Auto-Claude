@@ -14,6 +14,7 @@ import {
   FEATURE_LABELS
 } from '../../../shared/constants';
 import type {
+  APIProfile,
   AppSettings,
   FeatureModelConfig,
   ModelTypeShort,
@@ -99,6 +100,8 @@ export function GeneralSettings({ settings, onSettingsChange, section }: General
     claude: ToolDetectionResult;
   } | null>(null);
   const [isLoadingTools, setIsLoadingTools] = useState(false);
+  const [apiProfiles, setApiProfiles] = useState<APIProfile[]>([]);
+  const [isLoadingProfiles, setIsLoadingProfiles] = useState(false);
 
   // Fetch CLI tools detection info when component mounts (paths section only)
   useEffect(() => {
@@ -116,6 +119,26 @@ export function GeneralSettings({ settings, onSettingsChange, section }: General
         })
         .finally(() => {
           setIsLoadingTools(false);
+        });
+    }
+  }, [section]);
+
+  // Fetch API profiles when component mounts (agent section only)
+  useEffect(() => {
+    if (section === 'agent') {
+      setIsLoadingProfiles(true);
+      window.electronAPI
+        .getAPIProfiles()
+        .then((result: { success: boolean; data?: { profiles: APIProfile[] } }) => {
+          if (result.success && result.data) {
+            setApiProfiles(result.data.profiles);
+          }
+        })
+        .catch((error: unknown) => {
+          console.error('Failed to fetch API profiles:', error);
+        })
+        .finally(() => {
+          setIsLoadingProfiles(false);
         });
     }
   }, [section]);
@@ -177,6 +200,9 @@ export function GeneralSettings({ settings, onSettingsChange, section }: General
               {(Object.keys(FEATURE_LABELS) as Array<keyof FeatureModelConfig>).map((feature) => {
                 const featureModels = settings.featureModels || DEFAULT_FEATURE_MODELS;
                 const featureThinking = settings.featureThinking || DEFAULT_FEATURE_THINKING;
+                const featureApiProfiles = settings.featureApiProfiles || {};
+                // Show API profile selector only for insights, roadmap, and ideation
+                const showApiProfile = feature === 'insights' || feature === 'roadmap' || feature === 'ideation';
 
                 return (
                   <div key={feature} className="space-y-2">
@@ -188,7 +214,7 @@ export function GeneralSettings({ settings, onSettingsChange, section }: General
                         {FEATURE_LABELS[feature].description}
                       </span>
                     </div>
-                    <div className="grid grid-cols-2 gap-3 max-w-md">
+                    <div className={`grid gap-3 max-w-lg ${showApiProfile ? 'grid-cols-3' : 'grid-cols-2'}`}>
                       {/* Model Select */}
                       <div className="space-y-1">
                         <Label className="text-xs text-muted-foreground">{t('general.model')}</Label>
@@ -233,6 +259,43 @@ export function GeneralSettings({ settings, onSettingsChange, section }: General
                           </SelectContent>
                         </Select>
                       </div>
+                      {/* API Profile Select - only for insights, roadmap, and ideation */}
+                      {showApiProfile && (
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">
+                            {feature === 'insights'
+                              ? t('general.insightsProfile')
+                              : feature === 'roadmap'
+                                ? t('general.roadmapProfile')
+                                : t('general.ideationProfile')}
+                          </Label>
+                          <Select
+                            value={featureApiProfiles[feature] || 'active'}
+                            onValueChange={(value) => {
+                              const newFeatureApiProfiles = { ...featureApiProfiles };
+                              // 'active' means use the active profile (undefined)
+                              if (value === 'active') {
+                                delete newFeatureApiProfiles[feature];
+                              } else {
+                                newFeatureApiProfiles[feature] = value;
+                              }
+                              onSettingsChange({ ...settings, featureApiProfiles: newFeatureApiProfiles });
+                            }}
+                          >
+                            <SelectTrigger className="h-9">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="active">{t('general.useActiveProfile')}</SelectItem>
+                              {!isLoadingProfiles && apiProfiles.map((profile) => (
+                                <SelectItem key={profile.id} value={profile.id}>
+                                  {profile.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
