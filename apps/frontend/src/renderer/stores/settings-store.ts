@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { AppSettings } from '../../shared/types';
 import type { APIProfile, ProfileFormData, TestConnectionResult, ModelInfo } from '@shared/types/profile';
 import type { ClaudeUsageSnapshot, DailyUsageData } from '@shared/types/agent';
-import { DEFAULT_APP_SETTINGS } from '../../shared/constants';
+import { DEFAULT_APP_SETTINGS, DEFAULT_FEATURE_MODELS_PROFILE } from '../../shared/constants';
 import { toast } from '../hooks/use-toast';
 import { markSettingsLoaded } from '../lib/sentry';
 
@@ -65,7 +65,7 @@ interface SettingsState {
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
-  settings: DEFAULT_APP_SETTINGS as AppSettings,
+  settings: { ...DEFAULT_APP_SETTINGS, featureApiProfiles: DEFAULT_FEATURE_MODELS_PROFILE } as AppSettings,
   isLoading: true,  // Start as true since we load settings on app init
   error: null,
 
