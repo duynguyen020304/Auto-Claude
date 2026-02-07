@@ -152,6 +152,9 @@ export interface TaskDraft {
   phaseModels?: PhaseModelConfig;
   phaseThinking?: PhaseThinkingConfig;
   apiProfileId?: string;  // API profile ID for per-task API profile selection
+  planningApiProfileId?: string;  // API profile ID for planning phase
+  codingApiProfileId?: string;  // API profile ID for coding phase
+  qaApiProfileId?: string;  // API profile ID for QA phase
   images: ImageAttachment[];
   referencedFiles: ReferencedFile[];
   requireReviewBeforeCoding?: boolean;
