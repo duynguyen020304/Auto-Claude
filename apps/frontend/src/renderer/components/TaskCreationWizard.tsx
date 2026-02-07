@@ -119,6 +119,9 @@ export function TaskCreationWizard({
 
   // API profile selection
   const [apiProfileId, setApiProfileId] = useState<string>('');
+  const [planningApiProfileId, setPlanningApiProfileId] = useState<string>('');
+  const [codingApiProfileId, setCodingApiProfileId] = useState<string>('');
+  const [qaApiProfileId, setQaApiProfileId] = useState<string>('');
 
   // Review setting
   const [requireReviewBeforeCoding, setRequireReviewBeforeCoding] = useState(false);
@@ -143,6 +146,9 @@ export function TaskCreationWizard({
         setPhaseModels(draft.phaseModels || settings.customPhaseModels || selectedProfile.phaseModels || DEFAULT_PHASE_MODELS);
         setPhaseThinking(draft.phaseThinking || settings.customPhaseThinking || selectedProfile.phaseThinking || DEFAULT_PHASE_THINKING);
         setApiProfileId(draft.apiProfileId || '');
+        setPlanningApiProfileId(draft.planningApiProfileId || '');
+        setCodingApiProfileId(draft.codingApiProfileId || '');
+        setQaApiProfileId(draft.qaApiProfileId || '');
         setImages(draft.images);
         setReferencedFiles(draft.referencedFiles ?? []);
         setRequireReviewBeforeCoding(draft.requireReviewBeforeCoding ?? false);
@@ -166,6 +172,9 @@ export function TaskCreationWizard({
         setPhaseModels(settings.customPhaseModels || selectedProfile.phaseModels || DEFAULT_PHASE_MODELS);
         setPhaseThinking(settings.customPhaseThinking || selectedProfile.phaseThinking || DEFAULT_PHASE_THINKING);
         setApiProfileId('');
+        setPlanningApiProfileId('');
+        setCodingApiProfileId('');
+        setQaApiProfileId('');
         setImages([]);
         setReferencedFiles([]);
         setRequireReviewBeforeCoding(false);
@@ -243,11 +252,14 @@ export function TaskCreationWizard({
     phaseModels,
     phaseThinking,
     apiProfileId,
+    planningApiProfileId,
+    codingApiProfileId,
+    qaApiProfileId,
     images,
     referencedFiles,
     requireReviewBeforeCoding,
     savedAt: new Date()
-  }), [projectId, title, description, category, priority, complexity, impact, profileId, model, thinkingLevel, phaseModels, phaseThinking, apiProfileId, images, referencedFiles, requireReviewBeforeCoding]);
+  }), [projectId, title, description, category, priority, complexity, impact, profileId, model, thinkingLevel, phaseModels, phaseThinking, apiProfileId, planningApiProfileId, codingApiProfileId, qaApiProfileId, images, referencedFiles, requireReviewBeforeCoding]);
 
   /**
    * Handle description change
@@ -324,6 +336,9 @@ export function TaskCreationWizard({
     setPhaseModels(settings.customPhaseModels || selectedProfile.phaseModels || DEFAULT_PHASE_MODELS);
     setPhaseThinking(settings.customPhaseThinking || selectedProfile.phaseThinking || DEFAULT_PHASE_THINKING);
     setApiProfileId('');
+    setPlanningApiProfileId('');
+    setCodingApiProfileId('');
+    setQaApiProfileId('');
     setImages([]);
     setReferencedFiles([]);
     setRequireReviewBeforeCoding(false);
@@ -463,8 +478,12 @@ export function TaskCreationWizard({
           onThinkingLevelChange={setThinkingLevel}
           onPhaseModelsChange={setPhaseModels}
           onPhaseThinkingChange={setPhaseThinking}
-          apiProfileId={apiProfileId}
-          onApiProfileChange={setApiProfileId}
+          planningApiProfileId={planningApiProfileId}
+          onPlanningApiProfileChange={setPlanningApiProfileId}
+          codingApiProfileId={codingApiProfileId}
+          onCodingApiProfileChange={setCodingApiProfileId}
+          qaApiProfileId={qaApiProfileId}
+          onQaApiProfileChange={setQaApiProfileId}
           category={category}
           priority={priority}
           complexity={complexity}
