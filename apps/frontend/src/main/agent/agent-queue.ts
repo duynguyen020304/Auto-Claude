@@ -19,6 +19,7 @@ import { transformIdeaFromSnakeCase, transformSessionFromSnakeCase } from '../ip
 import { transformRoadmapFromSnakeCase } from '../ipc-handlers/roadmap/transformers';
 import type { RawIdea } from '../ipc-handlers/ideation/types';
 import { getPathDelimiter } from '../platform';
+import { loadProfilesFile } from '../utils/profile-manager';
 
 /** Maximum length for status messages displayed in progress UI */
 const STATUS_MESSAGE_MAX_LENGTH = 200;
@@ -335,10 +336,51 @@ export class AgentQueueManager {
     // This validates the profile exists and falls back to active profile with warning if invalid
     const apiProfileEnv = await getAPIProfileEnvById(apiProfileId);
 
-    // Log which profile is being used for ideation
+    // Load profile metadata for enhanced logging
+    let profileMetadata: {
+      selectionType: 'explicit' | 'active';
+      profileName: string;
+      baseUrl: string;
+      models: { default?: string; haiku?: string; sonnet?: string; opus?: string } | undefined;
+    } | null = null;
+
+    try {
+      const profilesFile = await loadProfilesFile();
+      // Determine which profile is being used
+      const targetProfileId = apiProfileId || profilesFile.activeProfileId;
+      const profile = profilesFile.profiles.find((p) => p.id === targetProfileId);
+
+      if (profile) {
+        profileMetadata = {
+          selectionType: apiProfileId ? 'explicit' : 'active',
+          profileName: profile.name,
+          baseUrl: profile.baseUrl,
+          models: profile.models
+        };
+      } else if (profilesFile.activeProfileId) {
+        // Fallback to active profile if specified profile not found
+        const activeProfile = profilesFile.profiles.find((p) => p.id === profilesFile.activeProfileId);
+        if (activeProfile) {
+          profileMetadata = {
+            selectionType: 'active',
+            profileName: activeProfile.name,
+            baseUrl: activeProfile.baseUrl,
+            models: activeProfile.models
+          };
+        }
+      }
+    } catch (err) {
+      // If loading profile metadata fails, we'll still log what we can
+      debugError('[Agent Queue] Failed to load profile metadata for logging:', err);
+    }
+
+    // Log which profile is being used for ideation with enhanced metadata
     debugLog('[Agent Queue] Ideation using API profile:', {
-      requestedProfileId: apiProfileId,
-      usingActiveProfile: !apiProfileId,
+      selectionType: profileMetadata?.selectionType || (apiProfileId ? 'explicit' : 'active'),
+      profileId: apiProfileId || 'active',
+      profileName: profileMetadata?.profileName || 'unknown',
+      baseUrl: profileMetadata?.baseUrl || 'unknown',
+      models: profileMetadata?.models || {},
       hasApiProfileEnv: Object.keys(apiProfileEnv).length > 0
     });
 
