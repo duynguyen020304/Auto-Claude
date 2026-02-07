@@ -291,6 +291,9 @@ export function TaskCreationWizard({
         metadata.phaseThinking = phaseThinking;
       }
       if (apiProfileId) metadata.apiProfileId = apiProfileId;
+      if (planningApiProfileId) metadata.planningApiProfileId = planningApiProfileId;
+      if (codingApiProfileId) metadata.codingApiProfileId = codingApiProfileId;
+      if (qaApiProfileId) metadata.qaApiProfileId = qaApiProfileId;
       if (images.length > 0) metadata.attachedImages = images;
       if (referencedFiles.length > 0) metadata.referencedFiles = referencedFiles;
       if (requireReviewBeforeCoding) metadata.requireReviewBeforeCoding = true;
