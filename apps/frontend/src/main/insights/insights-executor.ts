@@ -15,6 +15,7 @@ import { InsightsConfig } from './config';
 import { detectRateLimit, createSDKRateLimitInfo } from '../rate-limit-detector';
 import { SessionQueue, SessionPriority } from './session-queue';
 import { RollingWindowRateLimiter } from './rate-limiter';
+import { getAPIProfileEnvById } from '../services/profile';
 
 /**
  * Rate limiting configuration
@@ -138,7 +139,8 @@ export class InsightsExecutor extends EventEmitter {
     modelConfig?: InsightsModelConfig,
     _priority: SessionPriority = SessionPriority.NORMAL,
     roadmapItemId?: string,
-    ideationItemId?: string
+    ideationItemId?: string,
+    apiProfileId?: string
   ): Promise<ProcessorResult> {
     // Check if session is already active
     if (this.isSessionActive(sessionId)) {
@@ -171,7 +173,13 @@ export class InsightsExecutor extends EventEmitter {
     } as InsightsChatStatus);
 
     // Get process environment
-    const processEnv = await this.config.getProcessEnv();
+    let processEnv = await this.config.getProcessEnv();
+
+    // Apply API profile if specified
+    if (apiProfileId) {
+      const apiProfileEnv = await getAPIProfileEnvById(apiProfileId);
+      processEnv = { ...processEnv, ...apiProfileEnv };
+    }
 
     // Write conversation history to temp file to avoid Windows command-line length limit
     const historyFile = path.join(

@@ -1112,8 +1112,12 @@ export function sendMessage(projectId: string, message: string, modelConfig?: In
   // Use provided modelConfig, or fall back to session's config
   const configToUse = modelConfig || session?.modelConfig;
 
+  // Retrieve apiProfileId from current session state
+  const currentSessionState = store.getCurrentSessionState();
+  const apiProfileId = currentSessionState?.apiProfileId;
+
   // Send to main process
-  window.electronAPI.sendInsightsMessage(session.id, projectId, message, configToUse);
+  window.electronAPI.sendInsightsMessage(session.id, projectId, message, configToUse, apiProfileId);
 }
 
 export async function clearSession(projectId: string): Promise<void> {
