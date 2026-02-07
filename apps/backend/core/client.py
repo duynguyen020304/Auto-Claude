@@ -144,7 +144,7 @@ from core.auth import (
     get_rotating_profile_credential,  # Keep - needed for auto profile rotation
     get_sdk_env_vars,
 )
-from phase_config import load_task_metadata  # Keep - needed for apiProfileId check
+from phase_config import load_task_metadata, get_phase_api_profile  # Keep - needed for apiProfileId check
 from linear_updater import is_linear_enabled
 from prompts_pkg.project_context import detect_project_capabilities, load_project_index
 from security import bash_security_hook
@@ -593,7 +593,28 @@ def create_client(
     # Check if task metadata specifies an API profile to use
     # This takes precedence over default authentication
     task_metadata = load_task_metadata(spec_dir)
-    if task_metadata and task_metadata.get("apiProfileId"):
+
+    # Map agent_type to execution phase for phase-specific API profile lookup
+    agent_type_to_phase = {
+        "planner": "planning",
+        "coder": "coding",
+        "qa_reviewer": "qa",
+        "qa_fixer": "qa",
+        "spec_gatherer": "spec",
+    }
+    phase = agent_type_to_phase.get(agent_type)
+
+    # First check for phase-specific API profile
+    api_profile_id = None
+    if phase and task_metadata:
+        api_profile_id = get_phase_api_profile(spec_dir, phase)
+        if api_profile_id:
+            logger.info(
+                f"Using phase-specific API profile '{api_profile_id}' for {phase} phase (agent_type={agent_type})"
+            )
+
+    # Fall back to global apiProfileId if no phase-specific profile found
+    if not api_profile_id and task_metadata and task_metadata.get("apiProfileId"):
         api_profile_id = task_metadata["apiProfileId"]
 
         # Handle 'auto' rotation selector vs specific profile
