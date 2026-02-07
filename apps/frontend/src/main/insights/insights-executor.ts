@@ -179,7 +179,6 @@ export class InsightsExecutor extends EventEmitter {
     if (apiProfileId) {
       const apiProfileEnv = await getAPIProfileEnvById(apiProfileId);
       processEnv = { ...processEnv, ...apiProfileEnv };
-      processEnv.AUTO_CLAUDE_API_PROFILE_ID = apiProfileId;
     }
 
     // Write conversation history to temp file to avoid Windows command-line length limit
