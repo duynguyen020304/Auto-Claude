@@ -705,6 +705,14 @@ export function trackAPIProfileUsage(
   const newRequestCount = (currentUsage?.requestCount || 0) + requestCount;
   const newTokenUsage = (currentUsage?.tokenUsage || 0) + tokenUsage;
 
+  // Log usage tracking update (when DEBUG=true)
+  debugWarn(
+    `[profile-service] Usage tracking update: ` +
+    `profileId=${profileId}, ` +
+    `requestCount=${newRequestCount} (+${requestCount}), ` +
+    `tokenUsage=${newTokenUsage} (+${tokenUsage})`
+  );
+
   // Update usage data
   updateProfileUsage(profileId, {
     profileId,
