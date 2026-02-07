@@ -323,6 +323,20 @@
     "placeholder": "Sélectionner un profil API",
     "empty": "Aucun profil API disponible",
     "auto": "Auto (rotation de tous les profils)",
+    "phases": {
+      "spec": {
+        "label": "Profil API de spec"
+      },
+      "planning": {
+        "label": "Profil API de planification"
+      },
+      "coding": {
+        "label": "Profil API de codage"
+      },
+      "qa": {
+        "label": "Profil API de QA"
+      }
+    },
     "errors": {
       "profileNotFound": "Profil non trouvé"
     }

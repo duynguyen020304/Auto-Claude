@@ -6,7 +6,7 @@
  * - Reference Images section (collapsible, with screenshot capture)
  * - Title (optional)
  * - Agent profile selector
- * - API profile selector
+ * - API profile selectors (per-phase: planning, coding, qa)
  * - Classification fields (collapsible)
  * - Review requirement checkbox
  */
@@ -77,9 +77,13 @@ interface TaskFormFieldsProps {
   onPhaseModelsChange: (config: PhaseModelConfig | undefined) => void;
   onPhaseThinkingChange: (config: PhaseThinkingConfig | undefined) => void;
 
-  // API profile
-  apiProfileId: string;
-  onApiProfileChange: (profileId: string) => void;
+  // API profiles (phase-specific)
+  planningApiProfileId: string;
+  onPlanningApiProfileChange: (profileId: string) => void;
+  codingApiProfileId: string;
+  onCodingApiProfileChange: (profileId: string) => void;
+  qaApiProfileId: string;
+  onQaApiProfileChange: (profileId: string) => void;
 
   // Classification
   category: TaskCategory | "";
@@ -131,8 +135,12 @@ export function TaskFormFields({
   onThinkingLevelChange,
   onPhaseModelsChange,
   onPhaseThinkingChange,
-  apiProfileId,
-  onApiProfileChange,
+  planningApiProfileId,
+  onPlanningApiProfileChange,
+  codingApiProfileId,
+  onCodingApiProfileChange,
+  qaApiProfileId,
+  onQaApiProfileChange,
   category,
   priority,
   complexity,
@@ -504,12 +512,27 @@ export function TaskFormFields({
           disabled={disabled}
         />
 
-        {/* API Profile Selection */}
-        <ApiProfileSelector
-          profileId={apiProfileId}
-          onProfileChange={onApiProfileChange}
-          disabled={disabled}
-        />
+        {/* API Profile Selection (Per-Phase) */}
+        <div className="space-y-4">
+          <ApiProfileSelector
+            profileId={planningApiProfileId}
+            onProfileChange={onPlanningApiProfileChange}
+            disabled={disabled}
+            phase="planning"
+          />
+          <ApiProfileSelector
+            profileId={codingApiProfileId}
+            onProfileChange={onCodingApiProfileChange}
+            disabled={disabled}
+            phase="coding"
+          />
+          <ApiProfileSelector
+            profileId={qaApiProfileId}
+            onProfileChange={onQaApiProfileChange}
+            disabled={disabled}
+            phase="qa"
+          />
+        </div>
 
         {/* Classification Toggle */}
         <button
