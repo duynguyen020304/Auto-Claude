@@ -124,6 +124,16 @@ export function registerTaskCRUDHandlers(agentManager: AgentManager): void {
         ...metadata
       };
 
+      // Transform separate phase-specific API profile fields into phaseApiProfiles dictionary
+      // This ensures compatibility with backend's get_phase_api_profile() which expects phaseApiProfiles
+      if (taskMetadata.planningApiProfileId || taskMetadata.codingApiProfileId || taskMetadata.qaApiProfileId) {
+        taskMetadata.phaseApiProfiles = {
+          ...(taskMetadata.planningApiProfileId && { planning: taskMetadata.planningApiProfileId }),
+          ...(taskMetadata.codingApiProfileId && { coding: taskMetadata.codingApiProfileId }),
+          ...(taskMetadata.qaApiProfileId && { qa: taskMetadata.qaApiProfileId })
+        };
+      }
+
       // Process and save attached images
       if (taskMetadata.attachedImages && taskMetadata.attachedImages.length > 0) {
         const attachmentsDir = path.join(specDir, 'attachments');

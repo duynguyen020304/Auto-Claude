@@ -27,12 +27,15 @@ interface ApiProfileSelectorProps {
   onProfileChange: (profileId: string) => void;
   /** Whether the selector is disabled */
   disabled?: boolean;
+  /** Optional phase for phase-specific labels ('spec' | 'planning' | 'coding' | 'qa') */
+  phase?: 'spec' | 'planning' | 'coding' | 'qa';
 }
 
 export function ApiProfileSelector({
   profileId,
   onProfileChange,
-  disabled
+  disabled,
+  phase
 }: ApiProfileSelectorProps) {
   const { t } = useTranslation(['tasks', 'common']);
   const { profiles } = useSettingsStore();
@@ -43,17 +46,28 @@ export function ApiProfileSelector({
 
   const hasProfiles = profiles && profiles.length > 0;
 
+  // Generate unique ID for the select trigger (support multiple phase selectors)
+  const selectId = phase ? `api-profile-${phase}` : 'api-profile';
+
+  // Get label key based on phase
+  const getLabelKey = () => {
+    if (phase) {
+      return `tasks:apiProfile.phases.${phase}.label`;
+    }
+    return 'tasks:apiProfile.label';
+  };
+
   return (
     <div className="space-y-2">
-      <Label htmlFor="api-profile" className="text-sm font-medium text-foreground">
-        {t('tasks:apiProfile.label')}
+      <Label htmlFor={selectId} className="text-sm font-medium text-foreground">
+        {t(getLabelKey())}
       </Label>
       <Select
         value={profileId}
         onValueChange={handleProfileSelect}
         disabled={disabled || !hasProfiles}
       >
-        <SelectTrigger id="api-profile" className="h-10">
+        <SelectTrigger id={selectId} className="h-10">
           <SelectValue placeholder={t('tasks:apiProfile.placeholder')} />
         </SelectTrigger>
         <SelectContent>

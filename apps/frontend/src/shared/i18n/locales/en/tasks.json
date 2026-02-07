@@ -323,6 +323,20 @@
     "placeholder": "Select API profile",
     "empty": "No API profiles available",
     "auto": "Auto (rotate all profiles)",
+    "phases": {
+      "spec": {
+        "label": "Spec API Profile"
+      },
+      "planning": {
+        "label": "Planning API Profile"
+      },
+      "coding": {
+        "label": "Coding API Profile"
+      },
+      "qa": {
+        "label": "QA API Profile"
+      }
+    },
     "errors": {
       "profileNotFound": "Profile not found"
     }
@@ -345,6 +359,11 @@
     "validation": {
       "bothSelected": "Cannot select both API profile and pool"
     }
+  },
+  "phaseProfile": {
+    "planning": "Planning API Profile",
+    "coding": "Coding API Profile",
+    "qa": "QA API Profile"
   },
   "screenshot": {
     "title": "Capture Screenshot",

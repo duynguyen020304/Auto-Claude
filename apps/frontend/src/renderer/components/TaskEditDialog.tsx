@@ -116,6 +116,9 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
 
   // API profile selection
   const [apiProfileId, setApiProfileId] = useState<string>(task.metadata?.apiProfileId || '');
+  const [planningApiProfileId, setPlanningApiProfileId] = useState<string>(task.metadata?.planningApiProfileId || '');
+  const [codingApiProfileId, setCodingApiProfileId] = useState<string>(task.metadata?.codingApiProfileId || '');
+  const [qaApiProfileId, setQaApiProfileId] = useState<string>(task.metadata?.qaApiProfileId || '');
 
   // Review setting
   const [requireReviewBeforeCoding, setRequireReviewBeforeCoding] = useState(
@@ -162,6 +165,9 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
 
       setImages(task.metadata?.attachedImages || []);
       setApiProfileId(task.metadata?.apiProfileId || '');
+      setPlanningApiProfileId(task.metadata?.planningApiProfileId || '');
+      setCodingApiProfileId(task.metadata?.codingApiProfileId || '');
+      setQaApiProfileId(task.metadata?.qaApiProfileId || '');
       setRequireReviewBeforeCoding(task.metadata?.requireReviewBeforeCoding ?? false);
       setError(null);
 
@@ -194,6 +200,9 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
       model !== (task.metadata?.model || '') ||
       thinkingLevel !== (task.metadata?.thinkingLevel || '') ||
       apiProfileId !== (task.metadata?.apiProfileId || '') ||
+      planningApiProfileId !== (task.metadata?.planningApiProfileId || '') ||
+      codingApiProfileId !== (task.metadata?.codingApiProfileId || '') ||
+      qaApiProfileId !== (task.metadata?.qaApiProfileId || '') ||
       requireReviewBeforeCoding !== (task.metadata?.requireReviewBeforeCoding ?? false) ||
       JSON.stringify(images) !== JSON.stringify(task.metadata?.attachedImages || []) ||
       JSON.stringify(phaseModels) !== JSON.stringify(task.metadata?.phaseModels || DEFAULT_PHASE_MODELS) ||
@@ -221,6 +230,9 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
       metadataUpdates.phaseThinking = phaseThinking;
     }
     if (apiProfileId) metadataUpdates.apiProfileId = apiProfileId;
+    if (planningApiProfileId) metadataUpdates.planningApiProfileId = planningApiProfileId;
+    if (codingApiProfileId) metadataUpdates.codingApiProfileId = codingApiProfileId;
+    if (qaApiProfileId) metadataUpdates.qaApiProfileId = qaApiProfileId;
     // Always set attachedImages to persist removal when all images are deleted
     metadataUpdates.attachedImages = images.length > 0 ? images : [];
     metadataUpdates.requireReviewBeforeCoding = requireReviewBeforeCoding;
@@ -289,8 +301,12 @@ export function TaskEditDialog({ task, open, onOpenChange, onSaved }: TaskEditDi
         onThinkingLevelChange={setThinkingLevel}
         onPhaseModelsChange={setPhaseModels}
         onPhaseThinkingChange={setPhaseThinking}
-        apiProfileId={apiProfileId}
-        onApiProfileChange={setApiProfileId}
+        planningApiProfileId={planningApiProfileId}
+        onPlanningApiProfileChange={setPlanningApiProfileId}
+        codingApiProfileId={codingApiProfileId}
+        onCodingApiProfileChange={setCodingApiProfileId}
+        qaApiProfileId={qaApiProfileId}
+        onQaApiProfileChange={setQaApiProfileId}
         category={category}
         priority={priority}
         complexity={complexity}
