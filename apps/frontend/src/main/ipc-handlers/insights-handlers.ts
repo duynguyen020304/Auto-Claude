@@ -199,6 +199,7 @@ export function registerInsightsHandlers(getMainWindow: () => BrowserWindow | nu
       sessionId: string,
       projectId: string,
       message: string,
+      apiProfileId?: string,
       modelConfig?: InsightsModelConfig
     ) => {
       const project = projectStore.getProject(projectId);
@@ -238,6 +239,7 @@ export function registerInsightsHandlers(getMainWindow: () => BrowserWindow | nu
           projectId,
           project.path,
           message,
+          apiProfileId,
           configWithSettings
         );
       } catch (error) {

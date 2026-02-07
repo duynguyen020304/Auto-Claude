@@ -138,6 +138,7 @@ export class InsightsService extends EventEmitter {
    * @param projectIdOrPath - Project ID (new) or Project Path (old, for backward compatibility)
    * @param projectPathOrMessage - Project Path (new) or Message (old, for backward compatibility)
    * @param messageOrConfig - Message (new) or Model Config (old, for backward compatibility)
+   * @param apiProfileId - API Profile ID (optional)
    * @param modelConfig - Model Config (optional)
    */
   async sendMessage(
@@ -145,16 +146,18 @@ export class InsightsService extends EventEmitter {
     projectIdOrPath?: string,
     projectPathOrMessage?: string,
     messageOrConfig?: string | InsightsModelConfig,
+    apiProfileId?: string,
     modelConfig?: InsightsModelConfig
   ): Promise<void> {
     // Detect which signature is being used based on parameter types
     // Old: (projectId: string, projectPath: string, message: string, modelConfig?)
-    // New: (sessionId: string, projectId: string, projectPath: string, message: string, modelConfig?)
+    // New: (sessionId: string, projectId: string, projectPath: string, message: string, apiProfileId?, modelConfig?)
 
     let session: InsightsSession | null;
     let targetProjectId: string;
     let targetProjectPath: string;
     let targetMessage: string;
+    let targetApiProfileId: string | undefined;
     let targetModelConfig: InsightsModelConfig | undefined;
 
     // Check if using new signature by looking at parameter types
@@ -164,10 +167,11 @@ export class InsightsService extends EventEmitter {
       typeof messageOrConfig === 'string';
 
     if (usingNewSignature) {
-      // New signature: sendMessage(sessionId, projectId, projectPath, message, modelConfig?)
+      // New signature: sendMessage(sessionId, projectId, projectPath, message, apiProfileId?, modelConfig?)
       targetProjectId = projectIdOrPath;
       targetProjectPath = projectPathOrMessage;
       targetMessage = messageOrConfig as string;
+      targetApiProfileId = apiProfileId;
       targetModelConfig = modelConfig;
 
       // Load session by ID
@@ -182,6 +186,7 @@ export class InsightsService extends EventEmitter {
       targetProjectId = sessionIdOrProjectId;
       targetProjectPath = projectIdOrPath!;
       targetMessage = projectPathOrMessage as string;
+      targetApiProfileId = undefined;
       targetModelConfig = messageOrConfig as InsightsModelConfig | undefined;
 
       // Load or create session (old behavior)
@@ -236,7 +241,8 @@ export class InsightsService extends EventEmitter {
         configToUse,
         undefined, // priority - use default
         roadmapItemId,
-        ideationItemId
+        ideationItemId,
+        targetApiProfileId
       );
 
       // Add assistant message to session
