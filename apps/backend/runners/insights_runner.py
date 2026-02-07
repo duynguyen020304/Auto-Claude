@@ -9,11 +9,15 @@ about a codebase. It can also suggest tasks based on the conversation.
 import argparse
 import asyncio
 import json
+import logging
+import os
 import sys
 from pathlib import Path
 
 # Add auto-claude to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+logger = logging.getLogger(__name__)
 
 # Validate platform-specific dependencies BEFORE any imports that might
 # trigger graphiti_core -> real_ladybug -> pywintypes import chain (ACS-253)
@@ -39,7 +43,12 @@ except ImportError:
     ClaudeAgentOptions = None
     ClaudeSDKClient = None
 
-from core.auth import ensure_claude_code_oauth_token, get_auth_token
+from core.auth import (
+    ensure_claude_code_oauth_token,
+    get_auth_token,
+    get_credential,
+    get_rotating_profile_credential,
+)
 from debug import (
     debug,
     debug_detailed,
@@ -643,6 +652,85 @@ async def run_with_sdk(
 
     # Ensure SDK can find the token
     ensure_claude_code_oauth_token()
+
+    # Check if an API profile is specified via environment variable
+    # This allows selecting which API profile to use for insights requests
+    api_profile_id = os.environ.get("AUTO_CLAUDE_API_PROFILE_ID")
+    if api_profile_id:
+        # Handle 'auto' rotation selector vs specific profile
+        # 'auto' triggers rotation pool selection
+        # Specific profile IDs use direct credential lookup
+        if api_profile_id == "auto":
+            # Rotation pool selection - get best available profile from rotation pool
+            try:
+                credential = get_rotating_profile_credential()
+                if credential:
+                    credential_value = credential.get("value")
+                    if credential_value:
+                        # Set API profile mode environment variables
+                        # SDK will detect ANTHROPIC_AUTH_TOKEN and use API profile mode
+                        os.environ["ANTHROPIC_AUTH_TOKEN"] = credential_value
+                        logger.info(
+                            f"Using auto-selected API profile {credential.get('id')} "
+                            f"({credential.get('name', 'Unknown')}) from rotation pool"
+                        )
+                        debug(
+                            "insights_runner",
+                            "Using auto-selected API profile",
+                            profile_id=credential.get("id"),
+                            profile_name=credential.get("name", "Unknown"),
+                        )
+                    else:
+                        logger.warning(
+                            "Auto-selected profile has no value, falling back to default authentication"
+                        )
+                else:
+                    logger.warning(
+                        "Rotation pool selection returned None, falling back to default authentication"
+                    )
+            except Exception as e:
+                logger.error(
+                    f"Failed to get rotating profile credential: {e}. "
+                    "Using default credential.",
+                    exc_info=True
+                )
+        else:
+            # Specific profile requested - load from credential storage
+            try:
+                # Load the credential profile from platform storage
+                credential = get_credential(api_profile_id)
+                if credential:
+                    credential_value = credential.get("value")
+                    if credential_value:
+                        # Set API profile mode environment variables
+                        # SDK will detect ANTHROPIC_AUTH_TOKEN and use API profile mode
+                        os.environ["ANTHROPIC_AUTH_TOKEN"] = credential_value
+                        logger.info(
+                            f"Using API profile {api_profile_id} "
+                            f"({credential.get('name', 'Unknown')}) from environment variable"
+                        )
+                        debug(
+                            "insights_runner",
+                            "Using API profile from environment",
+                            profile_id=api_profile_id,
+                            profile_name=credential.get("name", "Unknown"),
+                        )
+                    else:
+                        logger.warning(
+                            f"API profile '{api_profile_id}' found but has no value, "
+                            "falling back to default authentication"
+                        )
+                else:
+                    logger.warning(
+                        f"API profile '{api_profile_id}' specified in environment variable "
+                        "but not found in credential storage, falling back to default authentication"
+                    )
+            except Exception as e:
+                logger.error(
+                    f"Failed to load API profile '{api_profile_id}': {e}. "
+                    "Using default credential.",
+                    exc_info=True
+                )
 
     system_prompt = build_system_prompt(project_dir, roadmap_context, ideation_context)
     project_path = Path(project_dir).resolve()
