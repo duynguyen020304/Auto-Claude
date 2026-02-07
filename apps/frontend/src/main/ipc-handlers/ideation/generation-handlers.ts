@@ -22,6 +22,7 @@ import { projectStore } from "../../project-store";
 import type { AgentManager } from "../../agent";
 import { debugLog, debugError } from "../../../shared/utils/debug-logger";
 import { safeSendToRenderer } from "../utils";
+import { getClaudeProfileManager } from "../../claude-profile-manager";
 
 /**
  * Read ideation feature settings from the settings file
@@ -78,6 +79,7 @@ export function startIdeationGeneration(
     maxIdeasPerType: configWithSettings.maxIdeasPerType,
     model: configWithSettings.model,
     thinkingLevel: configWithSettings.thinkingLevel,
+    profileId: getClaudeProfileManager().getActiveProfile().id,
   });
 
   const getMainWindow = () => mainWindow;
@@ -129,6 +131,7 @@ export function refreshIdeationSession(
     projectId,
     model: configWithSettings.model,
     thinkingLevel: configWithSettings.thinkingLevel,
+    profileId: getClaudeProfileManager().getActiveProfile().id,
   });
 
   const getMainWindow = () => mainWindow;
@@ -159,7 +162,10 @@ export async function stopIdeationGeneration(
   agentManager: AgentManager,
   mainWindow: BrowserWindow | null
 ): Promise<IPCResult> {
-  debugLog("[Ideation Handler] Stop generation request:", { projectId });
+  debugLog("[Ideation Handler] Stop generation request:", {
+    projectId,
+    profileId: getClaudeProfileManager().getActiveProfile().id,
+  });
 
   const wasStopped = agentManager.stopIdeation(projectId);
 
