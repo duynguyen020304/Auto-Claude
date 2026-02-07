@@ -346,6 +346,11 @@
       "bothSelected": "Cannot select both API profile and pool"
     }
   },
+  "phaseProfile": {
+    "planning": "Planning API Profile",
+    "coding": "Coding API Profile",
+    "qa": "QA API Profile"
+  },
   "screenshot": {
     "title": "Capture Screenshot",
     "description": "Select a screen or window to capture as a reference image",
