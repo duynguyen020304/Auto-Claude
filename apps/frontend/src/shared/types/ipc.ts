@@ -833,7 +833,7 @@ export interface ElectronAPI {
 
   // Insights operations
   getInsightsSession: (projectId: string) => Promise<IPCResult<InsightsSession | null>>;
-  sendInsightsMessage: (sessionId: string, projectId: string, message: string, modelConfig?: InsightsModelConfig) => void;
+  sendInsightsMessage: (sessionId: string, projectId: string, message: string, modelConfig?: InsightsModelConfig, apiProfileId?: string) => void;
   clearInsightsSession: (sessionId: string, projectId: string) => Promise<IPCResult>;
   createTaskFromInsights: (
     projectId: string,
