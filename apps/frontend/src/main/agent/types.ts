@@ -75,6 +75,10 @@ export interface SpecCreationMetadata {
   thinkingLevel?: 'none' | 'low' | 'medium' | 'high' | 'ultrathink';
   // API profile selection
   apiProfileId?: string; // API profile ID for this task (for per-task profile selection)
+  // Per-phase API profile selection
+  planningApiProfileId?: string; // API profile ID for planning phase
+  codingApiProfileId?: string; // API profile ID for coding phase
+  qaApiProfileId?: string; // API profile ID for QA phase
   // Workspace mode - whether to use worktree isolation
   useWorktree?: boolean; // If false, use --direct mode (no worktree isolation)
   useLocalBranch?: boolean; // If true, use local branch directly instead of preferring origin/branch

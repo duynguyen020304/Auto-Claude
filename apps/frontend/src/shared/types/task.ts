@@ -242,6 +242,12 @@ export interface TaskMetadata {
   planningApiProfileId?: string;  // API profile ID for planning phase
   codingApiProfileId?: string;  // API profile ID for coding phase
   qaApiProfileId?: string;  // API profile ID for QA phase
+  phaseApiProfiles?: {
+    planning?: string;
+    coding?: string;
+    qa?: string;
+    spec?: string;
+  };  // Phase-specific API profile IDs (dictionary format for backend compatibility)
 
   // Git/Worktree configuration
   baseBranch?: string;  // Override base branch for this task's worktree
