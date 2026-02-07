@@ -339,7 +339,7 @@ def get_phase_api_profile(
     Priority:
     1. CLI argument (if provided)
     2. Phase-specific config from task_metadata.json (if auto profile)
-    3. Single API profile from task_metadata.json (if not auto profile)
+    3. Single API profile from task_metadata.json (global fallback)
     4. None (no default API profile)
 
     Args:
@@ -361,9 +361,16 @@ def get_phase_api_profile(
         # Check for auto profile with phase-specific config
         if metadata.get("isAutoProfile") and metadata.get("phaseApiProfiles"):
             phase_api_profiles = metadata["phaseApiProfiles"]
-            return phase_api_profiles.get(phase)
+            # Get phase-specific profile if it exists
+            phase_profile = phase_api_profiles.get(phase)
+            if phase_profile:
+                return phase_profile
+            # If phase not in dict, fall through to check global apiProfileId
 
-        # Non-auto profile: use single API profile
+        # Fall back to global apiProfileId (for backwards compatibility)
+        # This handles:
+        # 1. Tasks with only apiProfileId set (no phase-specific profiles)
+        # 2. Tasks where some phases have specific profiles but others don't
         if metadata.get("apiProfileId"):
             return metadata["apiProfileId"]
 
