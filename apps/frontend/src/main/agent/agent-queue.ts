@@ -332,6 +332,16 @@ export class AgentQueueManager {
     const profileResult = getBestAvailableProfileEnv();
     const profileEnv = profileResult.env;
 
+    // Log profile rotation strategy for ideation generation
+    if (profileResult.wasSwapped && process.env.DEBUG === 'true') {
+      console.warn('[Agent Queue] Ideation profile rotation:', {
+        originalProfile: profileResult.originalProfile?.name,
+        selectedProfile: profileResult.profileName,
+        reason: profileResult.swapReason,
+        phase: 'ideation'
+      });
+    }
+
     // Get API profile environment variables for the specified profile (or active if not specified)
     // This validates the profile exists and falls back to active profile with warning if invalid
     const apiProfileEnv = await getAPIProfileEnvById(apiProfileId);
