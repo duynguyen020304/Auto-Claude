@@ -433,6 +433,19 @@ export class AgentQueueManager {
       hasToken
     });
 
+    // Debug: Show ANTHROPIC_* environment variables being set (keys only, no values for security)
+    const anthropicVars = Object.keys(finalEnv)
+      .filter(key => key.startsWith('ANTHROPIC_'))
+      .sort();
+    const authSource = Object.keys(apiProfileEnv).some(key => key.startsWith('ANTHROPIC_'))
+      ? 'API profile'
+      : (hasToken ? 'OAuth' : 'none');
+    debugLog('[Agent Queue] ANTHROPIC environment variables:', {
+      variables: anthropicVars,
+      count: anthropicVars.length,
+      authSource
+    });
+
     // Parse Python command to handle space-separated commands like "py -3"
     const [pythonCommand, pythonBaseArgs] = parsePythonCommand(pythonPath);
     const childProcess = spawn(pythonCommand, [...pythonBaseArgs, ...args], {
