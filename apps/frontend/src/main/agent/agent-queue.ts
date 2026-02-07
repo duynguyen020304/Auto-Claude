@@ -11,7 +11,7 @@ import { AUTO_BUILD_PATHS } from '../../shared/constants';
 import { detectRateLimit, createSDKRateLimitInfo, getBestAvailableProfileEnv } from '../rate-limit-detector';
 import { getAPIProfileEnvById } from '../services/profile';
 import { getOAuthModeClearVars } from './env-utils';
-import { debugLog, debugError } from '../../shared/utils/debug-logger';
+import { debugLog, debugError, debugWarn } from '../../shared/utils/debug-logger';
 import { stripAnsiCodes } from '../../shared/utils/ansi-sanitizer';
 import { parsePythonCommand } from '../python-detector';
 import { pythonEnvManager } from '../python-env-manager';
@@ -369,6 +369,14 @@ export class AgentQueueManager {
         };
       } else if (profilesFile.activeProfileId) {
         // Fallback to active profile if specified profile not found
+        debugWarn(
+          '[Agent Queue] Profile not found, falling back to active profile',
+          {
+            requestedProfileId: apiProfileId,
+            activeProfileId: profilesFile.activeProfileId,
+            totalProfiles: profilesFile.profiles.length
+          }
+        );
         const activeProfile = profilesFile.profiles.find((p) => p.id === profilesFile.activeProfileId);
         if (activeProfile) {
           profileMetadata = {
@@ -378,21 +386,42 @@ export class AgentQueueManager {
             models: activeProfile.models
           };
         }
+      } else {
+        // No active profile available - OAuth mode
+        debugWarn(
+          '[Agent Queue] No API profile available, using OAuth mode',
+          { requestedProfileId: apiProfileId }
+        );
       }
     } catch (err) {
       // If loading profile metadata fails, we'll still log what we can
-      debugError('[Agent Queue] Failed to load profile metadata for logging:', err);
+      debugError(
+        '[Agent Queue] Failed to load profile metadata for logging',
+        { error: err instanceof Error ? err.message : String(err), apiProfileId }
+      );
     }
 
     // Log which profile is being used for ideation with enhanced metadata
-    debugLog('[Agent Queue] Ideation using API profile:', {
-      selectionType: profileMetadata?.selectionType || (apiProfileId ? 'explicit' : 'active'),
-      profileId: apiProfileId || 'active',
-      profileName: profileMetadata?.profileName || 'unknown',
-      baseUrl: profileMetadata?.baseUrl || 'unknown',
-      models: profileMetadata?.models || {},
-      hasApiProfileEnv: Object.keys(apiProfileEnv).length > 0
-    });
+    if (profileMetadata) {
+      debugLog('[Agent Queue] Ideation using API profile:', {
+        selectionType: profileMetadata.selectionType,
+        profileId: apiProfileId || 'active',
+        profileName: profileMetadata.profileName,
+        baseUrl: profileMetadata.baseUrl,
+        models: profileMetadata.models || {},
+        hasApiProfileEnv: Object.keys(apiProfileEnv).length > 0
+      });
+    } else {
+      // No profile metadata available - likely OAuth mode or all fallbacks failed
+      debugWarn(
+        '[Agent Queue] Ideation using OAuth mode (no API profile metadata available)',
+        {
+          requestedProfileId: apiProfileId,
+          hasApiProfileEnv: Object.keys(apiProfileEnv).length > 0,
+          apiProfileEnvKeys: Object.keys(apiProfileEnv)
+        }
+      );
+    }
 
     // Get OAuth mode clearing vars (clears stale ANTHROPIC_* vars when in OAuth mode)
     const oauthModeClearVars = getOAuthModeClearVars(apiProfileEnv);
@@ -743,11 +772,22 @@ export class AgentQueueManager {
     const apiProfileEnv = await getAPIProfileEnvById(apiProfileId);
 
     // Log which profile is being used for roadmap
-    debugLog('[Agent Queue] Roadmap using API profile:', {
-      requestedProfileId: apiProfileId,
-      usingActiveProfile: !apiProfileId,
-      hasApiProfileEnv: Object.keys(apiProfileEnv).length > 0
-    });
+    if (Object.keys(apiProfileEnv).length > 0) {
+      debugLog('[Agent Queue] Roadmap using API profile:', {
+        requestedProfileId: apiProfileId,
+        usingActiveProfile: !apiProfileId,
+        hasApiProfileEnv: Object.keys(apiProfileEnv).length > 0,
+        apiProfileEnvKeys: Object.keys(apiProfileEnv)
+      });
+    } else {
+      debugWarn(
+        '[Agent Queue] Roadmap using OAuth mode (no API profile configured)',
+        {
+          requestedProfileId: apiProfileId,
+          usingActiveProfile: !apiProfileId
+        }
+      );
+    }
 
     // Get OAuth mode clearing vars (clears stale ANTHROPIC_* vars when in OAuth mode)
     const oauthModeClearVars = getOAuthModeClearVars(apiProfileEnv);

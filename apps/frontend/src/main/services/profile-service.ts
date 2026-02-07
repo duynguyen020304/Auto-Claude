@@ -9,7 +9,7 @@
 import { loadProfilesFile, saveProfilesFile, generateProfileId } from '../utils/profile-manager';
 import { updateProfileUsage, getProfileUsage, getRotationStrategyOrDefault } from '../utils/api-usage-storage';
 import { getBestAvailableAPIProfile } from '../claude-profile/profile-scorer';
-import { debugWarn } from '../../shared/utils/debug-logger';
+import { debugWarn, debugError, debugLog } from '../../shared/utils/debug-logger';
 import type { APIProfile, TestConnectionResult, APIProfileUsage, APIProfileRotationStrategy } from '../../shared/types/profile';
 
 /**
@@ -242,6 +242,7 @@ export async function getAPIProfileEnv(): Promise<Record<string, string>> {
 
   // If no active profile (null/empty), return empty object (OAuth mode)
   if (!file.activeProfileId || file.activeProfileId === '') {
+    debugLog('[ProfileService] No active API profile configured, using OAuth mode');
     return {};
   }
 
@@ -250,6 +251,10 @@ export async function getAPIProfileEnv(): Promise<Record<string, string>> {
 
   // If profile not found, return empty object (shouldn't happen with valid data)
   if (!profile) {
+    debugError(
+      '[ProfileService] Active profile not found',
+      { activeProfileId: file.activeProfileId, totalProfiles: file.profiles.length }
+    );
     return {};
   }
 
@@ -299,6 +304,7 @@ export async function getAPIProfileEnv(): Promise<Record<string, string>> {
 export async function getAPIProfileEnvById(profileId: string | null | undefined): Promise<Record<string, string>> {
   // If no profile specified, use active profile (backward compatible)
   if (!profileId) {
+    debugLog('[ProfileService] No explicit profile ID provided, using active profile');
     return getAPIProfileEnv();
   }
 
@@ -310,18 +316,33 @@ export async function getAPIProfileEnvById(profileId: string | null | undefined)
 
   // If profile not found, log warning and fall back to active profile
   if (!profile) {
-    debugWarn(
-      `[profile-service] Profile '${profileId}' not found. ` +
-      `Falling back to active profile.`
+    debugError(
+      '[ProfileService] Profile not found, falling back to active profile',
+      {
+        requestedProfileId: profileId,
+        activeProfileId: file.activeProfileId || 'none',
+        totalProfiles: file.profiles.length,
+        availableProfileIds: file.profiles.map(p => p.id)
+      }
     );
     return getAPIProfileEnv();
   }
 
   // Validate profile has required fields
-  if (!profile.baseUrl || !profile.apiKey) {
-    debugWarn(
-      `[profile-service] Profile '${profile.name}' (${profile.id}) is missing required fields. ` +
-      `Falling back to active profile.`
+  const missingFields: string[] = [];
+  if (!profile.baseUrl) missingFields.push('baseUrl');
+  if (!profile.apiKey) missingFields.push('apiKey');
+
+  if (missingFields.length > 0) {
+    debugError(
+      '[ProfileService] Profile missing required fields, falling back to active profile',
+      {
+        profileId: profile.id,
+        profileName: profile.name,
+        missingFields,
+        hasBaseUrl: !!profile.baseUrl,
+        hasApiKey: !!profile.apiKey
+      }
     );
     return getAPIProfileEnv();
   }
@@ -407,7 +428,15 @@ export async function getRotatedAPIProfileEnv(): Promise<Record<string, string>>
     if (!selectedProfile && file.activeProfileId) {
       const activeProfile = file.profiles.find((p) => p.id === file.activeProfileId);
       if (activeProfile) {
-        console.warn('[ProfileService] Rotation: All profiles unavailable, falling back to active profile:', activeProfile.name);
+        debugWarn(
+          '[ProfileService] Rotation: All profiles unavailable, falling back to active profile',
+          {
+            activeProfileId: activeProfile.id,
+            activeProfileName: activeProfile.name,
+            totalProfiles: file.profiles.length,
+            rotationStrategy: rotationStrategy.strategy || 'priority'
+          }
+        );
         selectedProfile = activeProfile;
       }
     }
@@ -422,6 +451,14 @@ export async function getRotatedAPIProfileEnv(): Promise<Record<string, string>>
 
   // If no profile selected (no active profile or rotation failed), return empty object
   if (!selectedProfile) {
+    debugWarn(
+      '[ProfileService] No profile selected, using OAuth mode',
+      {
+        rotationEnabled: rotationStrategy.enabled,
+        hasProfiles: file.profiles.length > 0,
+        activeProfileId: file.activeProfileId || 'none'
+      }
+    );
     return {};
   }
 
