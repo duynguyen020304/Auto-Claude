@@ -77,12 +77,20 @@ class PhaseThinkingConfig(TypedDict, total=False):
     qa: str
 
 
+class PhaseApiProfileConfig(TypedDict, total=False):
+    spec: str
+    planning: str
+    coding: str
+    qa: str
+
+
 class TaskMetadataConfig(TypedDict, total=False):
     """Structure of model-related fields in task_metadata.json"""
 
     isAutoProfile: bool
     phaseModels: PhaseModelConfig
     phaseThinking: PhaseThinkingConfig
+    phaseApiProfiles: PhaseApiProfileConfig
     model: str
     thinkingLevel: str
     apiProfileId: str
@@ -318,3 +326,46 @@ def get_spec_phase_thinking_budget(phase_name: str) -> int | None:
     """
     thinking_level = SPEC_PHASE_THINKING_LEVELS.get(phase_name, "medium")
     return get_thinking_budget(thinking_level)
+
+
+def get_phase_api_profile(
+    spec_dir: Path,
+    phase: Phase,
+    cli_api_profile: str | None = None,
+) -> str | None:
+    """
+    Get the API profile ID for a specific execution phase.
+
+    Priority:
+    1. CLI argument (if provided)
+    2. Phase-specific config from task_metadata.json (if auto profile)
+    3. Single API profile from task_metadata.json (if not auto profile)
+    4. None (no default API profile)
+
+    Args:
+        spec_dir: Path to the spec directory
+        phase: Execution phase (spec, planning, coding, qa)
+        cli_api_profile: API profile ID from CLI argument (optional)
+
+    Returns:
+        API profile ID or None if not configured
+    """
+    # CLI argument takes precedence
+    if cli_api_profile:
+        return cli_api_profile
+
+    # Load task metadata
+    metadata = load_task_metadata(spec_dir)
+
+    if metadata:
+        # Check for auto profile with phase-specific config
+        if metadata.get("isAutoProfile") and metadata.get("phaseApiProfiles"):
+            phase_api_profiles = metadata["phaseApiProfiles"]
+            return phase_api_profiles.get(phase)
+
+        # Non-auto profile: use single API profile
+        if metadata.get("apiProfileId"):
+            return metadata["apiProfileId"]
+
+    # No default API profile
+    return None
