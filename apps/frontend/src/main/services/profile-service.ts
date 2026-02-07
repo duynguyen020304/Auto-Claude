@@ -9,6 +9,7 @@
 import { loadProfilesFile, saveProfilesFile, generateProfileId } from '../utils/profile-manager';
 import { updateProfileUsage, getProfileUsage, getRotationStrategyOrDefault } from '../utils/api-usage-storage';
 import { getBestAvailableAPIProfile } from '../claude-profile/profile-scorer';
+import { debugWarn } from '../../shared/utils/debug-logger';
 import type { APIProfile, TestConnectionResult, APIProfileUsage, APIProfileRotationStrategy } from '../../shared/types/profile';
 
 /**
@@ -309,7 +310,7 @@ export async function getAPIProfileEnvById(profileId: string | null | undefined)
 
   // If profile not found, log warning and fall back to active profile
   if (!profile) {
-    console.warn(
+    debugWarn(
       `[profile-service] Profile '${profileId}' not found. ` +
       `Falling back to active profile.`
     );
@@ -318,7 +319,7 @@ export async function getAPIProfileEnvById(profileId: string | null | undefined)
 
   // Validate profile has required fields
   if (!profile.baseUrl || !profile.apiKey) {
-    console.warn(
+    debugWarn(
       `[profile-service] Profile '${profile.name}' (${profile.id}) is missing required fields. ` +
       `Falling back to active profile.`
     );
